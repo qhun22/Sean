@@ -19,5 +19,7 @@ urlpatterns = [
     path('wishlist/', views.wishlist, name='wishlist'),
     # Tài khoản
     path('login/', views.login_view, name='login'),
+    path('register/', views.register_view, name='register'),
+    path('send-otp/', views.send_otp_view, name='send_otp'),
     path('profile/', views.profile, name='profile'),
 ]

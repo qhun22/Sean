@@ -1,0 +1,23 @@
+"""
+Context processors cho QHUN22
+"""
+from django.conf import settings
+
+
+def qhun22_context(request):
+    """
+    Thêm các biến global vào context của template
+    """
+    context = {
+        'CLOUDFLARE_TURNSTILE_SITE_KEY': getattr(settings, 'CLOUDFLARE_TURNSTILE_SITE_KEY', ''),
+    }
+    
+    # Thêm thông tin người dùng nếu đã đăng nhập
+    if request.user.is_authenticated:
+        context['user_display_name'] = request.user.get_full_name()
+        context['user_short_name'] = request.user.get_short_name()
+        context['user_email'] = request.user.email
+        context['user_phone'] = request.user.phone
+        context['is_oauth_user'] = getattr(request.user, 'is_oauth_user', False)
+    
+    return context

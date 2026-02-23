@@ -37,16 +37,31 @@ const QHToast = {
         // Tạo toast element
         const toast = document.createElement('div');
         toast.className = `qh-toast qh-toast-${type}`;
+        
+        // Add icon based on type
+        const icon = type === 'success' 
+            ? '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+            : '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
+        
         toast.innerHTML = `
-            <span>${message}</span>
+            <span class="qh-toast-icon">${icon}</span>
+            <span class="qh-toast-text">${message}</span>
         `;
 
         // Thêm vào container
         container.appendChild(toast);
 
+        // Force reflow để animation hoạt động
+        toast.offsetHeight;
+
+        // Add show class for smooth entrance
+        toast.classList.add('qh-toast-show');
+
         // Tự động ẩn sau 3 giây
         setTimeout(() => {
-            toast.style.animation = 'slideOut 0.3s ease forwards';
+            toast.classList.remove('qh-toast-show');
+            toast.classList.add('qh-toast-hide');
+            
             setTimeout(() => {
                 toast.remove();
             }, 300);
@@ -54,18 +69,5 @@ const QHToast = {
     }
 };
 
-// Thêm animation slideOut
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideOut {
-        from {
-            transform: translateX(0);
-            opacity: 1;
-        }
-        to {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-    }
-`;
-document.head.appendChild(style);
+// Gán vào window để có thể gọi từ template
+window.QHToast = QHToast;
