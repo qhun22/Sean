@@ -1,5 +1,5 @@
 """
-WSGI config cho dự án QHUN22
+WSGI config cho dự án
 """
 import os
 from django.core.wsgi import get_wsgi_application

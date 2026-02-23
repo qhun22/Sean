@@ -18,8 +18,31 @@
     <link href="https://fonts.googleapis.com/css2?family=Signika:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     {% block extra_css %}{% endblock %}
+    
+    <!-- Load Toast JS early -->
+    <script src="{% static 'js/toast.js' %}"></script>
 </head>
 <body>
+    
+    <!-- Toast Messages -->
+    {% if messages %}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        {% for message in messages %}
+        (function() {
+            const tags = "{{ message.tags|escapejs }}";
+            const messageText = "{{ message|escapejs }}";
+            const type = tags.includes('error') ? 'error' : 'success';
+            
+            if (window.QHToast && typeof window.QHToast.show === 'function') {
+                window.QHToast.show(messageText, type);
+            }
+        })();
+        {% endfor %}
+    });
+    </script>
+    {% endif %}
+    
     <!-- Header -->
     <header class="qh-header">
         <div class="qh-header-container">
@@ -37,6 +60,12 @@
                                placeholder="Nhập sản phẩm mà bạn muốn tìm..." 
                                class="qh-search-input"
                                value="{{ request.GET.q|default:'' }}">
+                        <button type="submit" class="qh-search-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                        </button>
                     </form>
                 </div>
 
@@ -48,6 +77,7 @@
                             <svg class="qh-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
                             </svg>
+                            <span class="qh-icon-badge">0</span>
                         </div>
                         <div class="qh-icon-text">
                             <span class="qh-icon-label">Danh Sách</span>
@@ -75,6 +105,7 @@
                             <svg class="qh-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
                             </svg>
+                            <span class="qh-icon-badge">0</span>
                         </div>
                         <div class="qh-icon-text">
                             <span class="qh-icon-label">Kiểm tra</span>
@@ -92,13 +123,7 @@
                             </div>
                             <div class="qh-icon-text">
                                 <span class="qh-icon-label">Xin chào</span>
-                                <span class="qh-icon-title">
-                                    {% if user.get_full_name %}
-                                        {{ user.get_full_name }}
-                                    {% else %}
-                                        {{ user.username }}
-                                    {% endif %}
-                                </span>
+                                <span class="qh-icon-title">{{ user_display_name|upper }}</span>
                             </div>
                         </a>
                     {% else %}
@@ -127,12 +152,11 @@
     <!-- Footer -->
     <footer class="qh-footer">
         <div class="qh-footer-content">
-            <p>&copy; 2024 QHUN22 Mobile. Tất cả các quyền được bảo lưu.</p>
+            <p>&copy; 2026 QHUN22 Mobile.</p>
         </div>
     </footer>
 
     <!-- JavaScript Files -->
-    <script src="{% static 'js/toast.js' %}"></script>
     <script src="{% static 'js/confirm.js' %}"></script>
     
     {% block extra_js %}{% endblock %}
