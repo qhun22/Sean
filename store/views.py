@@ -44,6 +44,11 @@ def send_otp_view(request):
         if not email:
             return JsonResponse({'status': 'error', 'message': 'Email missing'})
         
+        # Kiểm tra email đã tồn tại chưa
+        from store.models import CustomUser
+        if CustomUser.objects.filter(email=email).exists():
+            return JsonResponse({'status': 'error', 'message': 'Email đã tồn tại trong hệ thống! Vui lòng sử dụng email khác.'})
+        
         # Tạo OTP 5 chữ số
         otp = str(random.randint(10000, 99999))
         
@@ -252,3 +257,141 @@ def register_view(request):
         return redirect('store:login')
     
     return render(request, 'store/register.html')
+
+
+def forgot_password_view(request):
+    """
+    Trang quên mật khẩu
+    """
+    # Nếu đã đăng nhập thì chuyển về trang chủ
+    if request.user.is_authenticated:
+        return redirect('store:home')
+    
+    return render(request, 'store/forgot_password.html')
+
+
+def send_otp_forgot_password_view(request):
+    """
+    Gửi OTP cho quên mật khẩu (AJAX)
+    """
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        
+        if not email:
+            return JsonResponse({'status': 'error', 'message': 'Email missing'})
+        
+        # Kiểm tra email có tồn tại trong hệ thống không
+        from store.models import CustomUser
+        if not CustomUser.objects.filter(email=email).exists():
+            return JsonResponse({'status': 'error', 'message': 'Email không tồn tại trong hệ thống!'})
+        
+        # Tạo OTP 5 chữ số
+        otp = str(random.randint(10000, 99999))
+        
+        # Lưu vào session với prefix để tránh xung đột với OTP đăng ký
+        request.session['fp_otp'] = otp
+        request.session['fp_otp_email'] = email
+        request.session['fp_otp_created_at'] = int(time.time())
+        request.session['fp_otp_expire'] = 300  # 5 phút
+        
+        # Gửi email qua SendGrid
+        api_key = os.getenv('SENDGRID_API_KEY', '')
+        from_email = os.getenv('SENDGRID_FROM_EMAIL', 'noreply@qhun22.com')
+        
+        data = {
+            "personalizations": [{
+                "to": [{"email": email}],
+                "subject": "OTP Quên Mật Khẩu - QHUN22"
+            }],
+            "from": {"email": from_email},
+            "content": [{
+                "type": "text/html",
+                "value": f"<h1>Mã OTP quên mật khẩu của bạn: {otp}</h1><p>Mã có hiệu lực trong 5 phút.</p><p>Nếu bạn không yêu cầu mã này, vui lòng bỏ qua.</p>"
+            }]
+        }
+        
+        try:
+            response = requests.post(
+                "https://api.sendgrid.com/v3/mail/send",
+                json=data,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                timeout=10
+            )
+            
+            if response.status_code in [200, 201, 202]:
+                return JsonResponse({'status': 'success', 'message': 'OTP_SENT'})
+            else:
+                return JsonResponse({'status': 'error', 'message': f'Failed to send email: {response.status_code}'})
+                
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'})
+
+
+def verify_otp_forgot_password_view(request):
+    """
+    Xác minh OTP cho quên mật khẩu (AJAX)
+    """
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        otp_input = request.POST.get('otp')
+        
+        if not email or not otp_input:
+            return JsonResponse({'status': 'error', 'message': 'Missing parameters'})
+        
+        # Kiểm tra OTP
+        session_otp = request.session.get('fp_otp')
+        session_email = request.session.get('fp_otp_email')
+        session_created_at = request.session.get('fp_otp_created_at', 0)
+        session_expire = request.session.get('fp_otp_expire', 300)
+        
+        # Kiểm tra OTP hết hạn
+        if not session_otp or session_email != email or session_otp != otp_input or int(time.time()) > (session_created_at + session_expire):
+            return JsonResponse({'status': 'error', 'message': 'OTP không hợp lệ hoặc đã hết hạn!'})
+        
+        # OTP đúng, lưu trạng thái xác minh
+        request.session['fp_verified'] = True
+        
+        return JsonResponse({'status': 'success', 'message': 'OTP verified'})
+    
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'})
+
+
+def reset_password_view(request):
+    """
+    Đặt lại mật khẩu (AJAX)
+    """
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        new_password = request.POST.get('new_password')
+        
+        if not email or not new_password:
+            return JsonResponse({'status': 'error', 'message': 'Missing parameters'})
+        
+        # Kiểm tra đã xác minh OTP chưa
+        if not request.session.get('fp_verified') or request.session.get('fp_otp_email') != email:
+            return JsonResponse({'status': 'error', 'message': 'Vui lòng xác minh OTP trước!'})
+        
+        # Cập nhật mật khẩu
+        from store.models import CustomUser
+        try:
+            user = CustomUser.objects.get(email=email)
+            user.set_password(new_password)
+            user.save()
+            
+            # Xóa session
+            request.session.pop('fp_otp', None)
+            request.session.pop('fp_otp_email', None)
+            request.session.pop('fp_otp_created_at', None)
+            request.session.pop('fp_otp_expire', None)
+            request.session.pop('fp_verified', None)
+            
+            return JsonResponse({'status': 'success', 'message': 'Password reset successful'})
+        except CustomUser.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'User not found'})
+    
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'})
