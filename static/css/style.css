@@ -261,6 +261,28 @@ a {
     box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
 }
 
+.qh-btn-outline {
+    background: transparent;
+    color: var(--qh-text);
+    border: 1px solid var(--qh-border);
+}
+
+.qh-btn-outline:hover {
+    background: var(--qh-primary);
+    border-color: var(--qh-primary);
+    color: var(--qh-text);
+}
+
+/* ==================== PRODUCT CARD HOVER ==================== */
+.qh-product-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.qh-product-card:hover .qh-quick-actions {
+    opacity: 1;
+}
+
 /* ==================== OTP BUTTON STYLES ==================== */
 .qh-otp-group {
     display: flex;
