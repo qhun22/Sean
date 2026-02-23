@@ -1,0 +1,36 @@
+"""
+Custom template filters for QHUN22
+"""
+from django import template
+
+register = template.Library()
+
+@register.filter
+def format_price(value):
+    """
+    Format price with dot notation: 1000000 -> 1.000.000
+    """
+    if value is None:
+        return '0'
+    
+    try:
+        value = int(value)
+    except (ValueError, TypeError):
+        return '0'
+    
+    return '{:,}'.format(value).replace(',', '.')
+
+@register.filter
+def format_price_with_unit(value):
+    """
+    Format price with dot notation and 'đ' unit: 1000000 -> 1.000.000đ
+    """
+    if value is None:
+        return '0đ'
+    
+    try:
+        value = int(value)
+    except (ValueError, TypeError):
+        return '0đ'
+    
+    return '{:,}đ'.format(value).replace(',', '.')

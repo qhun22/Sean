@@ -11,6 +11,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.conf import settings
 from django.http import JsonResponse
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
@@ -100,8 +101,57 @@ def send_otp_view(request):
 def home(request):
     """
     Trang chủ của cửa hàng QHUN22
+    Hiển thị danh sách sản phẩm với phân trang (tối đa 15 sản phẩm/trang)
+    Sản phẩm có hàng hiển thị trước, hết hàng hiển thị sau
     """
-    return render(request, 'store/home.html')
+    from store.models import Product, SiteVisit
+    
+    # Tracking lượt truy cập trang chủ
+    # Lấy IP của người dùng
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip_address = x_forwarded_for.split(',')[0]
+    else:
+        ip_address = request.META.get('REMOTE_ADDR')
+    
+    # Lưu lượt truy cập
+    SiteVisit.objects.create(
+        ip_address=ip_address,
+        user=request.user if request.user.is_authenticated else None
+    )
+    
+    # Lấy tất cả sản phẩm đang hoạt động
+    # Sắp xếp: có hàng trước (stock > 0), hết hàng sau
+    # Sử dụng annotation để sắp xếp theo stock
+    from django.db.models import Case, When, IntegerField
+    
+    products_list = Product.objects.filter(is_active=True).annotate(
+        stock_order=Case(
+            When(stock__gt=0, then=0),
+            default=1,
+            output_field=IntegerField(),
+        )
+    ).order_by('stock_order', '-created_at')
+    
+    # Phân trang - 15 sản phẩm mỗi trang
+    paginator = Paginator(products_list, 15)
+    
+    # Lấy số trang từ URL
+    page = request.GET.get('page', 1)
+    
+    try:
+        products = paginator.page(page)
+    except PageNotAnInteger:
+        # Nếu page không phải số, lấy trang đầu tiên
+        products = paginator.page(1)
+    except EmptyPage:
+        # Nếu trang vượt quá, lấy trang cuối cùng
+        products = paginator.page(paginator.num_pages)
+    
+    context = {
+        'products': products,
+    }
+    return render(request, 'store/home.html', context)
 
 
 def product_search(request):
@@ -410,16 +460,43 @@ def dashboard_view(request):
         return redirect('store:profile')
     
     # Lấy danh sách tất cả người dùng
-    from store.models import CustomUser
+    from store.models import CustomUser, SiteVisit
     users = CustomUser.objects.all().order_by('-date_joined')
     
     # Thống kê
     regular_users = users.filter(is_oauth_user=False, is_superuser=False).count()
     oauth_users = users.filter(is_oauth_user=True).count()
     
+    # Tổng lượt truy cập trang chủ
+    total_visits = SiteVisit.objects.count()
+    
+    # Sản phẩm sắp hết hàng (dưới 5 sản phẩm)
+    from store.models import Product
+    low_stock_products_count = Product.objects.filter(stock__gt=0, stock__lt=5).count()
+    
+    # Dữ liệu biểu đồ doanh thu năm 2026 (12 tháng)
+    # Hiện tại: 23/02/2026 - Tất cả tháng có chiều cao bằng nhau khi chưa có dữ liệu
+    month_data = [
+        {'name': 'T1', 'value': 0, 'height': 10},
+        {'name': 'T2', 'value': 0, 'height': 10},
+        {'name': 'T3', 'value': 0, 'height': 10},
+        {'name': 'T4', 'value': 0, 'height': 10},
+        {'name': 'T5', 'value': 0, 'height': 10},
+        {'name': 'T6', 'value': 0, 'height': 10},
+        {'name': 'T7', 'value': 0, 'height': 10},
+        {'name': 'T8', 'value': 0, 'height': 10},
+        {'name': 'T9', 'value': 0, 'height': 10},
+        {'name': 'T10', 'value': 0, 'height': 10},
+        {'name': 'T11', 'value': 0, 'height': 10},
+        {'name': 'T12', 'value': 0, 'height': 10},
+    ]
+    
     context = {
         'users': users,
         'regular_users': regular_users,
         'oauth_users': oauth_users,
+        'total_visits': total_visits,
+        'low_stock_products_count': low_stock_products_count,
+        'months': month_data,
     }
     return render(request, 'store/dashboard.html', context)
