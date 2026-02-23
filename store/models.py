@@ -105,10 +105,30 @@ class Category(models.Model):
         return self.name
 
 
+class Brand(models.Model):
+    """Hãng sản phẩm (Apple, Samsung, Xiaomi, etc.)"""
+    name = models.CharField(max_length=100, unique=True, verbose_name='Tên hãng')
+    slug = models.SlugField(max_length=100, unique=True, verbose_name='Slug')
+    description = models.TextField(blank=True, verbose_name='Mô tả')
+    logo = models.ImageField(upload_to='brands/', blank=True, null=True, verbose_name='Logo')
+    is_active = models.BooleanField(default=True, verbose_name='Hoạt động')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Hãng sản phẩm'
+        verbose_name_plural = 'Hãng sản phẩm'
+        ordering = ['name']
+    
+    def __str__(self):
+        return self.name
+
+
 class Product(models.Model):
     """Sản phẩm điện thoại"""
     name = models.CharField(max_length=200, verbose_name='Tên sản phẩm')
     slug = models.SlugField(max_length=200, unique=True, verbose_name='Slug')
+    brand = models.ForeignKey(Brand, on_delete=models.SET_NULL, null=True, blank=True, related_name='products', verbose_name='Hãng')
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='products', verbose_name='Danh mục')
     description = models.TextField(verbose_name='Mô tả')
     price = models.DecimalField(max_digits=15, decimal_places=0, verbose_name='Giá (VNĐ)')
@@ -151,3 +171,30 @@ class SiteVisit(models.Model):
     
     def __str__(self):
         return f"Visit at {self.visit_time.strftime('%Y-%m-%d %H:%M')}"
+
+
+class Order(models.Model):
+    """
+    Model đơn hàng để theo dõi doanh thu
+    """
+    STATUS_CHOICES = [
+        ('pending', 'Chờ xử lý'),
+        ('processing', 'Đang xử lý'),
+        ('shipped', 'Đang giao hàng'),
+        ('delivered', 'Đã giao hàng'),
+        ('cancelled', 'Đã hủy'),
+    ]
+    
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='orders', verbose_name='Khách hàng')
+    total_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0, verbose_name='Tổng tiền')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='Trạng thái')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Ngày cập nhật')
+    
+    class Meta:
+        verbose_name = 'Đơn hàng'
+        verbose_name_plural = 'Đơn hàng'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Order #{self.id}"

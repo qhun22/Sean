@@ -14,6 +14,10 @@ from django.http import JsonResponse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from django.db import models
+from django.db.models import Q, Count, Sum
+from django.utils import timezone
+import datetime
 
 
 def verify_turnstile(token):
@@ -463,6 +467,25 @@ def dashboard_view(request):
     from store.models import CustomUser, SiteVisit
     users = CustomUser.objects.all().order_by('-date_joined')
     
+    # Search users
+    user_search = request.GET.get('user_search', '')
+    if user_search:
+        users = users.filter(
+            models.Q(email__icontains=user_search) | 
+            models.Q(last_name__icontains=user_search) |
+            models.Q(first_name__icontains=user_search)
+        )
+    
+    # Phân trang người dùng (5 người dùng/trang)
+    user_page = request.GET.get('user_page', 1)
+    user_paginator = Paginator(users, 10)
+    try:
+        users_paginated = user_paginator.page(user_page)
+    except PageNotAnInteger:
+        users_paginated = user_paginator.page(1)
+    except EmptyPage:
+        users_paginated = user_paginator.page(user_paginator.num_pages)
+    
     # Thống kê
     regular_users = users.filter(is_oauth_user=False, is_superuser=False).count()
     oauth_users = users.filter(is_oauth_user=True).count()
@@ -471,8 +494,42 @@ def dashboard_view(request):
     total_visits = SiteVisit.objects.count()
     
     # Sản phẩm sắp hết hàng (dưới 5 sản phẩm)
-    from store.models import Product
+    from store.models import Product, Order, Brand
     low_stock_products_count = Product.objects.filter(stock__gt=0, stock__lt=5).count()
+    
+    # Danh sách hãng với số sản phẩm (cho stats)
+    brands_for_stats = Brand.objects.filter(is_active=True).annotate(product_count=Count('products')).order_by('name')[:8]
+    
+    # Danh sách hãng cho bảng (có phân trang)
+    all_brands = Brand.objects.filter(is_active=True).order_by('name')
+    brand_search = request.GET.get('brand_search', '')
+    if brand_search:
+        all_brands = all_brands.filter(name__icontains=brand_search)
+    
+    brand_page = request.GET.get('brand_page', 1)
+    brand_paginator = Paginator(all_brands, 10)
+    try:
+        brands_paginated = brand_paginator.page(brand_page)
+    except PageNotAnInteger:
+        brands_paginated = brand_paginator.page(1)
+    except EmptyPage:
+        brands_paginated = brand_paginator.page(brand_paginator.num_pages)
+    
+    # Doanh thu hôm nay
+    today = timezone.now().date()
+    revenue_today = Order.objects.filter(
+        created_at__date=today,
+        status__in=['processing', 'shipped', 'delivered']
+    ).aggregate(total=Sum('total_amount'))['total'] or 0
+    
+    # Doanh thu tháng này
+    from datetime import datetime
+    now = timezone.now()
+    start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    revenue_this_month = Order.objects.filter(
+        created_at__gte=start_of_month,
+        status__in=['processing', 'shipped', 'delivered']
+    ).aggregate(total=Sum('total_amount'))['total'] or 0
     
     # Dữ liệu biểu đồ doanh thu năm 2026 (12 tháng)
     # Hiện tại: 23/02/2026 - Tất cả tháng có chiều cao bằng nhau khi chưa có dữ liệu
@@ -492,11 +549,219 @@ def dashboard_view(request):
     ]
     
     context = {
-        'users': users,
+        'users_paginated': users_paginated,
+        'total_users': users.count(),
         'regular_users': regular_users,
         'oauth_users': oauth_users,
         'total_visits': total_visits,
         'low_stock_products_count': low_stock_products_count,
+        'revenue_today': revenue_today,
+        'revenue_this_month': revenue_this_month,
         'months': month_data,
+        'brands': brands_for_stats,
+        'brands_paginated': brands_paginated,
     }
     return render(request, 'store/dashboard.html', context)
+
+
+import re
+
+def generate_slug(text):
+    """Tạo slug từ text tiếng Việt"""
+    # Remove accents
+    import unicodedata
+    text = unicodedata.normalize('NFD', text)
+    text = text.encode('ascii', 'ignore').decode('ascii')
+    # Convert to lowercase and replace spaces with hyphens
+    text = re.sub(r'[^\w\s-]', '', text)
+    text = re.sub(r'[-\s]+', '-', text)
+    return text.lower().strip('-')
+
+
+@login_required
+def brand_list(request):
+    """Danh sách hãng sản phẩm"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập!')
+        return redirect('store:profile')
+    
+    from store.models import Brand
+    brands = Brand.objects.all().order_by('name')
+    
+    # Search
+    search = request.GET.get('search', '')
+    if search:
+        brands = brands.filter(name__icontains=search)
+    
+    # Pagination
+    brand_page = request.GET.get('brand_page', 1)
+    brand_paginator = Paginator(brands, 10)
+    try:
+        brands_paginated = brand_paginator.page(brand_page)
+    except PageNotAnInteger:
+        brands_paginated = brand_paginator.page(1)
+    except EmptyPage:
+        brands_paginated = brand_paginator.page(brand_paginator.num_pages)
+    
+    context = {
+        'brands_paginated': brands_paginated,
+        'search': search,
+    }
+    return render(request, 'store/brand_list.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def brand_add(request):
+    """Thêm hãng mới"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+    
+    from store.models import Brand
+    name = request.POST.get('name', '').strip()
+    description = request.POST.get('description', '').strip()
+    
+    if not name:
+        return JsonResponse({'success': False, 'message': 'Tên hãng không được để trống!'}, status=400)
+    
+    # Check exists
+    if Brand.objects.filter(name__iexact=name).exists():
+        return JsonResponse({'success': False, 'message': 'Hãng đã tồn tại!'}, status=400)
+    
+    slug = generate_slug(name)
+    # Ensure unique slug
+    base_slug = slug
+    counter = 1
+    while Brand.objects.filter(slug=slug).exists():
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+    
+    brand = Brand.objects.create(
+        name=name,
+        slug=slug,
+        description=description,
+        is_active=True
+    )
+    
+    return JsonResponse({
+        'success': True, 
+        'message': f'Đã thêm hãng "{name}"!',
+        'brand': {'id': brand.id, 'name': brand.name, 'slug': brand.slug}
+    })
+
+
+@login_required
+@require_http_methods(["POST"])
+def brand_edit(request):
+    """Sửa hãng"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+    
+    from store.models import Brand
+    brand_id = request.POST.get('brand_id')
+    name = request.POST.get('name', '').strip()
+    description = request.POST.get('description', '').strip()
+    
+    if not name or not brand_id:
+        return JsonResponse({'success': False, 'message': 'Thiếu thông tin!'}, status=400)
+    
+    try:
+        brand = Brand.objects.get(id=brand_id)
+    except Brand.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Hãng không tồn tại!'}, status=404)
+    
+    # Check duplicate name (excluding current brand)
+    if Brand.objects.filter(name__iexact=name).exclude(id=brand_id).exists():
+        return JsonResponse({'success': False, 'message': 'Tên hãng đã tồn tại!'}, status=400)
+    
+    brand.name = name
+    brand.description = description
+    brand.slug = generate_slug(name)
+    brand.save()
+    
+    return JsonResponse({'success': True, 'message': f'Đã cập nhật hãng "{name}"!'})
+
+
+@login_required
+@require_http_methods(["POST"])
+def brand_delete(request):
+    """Xóa hãng"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+    
+    from store.models import Brand
+    brand_id = request.POST.get('brand_id')
+    
+    if not brand_id:
+        return JsonResponse({'success': False, 'message': 'Thiếu thông tin!'}, status=400)
+    
+    try:
+        brand = Brand.objects.get(id=brand_id)
+    except Brand.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Hãng không tồn tại!'}, status=404)
+    
+    # Check if brand has products
+    if brand.products.exists():
+        return JsonResponse({'success': False, 'message': 'Không thể xóa! Hãng đang có sản phẩm.'}, status=400)
+    
+    brand_name = brand.name
+    brand.delete()
+    
+    return JsonResponse({'success': True, 'message': f'Đã xóa hãng "{brand_name}"!'})
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def user_edit(request):
+    """Sửa thông tin người dùng"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+    
+    from store.models import CustomUser
+    user_id = request.POST.get('user_id')
+    last_name = request.POST.get('last_name', '').strip()
+    first_name = request.POST.get('first_name', '').strip()
+    phone = request.POST.get('phone', '').strip()
+    
+    if not user_id:
+        return JsonResponse({'success': False, 'message': 'Thiếu thông tin!'}, status=400)
+    
+    try:
+        user = CustomUser.objects.get(id=user_id)
+    except CustomUser.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Người dùng không tồn tại!'}, status=404)
+    
+    user.last_name = last_name
+    user.first_name = first_name
+    user.phone = phone if phone else None
+    user.save()
+    
+    return JsonResponse({'success': True, 'message': 'Cập nhật thông tin thành công!'})
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def user_delete(request):
+    """Xóa người dùng"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+    
+    from store.models import CustomUser
+    user_id = request.POST.get('user_id')
+    
+    if not user_id:
+        return JsonResponse({'success': False, 'message': 'Thiếu thông tin!'}, status=400)
+    
+    try:
+        user = CustomUser.objects.get(id=user_id)
+    except CustomUser.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Người dùng không tồn tại!'}, status=404)
+    
+    # Không cho xóa admin
+    if user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không thể xóa tài khoản admin!'}, status=400)
+    
+    user_email = user.email
+    user.delete()
+    
+    return JsonResponse({'success': True, 'message': f'Đã xóa người dùng "{user_email}"!'})
