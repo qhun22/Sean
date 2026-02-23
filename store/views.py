@@ -7,6 +7,7 @@ import time
 import requests
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.conf import settings
 from django.http import JsonResponse
@@ -395,3 +396,30 @@ def reset_password_view(request):
             return JsonResponse({'status': 'error', 'message': 'User not found'})
     
     return JsonResponse({'status': 'error', 'message': 'Invalid request'})
+
+
+@login_required
+def dashboard_view(request):
+    """
+    Trang dashboard quản trị - hiển thị danh sách người dùng
+    Chỉ admin (superuser) mới có thể truy cập
+    """
+    # Kiểm tra quyền admin
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này!')
+        return redirect('store:profile')
+    
+    # Lấy danh sách tất cả người dùng
+    from store.models import CustomUser
+    users = CustomUser.objects.all().order_by('-date_joined')
+    
+    # Thống kê
+    regular_users = users.filter(is_oauth_user=False, is_superuser=False).count()
+    oauth_users = users.filter(is_oauth_user=True).count()
+    
+    context = {
+        'users': users,
+        'regular_users': regular_users,
+        'oauth_users': oauth_users,
+    }
+    return render(request, 'store/dashboard.html', context)

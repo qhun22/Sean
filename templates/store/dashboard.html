@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard - QHUN22 Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .qh-dashboard {
+        padding: 20px;
+    }
+    
+    .qh-dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+    }
+    
+    .qh-dashboard-title {
+        font-size: 28px;
+        font-weight: 600;
+        color: var(--qh-text);
+    }
+    
+    .qh-dashboard-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .qh-stat-card {
+        background: var(--qh-white);
+        padding: 20px;
+        border-radius: var(--qh-radius);
+        box-shadow: 0 2px 8px var(--qh-shadow);
+    }
+    
+    .qh-stat-label {
+        font-size: 14px;
+        color: var(--qh-text-light);
+        margin-bottom: 8px;
+    }
+    
+    .qh-stat-value {
+        font-size: 32px;
+        font-weight: 700;
+        color: var(--qh-primary);
+    }
+    
+    .qh-user-table {
+        width: 100%;
+        background: var(--qh-white);
+        border-radius: var(--qh-radius);
+        box-shadow: 0 2px 8px var(--qh-shadow);
+        overflow: hidden;
+    }
+    
+    .qh-user-table th,
+    .qh-user-table td {
+        padding: 16px;
+        text-align: left;
+        border-bottom: 1px solid var(--qh-border);
+    }
+    
+    .qh-user-table th {
+        background: var(--qh-bg);
+        font-weight: 600;
+        color: var(--qh-text);
+    }
+    
+    .qh-user-table tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .qh-user-table tr:hover {
+        background: var(--qh-bg);
+    }
+    
+    .qh-user-email {
+        color: var(--qh-text);
+    }
+    
+    .qh-user-phone {
+        color: var(--qh-text-light);
+        font-size: 14px;
+    }
+    
+    .qh-user-date {
+        color: var(--qh-text-light);
+        font-size: 14px;
+    }
+    
+    .qh-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    
+    .qh-badge-admin {
+        background: #d4edda;
+        color: #155724;
+    }
+    
+    .qh-badge-user {
+        background: #cce5ff;
+        color: #004085;
+    }
+    
+    .qh-badge-oauth {
+        background: #fff3cd;
+        color: #856404;
+    }
+    
+    .qh-empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--qh-text-light);
+    }
+    
+    .qh-empty-state svg {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="qh-dashboard">
+    <div class="qh-dashboard-header">
+        <h1 class="qh-dashboard-title">Dashboard Quản Trị</h1>
+    </div>
+    
+    <!-- Stats -->
+    <div class="qh-dashboard-stats">
+        <div class="qh-stat-card">
+            <div class="qh-stat-label">Tổng số người dùng</div>
+            <div class="qh-stat-value">{{ users|length }}</div>
+        </div>
+        <div class="qh-stat-card">
+            <div class="qh-stat-label">Người dùng thường</div>
+            <div class="qh-stat-value">{{ regular_users }}</div>
+        </div>
+        <div class="qh-stat-card">
+            <div class="qh-stat-label">Đăng nhập Google</div>
+            <div class="qh-stat-value">{{ oauth_users }}</div>
+        </div>
+    </div>
+    
+    <!-- User List -->
+    <h2 style="font-size: 20px; margin-bottom: 16px; color: var(--qh-text);">Danh sách người dùng</h2>
+    
+    {% if users %}
+    <table class="qh-user-table">
+        <thead>
+            <tr>
+                <th>STT</th>
+                <th>Email</th>
+                <th>Họ tên</th>
+                <th>Số điện thoại</th>
+                <th>Loại tài khoản</th>
+                <th>Ngày đăng ký</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>
+                    <div class="qh-user-email">{{ user.email }}</div>
+                </td>
+                <td>{{ user.last_name|default:"-" }}</td>
+                <td>{{ user.phone|default:"-" }}</td>
+                <td>
+                    {% if user.is_superuser %}
+                        <span class="qh-badge qh-badge-admin">Admin</span>
+                    {% elif user.is_oauth_user %}
+                        <span class="qh-badge qh-badge-oauth">Google</span>
+                    {% else %}
+                        <span class="qh-badge qh-badge-user">Thường</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="qh-user-date">{{ user.date_joined|date:"d/m/Y H:i" }}</span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="qh-empty-state">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+        <p>Chưa có người dùng nào trong hệ thống</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

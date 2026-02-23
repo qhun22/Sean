@@ -22,6 +22,8 @@ urlpatterns = [
     path('register/', views.register_view, name='register'),
     path('send-otp/', views.send_otp_view, name='send_otp'),
     path('profile/', views.profile, name='profile'),
+    # Dashboard
+    path('dashboard/', views.dashboard_view, name='dashboard'),
     # Quên mật khẩu
     path('forgot-password/', views.forgot_password_view, name='forgot_password'),
     path('send-otp-forgot-password/', views.send_otp_forgot_password_view, name='send_otp_forgot_password'),
