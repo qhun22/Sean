@@ -124,15 +124,141 @@ class Brand(models.Model):
         return self.name
 
 
+class HangingProduct(models.Model):
+    """Sản phẩm treo (hiển trang chủ thị trên)"""
+    brand = models.ForeignKey(Brand, on_delete=models.SET_NULL, related_name='hanging_products', verbose_name='Hãng sản xuất', null=True, blank=True)
+    name = models.CharField(max_length=200, verbose_name='Tên sản phẩm')
+    image_url = models.URLField(blank=True, null=True, verbose_name='URL Ảnh bên ngoài')
+    image_local = models.ImageField(upload_to='hanging_products/', blank=True, null=True, verbose_name='Ảnh sản phẩm')
+    original_price = models.DecimalField(max_digits=15, decimal_places=0, verbose_name='Giá gốc (VNĐ)')
+    discount_percent = models.PositiveIntegerField(default=0, verbose_name='% Giảm giá')
+    stock_quantity = models.PositiveIntegerField(default=0, verbose_name='Số lượng trong kho')
+    installment_0_percent = models.BooleanField(default=False, verbose_name='Trả góp 0%')
+    is_active = models.BooleanField(default=True, verbose_name='Hiển thị')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Sản phẩm treo'
+        verbose_name_plural = 'Sản phẩm treo'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.name
+
+
+class ProductDetail(models.Model):
+    """Chi tiết sản phẩm - giá, SKU, biến thể (màu, dung lượng)"""
+    product = models.OneToOneField('Product', on_delete=models.CASCADE, related_name='detail', verbose_name='Sản phẩm')
+    
+    # Giá
+    original_price = models.DecimalField(max_digits=15, decimal_places=0, default=0, verbose_name='Giá gốc (VNĐ)')
+    discount_percent = models.PositiveIntegerField(default=0, verbose_name='% Giảm giá')
+    
+    @property
+    def discounted_price(self):
+        """Giá sau giảm - tính từ giá gốc và % giảm"""
+        if self.original_price and self.discount_percent > 0:
+            discounted = self.original_price - (self.original_price * self.discount_percent / 100)
+            # Round to nearest 5000
+            if discounted >= 5000:
+                discounted = round(discounted / 5000) * 5000
+            return int(discounted)
+        # If no discount, get min variant price
+        min_price = self.get_min_price()
+        if min_price > 0:
+            return min_price
+        return self.original_price if self.original_price else 0
+    
+    def get_min_price(self):
+        """Lấy giá nhỏ nhất từ các biến thể"""
+        min_price = self.variants.aggregate(models.Min('price'))['price__min']
+        return min_price if min_price else 0
+    
+    # SKU tổng
+    sku = models.CharField(max_length=100, blank=True, verbose_name='SKU chung')
+    
+    # Mô tả
+    description = models.TextField(blank=True, verbose_name='Mô tả')
+    
+    is_active = models.BooleanField(default=True, verbose_name='Hiển thị')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Chi tiết sản phẩm'
+        verbose_name_plural = 'Chi tiết sản phẩm'
+
+    def __str__(self):
+        return f"Chi tiết: {self.product.name}"
+
+
+class ProductVariant(models.Model):
+    """Biến thể sản phẩm theo màu sắc và dung lượng"""
+    detail = models.ForeignKey(ProductDetail, on_delete=models.CASCADE, related_name='variants', verbose_name='Chi tiết sản phẩm')
+    
+    # Thông tin biến thể
+    color_name = models.CharField(max_length=50, verbose_name='Tên màu')
+    color_hex = models.CharField(max_length=7, blank=True, verbose_name='Mã màu (hex)')
+    storage = models.CharField(max_length=20, verbose_name='Dung lượng')  # ví dụ: 64GB, 128GB
+    
+    # Giá và SKU
+    price = models.DecimalField(max_digits=15, decimal_places=0, default=0, verbose_name='Giá (VNĐ)')
+    sku = models.CharField(max_length=100, blank=True, verbose_name='SKU biến thể')
+    stock_quantity = models.PositiveIntegerField(default=0, verbose_name='Số lượng trong kho')
+    
+    is_active = models.BooleanField(default=True, verbose_name='Còn hàng')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Biến thể sản phẩm'
+        verbose_name_plural = 'Biến thể sản phẩm'
+        unique_together = ['detail', 'color_name', 'storage']
+
+    def __str__(self):
+        return f"{self.detail.product.name} - {self.color_name} - {self.storage}"
+
+
+class ProductImage(models.Model):
+    """Hình ảnh sản phẩm"""
+    IMAGE_TYPES = [
+        ('cover', 'Ảnh đại diện'),
+        ('marketing', 'Ảnh marketing/banner'),
+        ('variant_thumbnail', 'Ảnh màu (thumbnail)'),
+        ('variant_main', 'Ảnh màu (chính)'),
+        ('variant_gallery', 'Ảnh màu (gallery)'),
+        ('variant_detail', 'Ảnh màu (chi tiết)'),
+    ]
+    
+    detail = models.ForeignKey(ProductDetail, on_delete=models.CASCADE, related_name='images', verbose_name='Chi tiết sản phẩm', null=True, blank=True)
+    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, related_name='images', verbose_name='Biến thể', null=True, blank=True)
+    
+    image_type = models.CharField(max_length=20, choices=IMAGE_TYPES, default='cover', verbose_name='Loại ảnh')
+    image = models.ImageField(upload_to='products/', verbose_name='Ảnh')
+    order = models.PositiveIntegerField(default=0, verbose_name='Thứ tự')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Hình ảnh sản phẩm'
+        verbose_name_plural = 'Hình ảnh sản phẩm'
+        ordering = ['order']
+
+    def __str__(self):
+        return f"{self.image_type} - {self.detail.product.name if self.detail else self.variant.detail.product.name}"
+
+
 class Product(models.Model):
     """Sản phẩm điện thoại"""
     name = models.CharField(max_length=200, verbose_name='Tên sản phẩm')
     slug = models.SlugField(max_length=200, unique=True, verbose_name='Slug')
     brand = models.ForeignKey(Brand, on_delete=models.SET_NULL, null=True, blank=True, related_name='products', verbose_name='Hãng')
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='products', verbose_name='Danh mục')
-    description = models.TextField(verbose_name='Mô tả')
-    price = models.DecimalField(max_digits=15, decimal_places=0, verbose_name='Giá (VNĐ)')
+    description = models.TextField(blank=True, default='', verbose_name='Mô tả')
+    price = models.DecimalField(max_digits=15, decimal_places=0, default=0, verbose_name='Giá (VNĐ)')
     original_price = models.DecimalField(max_digits=15, decimal_places=0, null=True, blank=True, verbose_name='Giá gốc')
+    discount_percent = models.PositiveIntegerField(default=0, verbose_name='% Giảm giá')
     image = models.ImageField(upload_to='products/%Y/%m/', blank=True, null=True, verbose_name='Hình ảnh')
     stock = models.PositiveIntegerField(default=0, verbose_name='Số lượng trong kho')
     is_featured = models.BooleanField(default=False, verbose_name='Sản phẩm nổi bật')

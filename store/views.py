@@ -15,7 +15,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.db import models
-from django.db.models import Q, Count, Sum
+from django.db.models import Q, Count, Sum, Max
 from django.utils import timezone
 import datetime
 
@@ -102,6 +102,45 @@ def send_otp_view(request):
     return JsonResponse({'status': 'error', 'message': 'Invalid request'})
 
 
+def product_detail_view(request, product_id):
+    """Trang chi tiết sản phẩm"""
+    from store.models import Product, ProductDetail, ProductVariant
+    from django.shortcuts import get_object_or_404
+    import json
+    
+    product = get_object_or_404(Product, id=product_id)
+    
+    # Get or create product detail
+    product_detail, created = ProductDetail.objects.get_or_create(product=product)
+    
+    # Get variants
+    variants = product_detail.variants.all()
+    
+    # Get unique colors and storages
+    colors = variants.values('color_name', 'color_hex').distinct()
+    storages = variants.values('storage', 'price', 'stock_quantity', 'sku').distinct()
+    
+    # First variant for default display
+    first_variant = variants.first()
+    
+    # Convert to list for JSON
+    variants_list = list(variants.values(
+        'id', 'color_name', 'color_hex', 'storage', 'price', 'sku', 'stock_quantity'
+    ))
+    variants_json = json.dumps(variants_list)
+    
+    context = {
+        'product': product,
+        'product_detail': product_detail,
+        'variants': colors,
+        'storage_variants': storages,
+        'first_variant': first_variant,
+        'variants_json': variants_json,
+    }
+    
+    return render(request, 'store/product_detail.html', context)
+
+
 def home(request):
     """
     Trang chủ của cửa hàng QHUN22
@@ -129,7 +168,7 @@ def home(request):
     # Sử dụng annotation để sắp xếp theo stock
     from django.db.models import Case, When, IntegerField
     
-    products_list = Product.objects.filter(is_active=True).annotate(
+    products_list = Product.objects.filter(is_active=True).select_related('brand', 'detail').annotate(
         stock_order=Case(
             When(stock__gt=0, then=0),
             default=1,
@@ -501,7 +540,7 @@ def dashboard_view(request):
     brands_for_stats = Brand.objects.filter(is_active=True).annotate(product_count=Count('products')).order_by('name')[:8]
     
     # Danh sách hãng cho bảng (có phân trang)
-    all_brands = Brand.objects.filter(is_active=True).order_by('name')
+    all_brands = Brand.objects.filter(is_active=True).annotate(product_count=Count('products')).order_by('name')
     brand_search = request.GET.get('brand_search', '')
     if brand_search:
         all_brands = all_brands.filter(name__icontains=brand_search)
@@ -514,6 +553,22 @@ def dashboard_view(request):
         brands_paginated = brand_paginator.page(1)
     except EmptyPage:
         brands_paginated = brand_paginator.page(brand_paginator.num_pages)
+    
+    # Danh sách sản phẩm (Product)
+    from store.models import Product
+    all_products = Product.objects.select_related('brand', 'detail').all().order_by('-created_at')
+    product_search = request.GET.get('product_search', '')
+    if product_search:
+        all_products = all_products.filter(name__icontains=product_search)
+    
+    product_page = request.GET.get('product_page', 1)
+    product_paginator = Paginator(all_products, 10)
+    try:
+        products_paginated = product_paginator.page(product_page)
+    except PageNotAnInteger:
+        products_paginated = product_paginator.page(1)
+    except EmptyPage:
+        products_paginated = product_paginator.page(product_paginator.num_pages)
     
     # Doanh thu hôm nay
     today = timezone.now().date()
@@ -560,6 +615,7 @@ def dashboard_view(request):
         'months': month_data,
         'brands': brands_for_stats,
         'brands_paginated': brands_paginated,
+        'products_paginated': products_paginated,
     }
     return render(request, 'store/dashboard.html', context)
 
@@ -765,3 +821,479 @@ def user_delete(request):
     user.delete()
     
     return JsonResponse({'success': True, 'message': f'Đã xóa người dùng "{user_email}"!'})
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def product_edit(request):
+    """Sửa sản phẩm (Product)"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+    
+    from store.models import Product, Brand
+    
+    product_id = request.POST.get('product_id')
+    brand_id = request.POST.get('brand')
+    name = request.POST.get('name', '').strip()
+    
+    if not product_id or not name:
+        return JsonResponse({'success': False, 'message': 'Thiếu thông tin cần thiết!'}, status=400)
+    
+    try:
+        product = Product.objects.get(id=product_id)
+    except Product.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Sản phẩm không tồn tại!'}, status=404)
+    
+    try:
+        brand = Brand.objects.get(id=brand_id) if brand_id else None
+    except Brand.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Hãng không tồn tại!'}, status=404)
+    
+    # Handle image upload - if new image uploaded, delete old and save new
+    new_image = product.image
+    new_image_file = request.FILES.get('image')
+    
+    if new_image_file:
+        # Delete old local image
+        if product.image:
+            try:
+                import os
+                if os.path.isfile(product.image.path):
+                    os.remove(product.image.path)
+                product.image.delete(save=False)
+            except Exception as e:
+                print(f"Error deleting old image: {e}")
+        new_image = new_image_file
+    
+    product.brand = brand
+    product.name = name
+    product.image = new_image
+    product.save()
+    
+    return JsonResponse({'success': True, 'message': f'Đã cập nhật sản phẩm "{name}"!'})
+
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def product_delete(request):
+    """Xóa sản phẩm (Product)"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+    
+    from store.models import Product
+    
+    product_id = request.POST.get('product_id')
+    
+    if not product_id:
+        return JsonResponse({'success': False, 'message': 'Thiếu thông tin!'}, status=400)
+    
+    try:
+        product = Product.objects.get(id=product_id)
+    except Product.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Sản phẩm không tồn tại!'}, status=404)
+    
+    product_name = product.name
+    product.delete()
+    
+    return JsonResponse({'success': True, 'message': f'Đã xóa sản phẩm "{product_name}"!'})
+
+
+# ==================== Product CRUD ====================
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def product_add(request):
+    """Thêm sản phẩm mới"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+    
+    from store.models import Product, Brand
+    import os
+    
+    brand_id = request.POST.get('brand')
+    name = request.POST.get('name', '').strip()
+    
+    # Validation
+    if not brand_id or not name:
+        return JsonResponse({'success': False, 'message': 'Thiếu thông tin cần thiết!'}, status=400)
+    
+    try:
+        brand = Brand.objects.get(id=brand_id)
+    except Brand.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Hãng không tồn tại!'}, status=404)
+    
+    # Handle image upload
+    image = request.FILES.get('image')
+    
+    # Generate slug from name
+    from django.utils.text import slugify
+    slug = slugify(name)
+    
+    # Ensure unique slug
+    base_slug = slug
+    counter = 1
+    while Product.objects.filter(slug=slug).exists():
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+    
+    product = Product.objects.create(
+        brand=brand,
+        name=name,
+        slug=slug,
+        description='',
+        image=image,
+        is_active=True
+    )
+    
+    return JsonResponse({'success': True, 'message': f'Đã thêm sản phẩm "{name}"!'})
+
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def product_edit(request):
+    """Sửa sản phẩm"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+    
+    from store.models import Product, Brand
+    import os
+    
+    product_id = request.POST.get('product_id')
+    brand_id = request.POST.get('brand')
+    name = request.POST.get('name', '').strip()
+    
+    if not product_id or not brand_id or not name:
+        return JsonResponse({'success': False, 'message': 'Thiếu thông tin cần thiết!'}, status=400)
+    
+    try:
+        product = Product.objects.get(id=product_id)
+    except Product.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Sản phẩm không tồn tại!'}, status=404)
+    
+    try:
+        brand = Brand.objects.get(id=brand_id)
+    except Brand.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Hãng không tồn tại!'}, status=404)
+    
+    try:
+        price = int(price)
+        original_price = int(original_price) if original_price else None
+        stock = int(stock) if stock else 0
+    except ValueError:
+        return JsonResponse({'success': False, 'message': 'Giá và số lượng phải là số!'}, status=400)
+    
+    # Handle image upload - if new image uploaded, delete old and save new
+    new_image = request.FILES.get('image')
+    
+    if new_image:
+        # Delete old image
+        if product.image:
+            try:
+                if os.path.isfile(product.image.path):
+                    os.remove(product.image.path)
+                product.image.delete(save=True)
+            except Exception as e:
+                print(f"Error deleting old image: {e}")
+    
+    product.brand = brand
+    product.name = name
+    if new_image:
+        product.image = new_image
+    product.save()
+    
+    return JsonResponse({'success': True, 'message': f'Đã cập nhật sản phẩm "{name}"!'})
+
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def product_delete(request):
+    """Xóa sản phẩm"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+    
+    from store.models import Product
+    import os
+    
+    product_id = request.POST.get('product_id')
+    
+    if not product_id:
+        return JsonResponse({'success': False, 'message': 'Thiếu thông tin!'}, status=400)
+    
+    try:
+        product = Product.objects.get(id=product_id)
+    except Product.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Sản phẩm không tồn tại!'}, status=404)
+    
+    # Delete image file
+    if product.image:
+        try:
+            if os.path.isfile(product.image.path):
+                os.remove(product.image.path)
+            product.image.delete(save=True)
+        except Exception as e:
+            print(f"Error deleting image: {e}")
+    
+    product_name = product.name
+    product.delete()
+    
+    return JsonResponse({'success': True, 'message': f'Đã xóa sản phẩm "{product_name}"!'})
+
+
+# ==================== Product Detail Management ====================
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def product_detail_save(request):
+    """Lưu chi tiết sản phẩm (tạo/cập nhật Product)"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+    
+    from store.models import Product
+    
+    product_id = request.POST.get('product_id')
+    original_price = request.POST.get('original_price', '0').strip()
+    discount_percent = request.POST.get('discount_percent', '0').strip()
+    stock = request.POST.get('stock', '0').strip()
+    
+    if not product_id:
+        return JsonResponse({'success': False, 'message': 'Thiếu thông tin sản phẩm!'}, status=400)
+    
+    try:
+        product = Product.objects.get(id=product_id)
+    except Product.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Sản phẩm không tồn tại!'}, status=404)
+    
+    try:
+        original_price = int(original_price) if original_price else 0
+        discount_percent = int(discount_percent) if discount_percent else 0
+        stock = int(stock) if stock else 0
+    except ValueError:
+        return JsonResponse({'success': False, 'message': 'Giá phải là số!'}, status=400)
+    
+    # Calculate discounted price
+    discounted_price = original_price - (original_price * discount_percent / 100)
+    if discounted_price >= 5000:
+        discounted_price = round(discounted_price / 5000) * 5000
+    
+    # Save to Product model
+    product.original_price = original_price
+    product.price = discounted_price
+    product.stock = stock
+    product.save(update_fields=['original_price', 'price', 'stock'])
+    
+    return JsonResponse({'success': True, 'message': f'Đã lưu thông tin sản phẩm!'})
+
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def product_variant_save(request):
+    """Lưu biến thể sản phẩm (màu + dung lượng)"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+    
+    from store.models import ProductDetail, ProductVariant
+    
+    variant_id = request.POST.get('variant_id')
+    detail_id = request.POST.get('detail_id')
+    color_name = request.POST.get('color_name', '').strip()
+    color_hex = request.POST.get('color_hex', '').strip()
+    storage = request.POST.get('storage', '').strip()
+    price = request.POST.get('price', '0').strip()
+    variant_sku = request.POST.get('sku', '').strip()
+    stock_quantity = request.POST.get('stock_quantity', '0').strip()
+    
+    if not detail_id or not color_name or not storage:
+        return JsonResponse({'success': False, 'message': 'Thiếu thông tin biến thể!'}, status=400)
+    
+    try:
+        detail = ProductDetail.objects.get(id=detail_id)
+    except ProductDetail.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Chi tiết sản phẩm không tồn tại!'}, status=404)
+    
+    try:
+        price = int(price) if price else 0
+        stock_quantity = int(stock_quantity) if stock_quantity else 0
+    except ValueError:
+        return JsonResponse({'success': False, 'message': 'Giá và số lượng phải là số!'}, status=400)
+    
+    if variant_id:
+        # Update existing variant
+        try:
+            variant = ProductVariant.objects.get(id=variant_id, detail=detail)
+            variant.color_name = color_name
+            variant.color_hex = color_hex
+            variant.storage = storage
+            variant.price = price
+            variant.sku = variant_sku
+            variant.stock_quantity = stock_quantity
+            variant.save()
+            return JsonResponse({'success': True, 'message': f'Đã cập nhật biến thể "{color_name} - {storage}"!', 'variant_id': variant.id})
+        except ProductVariant.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Biến thể không tồn tại!'}, status=404)
+    else:
+        # Create new variant
+        variant, created = ProductVariant.objects.get_or_create(
+            detail=detail,
+            color_name=color_name,
+            storage=storage,
+            defaults={
+                'color_hex': color_hex,
+                'price': price,
+                'sku': variant_sku,
+                'stock_quantity': stock_quantity
+            }
+        )
+        if not created:
+            return JsonResponse({'success': False, 'message': 'Biến thể đã tồn tại!'}, status=400)
+        return JsonResponse({'success': True, 'message': f'Đã thêm biến thể "{color_name} - {storage}"!', 'variant_id': variant.id})
+
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def product_variant_delete(request):
+    """Xóa biến thể sản phẩm"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+    
+    from store.models import ProductVariant
+    
+    variant_id = request.POST.get('variant_id')
+    
+    if not variant_id:
+        return JsonResponse({'success': False, 'message': 'Thiếu thông tin!'}, status=400)
+    
+    try:
+        variant = ProductVariant.objects.get(id=variant_id)
+        variant_name = f"{variant.color_name} - {variant.storage}"
+        variant.delete()
+        return JsonResponse({'success': True, 'message': f'Đã xóa biến thể "{variant_name}"!'})
+    except ProductVariant.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Biến thể không tồn tại!'}, status=404)
+
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def product_image_upload(request):
+    """Upload ảnh sản phẩm"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+    
+    from store.models import ProductDetail, ProductVariant, ProductImage
+    import os
+    from django.utils.text import slugify
+    from datetime import datetime
+    
+    detail_id = request.POST.get('detail_id')
+    variant_id = request.POST.get('variant_id')
+    image_type = request.POST.get('image_type', 'cover')
+    
+    images = request.FILES.getlist('images')
+    
+    if not images:
+        return JsonResponse({'success': False, 'message': 'Chưa chọn ảnh!'}, status=400)
+    
+    # Get product detail
+    detail = None
+    if detail_id:
+        try:
+            detail = ProductDetail.objects.get(id=detail_id)
+        except ProductDetail.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Chi tiết sản phẩm không tồn tại!'}, status=404)
+    
+    # Get variant if provided
+    variant = None
+    if variant_id:
+        try:
+            variant = ProductVariant.objects.get(id=variant_id)
+        except ProductVariant.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Biến thể không tồn tại!'}, status=404)
+    
+    # Create upload path
+    product_slug = slugify(detail.product.name) if detail else slugify(variant.detail.product.name)
+    year = datetime.now().year
+    month = datetime.now().strftime('%m')
+    
+    uploaded_count = 0
+    for img in images:
+        # Get next order number
+        max_order = ProductImage.objects.filter(detail=detail, variant=variant, image_type=image_type).aggregate(Max('order'))['order__max'] or 0
+        
+        # Create image record
+        image = ProductImage.objects.create(
+            detail=detail,
+            variant=variant,
+            image_type=image_type,
+            image=img,
+            order=max_order + 1
+        )
+        uploaded_count += 1
+    
+    return JsonResponse({'success': True, 'message': f'Đã upload {uploaded_count} ảnh!'})
+
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def product_image_delete(request):
+    """Xóa ảnh sản phẩm"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+    
+    from store.models import ProductImage
+    import os
+    
+    image_id = request.POST.get('image_id')
+    
+    if not image_id:
+        return JsonResponse({'success': False, 'message': 'Thiếu thông tin!'}, status=400)
+    
+    try:
+        img = ProductImage.objects.get(id=image_id)
+        # Delete file
+        if img.image:
+            try:
+                if os.path.isfile(img.image.path):
+                    os.remove(img.image.path)
+                img.image.delete(save=True)
+            except Exception as e:
+                print(f"Error deleting image file: {e}")
+        img.delete()
+        return JsonResponse({'success': True, 'message': 'Đã xóa ảnh!'})
+    except ProductImage.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Ảnh không tồn tại!'}, status=404)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_product_detail(request):
+    """Lấy thông tin chi tiết sản phẩm (AJAX)"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+    
+    from store.models import Product
+    
+    product_id = request.GET.get('product_id')
+    
+    if not product_id:
+        return JsonResponse({'success': False, 'message': 'Thiếu thông tin!'}, status=400)
+    
+    try:
+        product = Product.objects.get(id=product_id)
+    except Product.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Sản phẩm không tồn tại!'}, status=404)
+    
+    return JsonResponse({
+        'success': True,
+        'product_name': product.name,
+        'product_image': product.image.url if product.image else None,
+        'product_stock': product.stock,
+        'product_original_price': product.original_price or 0,
+        'product_price': product.price or 0,
+        'product_sku': getattr(product, 'sku', '') or ''
+    })

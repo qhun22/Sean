@@ -1,0 +1,381 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}{{ product.name }} - QHUN22 Mobile{% endblock %}
+
+{% block content %}
+<style>
+.product-detail-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+}
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+    font-size: 14px;
+    color: #64748b;
+}
+.breadcrumb a {
+    color: #64748b;
+    text-decoration: none;
+}
+.breadcrumb a:hover {
+    color: #dc2626;
+}
+.breadcrumb span {
+    color: #334155;
+}
+.product-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+}
+.product-images {
+    position: sticky;
+    top: 24px;
+}
+.main-image {
+    width: 100%;
+    aspect-ratio: 1;
+    background: #f5f5f5;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+.main-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.thumbnails {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.thumbnail {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+.thumbnail:hover, .thumbnail.active {
+    border-color: #dc2626;
+}
+.thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.product-info h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--qh-text);
+}
+.price-section {
+    margin-bottom: 24px;
+}
+.price-current {
+    font-size: 32px;
+    font-weight: 700;
+    color: #dc2626;
+}
+.price-original {
+    font-size: 18px;
+    color: #94a3b8;
+    text-decoration: line-through;
+    margin-left: 12px;
+}
+.discount-badge {
+    display: inline-block;
+    background: #dc2626;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-left: 12px;
+}
+.variant-section {
+    margin-bottom: 24px;
+}
+.variant-label {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: block;
+}
+.color-options, .storage-options {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.color-btn {
+    padding: 10px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+.color-btn:hover {
+    border-color: #dc2626;
+}
+.color-btn.selected {
+    background: #dc2626;
+    color: white;
+    border-color: #dc2626;
+}
+.storage-btn {
+    padding: 10px 20px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+.storage-btn:hover {
+    border-color: #dc2626;
+}
+.storage-btn.selected {
+    background: #dc2626;
+    color: white;
+    border-color: #dc2626;
+}
+.stock-info {
+    margin-bottom: 20px;
+}
+.stock-badge {
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+}
+.stock-badge.in-stock {
+    background: #d1fae5;
+    color: #059669;
+}
+.stock-badge.out-of-stock {
+    background: #fee2e2;
+    color: #dc2626;
+}
+.sku-info {
+    font-size: 14px;
+    color: #64748b;
+    margin-bottom: 24px;
+}
+.action-buttons {
+    display: flex;
+    gap: 12px;
+}
+.btn-buy {
+    flex: 1;
+    padding: 16px 32px;
+    background: #dc2626;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.btn-buy:hover {
+    background: #b91c1c;
+}
+.btn-wishlist {
+    padding: 16px;
+    background: #f1f5f9;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.btn-wishlist:hover {
+    background: #e2e8f0;
+}
+.btn-wishlist svg {
+    width: 24px;
+    height: 24px;
+}
+.product-description {
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid #e2e8f0;
+}
+.product-description h3 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+.description-content {
+    font-size: 15px;
+    line-height: 1.7;
+    color: #475569;
+}
+</style>
+
+<div class="product-detail-page">
+    <!-- Breadcrumb -->
+    <div class="breadcrumb">
+        <a href="/">Trang chủ</a>
+        <span>/</span>
+        <a href="/">Điện thoại</a>
+        <span>/</span>
+        <span>{{ product.name }}</span>
+    </div>
+    
+    <div class="product-detail-grid">
+        <!-- Images -->
+        <div class="product-images">
+            <div class="main-image">
+                <img id="mainImage" src="{{ product.image.url|default:'/static/images/no-image.png' }}" alt="{{ product.name }}">
+            </div>
+            <div class="thumbnails" id="thumbnails"></div>
+        </div>
+        
+        <!-- Info -->
+        <div class="product-info">
+            <h1>{{ product.name }}</h1>
+            
+            <!-- Price -->
+            <div class="price-section">
+                <span class="price-current" id="currentPrice">{{ product.price|format_price }}đ</span>
+                {% if product.original_price and product.original_price > product.price %}
+                <span class="price-original">{{ product.original_price|format_price }}đ</span>
+                <span class="discount-badge">-{{ product.get_discount_percent }}%</span>
+                {% endif %}
+            </div>
+            
+            <!-- Color Selection -->
+            <div class="variant-section">
+                <label class="variant-label">Chọn màu:</label>
+                <div class="color-options" id="colorOptions">
+                    {% for variant in variants %}
+                    <button class="color-btn {% if forloop.first %}selected{% endif %}" 
+                            data-color="{{ variant.color_name }}" 
+                            data-color-hex="{{ variant.color_hex }}"
+                            onclick="selectColor(this)">
+                        {{ variant.color_name }}
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Storage Selection -->
+            <div class="variant-section">
+                <label class="variant-label">Chọn dung lượng:</label>
+                <div class="storage-options" id="storageOptions">
+                    {% for variant in storage_variants %}
+                    <button class="storage-btn {% if forloop.first %}selected{% endif %}" 
+                            data-storage="{{ variant.storage }}" 
+                            data-price="{{ variant.price }}"
+                            data-stock="{{ variant.stock_quantity }}"
+                            data-sku="{{ variant.sku }}"
+                            onclick="selectStorage(this)">
+                        {{ variant.storage }} - {{ variant.price|format_price }}đ
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Stock -->
+            <div class="stock-info">
+                <span class="stock-badge in-stock" id="stockBadge">Còn {{ first_variant.stock_quantity }} sản phẩm</span>
+            </div>
+            
+            <!-- SKU -->
+            <div class="sku-info">
+                SKU: <span id="skuValue">{{ first_variant.sku|default:'-' }}</span>
+            </div>
+            
+            <!-- Actions -->
+            <div class="action-buttons">
+                <button class="btn-buy" onclick="buyNow()">Mua ngay</button>
+                <button class="btn-wishlist" onclick="addToWishlist()">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Description -->
+            {% if product_detail.description %}
+            <div class="product-description">
+                <h3>Mô tả sản phẩm</h3>
+                <div class="description-content">
+                    {{ product_detail.description|linebreaks }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+let selectedColor = null;
+let selectedStorage = null;
+let variantsData = {{ variants_json|safe }};
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize default selection
+    const firstColorBtn = document.querySelector('.color-btn');
+    const firstStorageBtn = document.querySelector('.storage-btn');
+    if (firstColorBtn) selectColor(firstColorBtn);
+    if (firstStorageBtn) selectStorage(firstStorageBtn);
+});
+
+function selectColor(btn) {
+    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedColor = btn.dataset.color;
+    updateVariantInfo();
+}
+
+function selectStorage(btn) {
+    document.querySelectorAll('.storage-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedStorage = btn.dataset.storage;
+    updateVariantInfo();
+}
+
+function updateVariantInfo() {
+    if (!selectedColor || !selectedStorage) return;
+    
+    const variant = variantsData.find(v => v.color_name === selectedColor && v.storage === selectedStorage);
+    
+    if (variant) {
+        // Update price
+        document.getElementById('currentPrice').textContent = parseInt(variant.price).toLocaleString('vi-VN') + 'đ';
+        
+        // Update stock
+        const stockBadge = document.getElementById('stockBadge');
+        if (variant.stock_quantity > 0) {
+            stockBadge.textContent = `Còn ${variant.stock_quantity} sản phẩm`;
+            stockBadge.className = 'stock-badge in-stock';
+        } else {
+            stockBadge.textContent = 'Hết hàng';
+            stockBadge.className = 'stock-badge out-of-stock';
+        }
+        
+        // Update SKU
+        document.getElementById('skuValue').textContent = variant.sku || '-';
+    }
+}
+
+function buyNow() {
+    alert('Chức năng mua đang được phát triển!');
+}
+
+function addToWishlist() {
+    alert('Đã thêm vào wishlist!');
+}
+</script>
+{% endblock %}

@@ -268,10 +268,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const statsSection = document.getElementById('stats-section');
     const usersSection = document.getElementById('users-section');
     const brandsSection = document.getElementById('brands-section');
+    const productsSection = document.getElementById('products-section');
     
     if (statsSection) statsSection.style.display = (currentSection === 'stats') ? 'block' : 'none';
     if (usersSection) usersSection.style.display = (currentSection === 'users') ? 'block' : 'none';
     if (brandsSection) brandsSection.style.display = (currentSection === 'brands') ? 'block' : 'none';
+    if (productsSection) productsSection.style.display = (currentSection === 'products') ? 'block' : 'none';
     
     // Add Brand Form Submit
     const addBrandForm = document.getElementById('addBrandForm');

@@ -276,7 +276,13 @@
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
                 </svg>
-                Hãng sản xuất
+                Hãng sản phẩm
+            </li>
+            <li class="qh-sidebar-item" data-section="products" onclick="window.location.href='?section=products'">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+                </svg>
+                Treo sản phẩm
             </li>
         </ul>
     </div>
@@ -479,8 +485,7 @@
                     <button onclick="resetBrandSearch()" style="padding: 10px 16px; background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: inherit;">Reset</button>
                 </div>
                 <button type="button" onclick="openAddBrandModal(); return false;" style="background: #3b82f6; color: white; border: none; border-radius: 8px; padding: 10px 16px; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; font-family: inherit;">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                    Thêm hãng mới
+                    Thêm hãng
                 </button>
             </div>
             
@@ -488,29 +493,33 @@
                 <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
                     <thead>
                         <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-                            <th style="padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b;">STT</th>
-                            <th style="padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b;">Hãng</th>
-                            <th style="padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b;">Ngày thêm</th>
-                            <th style="padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b;">Hành động</th>
+                            <th style="padding: 15px 16px; text-align: left; font-size: 15px; font-weight: 600; color: #64748b;">STT</th>
+                            <th style="padding: 15px 16px; text-align: left; font-size: 15px; font-weight: 600; color: #64748b;">Hãng</th>
+                            <th style="padding: 15px 16px; text-align: left; font-size: 15px; font-weight: 600; color: #64748b;">Số lượng sản phẩm</th>
+                            <th style="padding: 15px 16px; text-align: left; font-size: 15px; font-weight: 600; color: #64748b;">Ngày thêm</th>
+                            <th style="padding: 15px 16px; text-align: left; font-size: 15px; font-weight: 600; color: #64748b;">Hành động</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for brand in brands_paginated %}
                         <tr style="border-bottom: 1px solid #f1f5f9;">
-                            <td style="padding: 12px 16px; font-size: 14px;">{{ forloop.counter0|add:brands_paginated.start_index }}</td>
-                            <td style="padding: 12px 16px; font-size: 14px; font-weight: 500;">{{ brand.name }}</td>
-                            <td style="padding: 12px 16px; font-size: 14px;">{{ brand.created_at|date:"d/m/Y" }}</td>
+                            <td style="padding: 15px 16px; font-size: 15px;">{{ forloop.counter0|add:brands_paginated.start_index }}</td>
+                            <td style="padding: 15px 16px; font-size: 15px; font-weight: 500;">{{ brand.name }}</td>
+                            <td style="padding: 15px 16px; font-size: 15px;">
+                                <span style="{% if brand.product_count > 0 %}; {% else %}#f1f5f9; color: #64748b{% endif %}; padding: 4px 10px; font-size: 15px; font-weight: 500;">{{ brand.product_count }}</span>
+                            </td>
+                            <td style="padding: 12px 16px; font-size: 15px;">{{ brand.created_at|date:"d/m/Y" }}</td>
                             <td style="padding: 12px 16px;">
                                 <div style="display: flex; gap: 6px;">
-                                    <button type="button" onclick="openEditBrandModal({{ brand.id }}, '{{ brand.name|escapejs }}', ''); return false;" style="background: #fef3c7; color: #b45309; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: inherit;">Sửa</button>
-                                    <button onclick="deleteBrand({{ brand.id }}, '{{ brand.name|escapejs }}')" style="background: #fee2e2; color: #dc2626; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: inherit;">Xóa</button>
+                                    <button type="button" onclick="openEditBrandModal({{ brand.id }}, '{{ brand.name|escapejs }}', ''); return false;" style="background: #fef3c7; color: #b45309; border: none; border-radius: 6px; padding: 6px 12px; font-size: 15px; cursor: pointer; font-family: inherit;">Sửa</button>
+                                    <button onclick="deleteBrand({{ brand.id }}, '{{ brand.name|escapejs }}')" style="background: #fee2e2; color: #dc2626; border: none; border-radius: 6px; padding: 6px 12px; font-size: 15px; cursor: pointer; font-family: inherit;">Xóa</button>
                                 </div>
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="4" style="padding: 40px; text-align: center; color: #64748b; font-size: 14px;">
-                                Chưa có hãng nào. Thêm hãng mới để quản lý sản phẩm!
+                            <td colspan="5" style="padding: 40px; text-align: center; color: #64748b; font-size: 14px;">
+                                CHƯA CÓ HÃNG NÀO THƯA THƯỢNG ĐẾ !
                             </td>
                         </tr>
                         {% endfor %}
@@ -538,6 +547,96 @@
             </div>
             {% endif %}
         </div>
+        
+        <!-- Products Section -->
+        <div id="products-section" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <div style="position: relative;">
+                        <input type="text" id="productSearchInput" placeholder="Nhập tên sản phẩm để tìm kiếm..." value="{{ request.GET.product_search|default:'' }}" onkeydown="if(event.key==='Enter')searchProducts(event)" style="width: 280px; padding: 10px 16px 10px 40px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; font-family: 'Signika', sans-serif; box-sizing: border-box;">
+                        <svg style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: #94a3b8;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </div>
+                    <button onclick="resetProductSearch()" style="padding: 10px 16px; background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif;">Reset</button>
+                </div>
+                <button type="button" onclick="openAddProductModal(); return false;" style="background: #3b82f6; color: white; border: none; border-radius: 8px; padding: 10px 16px; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; font-family: 'Signika', sans-serif;">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    Thêm sản phẩm
+                </button>
+            </div>
+            
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <thead>
+                        <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                            <th style="padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b;">STT</th>
+                            <th style="padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b;">Ảnh</th>
+                            <th style="padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b;">Tên sản phẩm</th>
+                            <th style="padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b;">Hãng</th>
+                            <th style="padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b;">Tồn kho</th>
+                            <th style="padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b;">Giá gốc</th>
+                            <th style="padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b;">Giảm</th>
+                            <th style="padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b;">Giá treo</th>
+                            <th style="padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b;">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in products_paginated %}
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 12px 16px; font-size: 14px;">{{ forloop.counter0|add:products_paginated.start_index }}</td>
+                            <td style="padding: 12px 16px; font-size: 14px;">
+                                {% if product.image %}
+                                <img src="{{ product.image.url }}" alt="{{ product.name }}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px;">
+                                {% else %}
+                                <div style="width: 50px; height: 50px; background: #f1f5f9; border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                                    <svg style="width: 24px; height: 24px; color: #94a3b8;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td style="padding: 12px 16px; font-size: 14px; font-weight: 500;">{{ product.name }}</td>
+                            <td style="padding: 12px 16px; font-size: 14px;">{% if product.brand %}{{ product.brand.name }}{% else %}-{% endif %}</td>
+                            <td style="padding: 12px 16px; font-size: 14px;">{% if product.stock > 0 %}{{ product.stock }}{% else %}<span style="color: #dc2626;">Hết hàng</span>{% endif %}</td>
+                            <td style="padding: 12px 16px; font-size: 14px;">{% if product.detail.original_price %}{{ product.detail.original_price|format_price }}đ{% else %}-{% endif %}</td>
+                            <td style="padding: 12px 16px; font-size: 14px;">{% if product.detail.discount_percent > 0 %}{{ product.detail.discount_percent }}%{% else %}-{% endif %}</td>
+                            <td style="padding: 12px 16px; font-size: 14px; color: #dc2626; font-weight: 600;">{% if product.detail.discounted_price %}{{ product.detail.discounted_price|format_price }}đ{% else %}-{% endif %}</td>
+                            <td style="padding: 12px 16px;">
+                                <div style="display: flex; gap: 6px;">
+                                    <button type="button" onclick="openProductDetailModal('{{ product.id }}', '{{ product.name|escapejs }}'); return false;" style="background: #dbeafe; color: #1e40af; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: 'Signika', sans-serif;">Chi tiết</button>
+                                    <button type="button" onclick="openEditProductModal('{{ product.id }}', '{% if product.brand %}{{ product.brand.id }}{% endif %}', '{{ product.name|escapejs }}', '{% if product.image %}{{ product.image.url }}{% endif %}'); return false;" style="background: #fef3c7; color: #b45309; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: 'Signika', sans-serif;">Sửa</button>
+                                    <button onclick="deleteProduct('{{ product.id }}', '{{ product.name|escapejs }}')" style="background: #fee2e2; color: #dc2626; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: 'Signika', sans-serif;">Xóa</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" style="padding: 40px; text-align: center; color: #64748b; font-size: 14px;">
+                                Chưa có sản phẩm nào !
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if products_paginated.has_other_pages %}
+            <div style="display: flex; justify-content: center; gap: 8px; margin-top: 24px;">
+                {% if products_paginated.has_previous %}
+                <a href="?section=products&product_page={{ products_paginated.previous_page_number }}" style="padding: 8px 14px; background: #f1f5f9; color: #334155; border-radius: 6px; text-decoration: none; font-size: 13px;">&laquo; Trước</a>
+                {% endif %}
+                
+                {% for num in products_paginated.paginator.page_range %}
+                    {% if products_paginated.number == num %}
+                    <span style="padding: 8px 14px; background: #3b82f6; color: white; border-radius: 6px; text-decoration: none; font-size: 13px;">{{ num }}</span>
+                    {% elif num > products_paginated.number|add:'-2' and num < products_paginated.number|add:'2' %}
+                    <a href="?section=products&product_page={{ num }}" style="padding: 8px 14px; background: #f1f5f9; color: #334155; border-radius: 6px; text-decoration: none; font-size: 13px;">{{ num }}</a>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if products_paginated.has_next %}
+                <a href="?section=products&product_page={{ products_paginated.next_page_number }}" style="padding: 8px 14px; background: #f1f5f9; color: #334155; border-radius: 6px; text-decoration: none; font-size: 13px;">Sau &raquo;</a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
     </div>
 </div>
 
@@ -546,11 +645,10 @@
     <div style="background: white; border-radius: 12px; padding: 32px; width: 500px; max-width: 90%;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
             <h3 style="font-size: 20px; font-weight: 600; font-family: inherit;">Thêm hãng mới</h3>
-            <button type="button" onclick="closeAddBrandModal()" style="padding: 10px 20px; background: #f1f5f9; color: #334155; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: inherit;">Đóng</button>
         </div>
         <form id="addBrandForm">
             <div style="margin-bottom: 20px;">
-                <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: #333; font-family: inherit;">Tên hãng *</label>
+                <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: #333; font-family: inherit;">Tên hãng</label>
                 <input type="text" name="name" required placeholder="Nhập tên hãng..." style="width: 100%; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; box-sizing: border-box; font-family: inherit;">
             </div>
             <input type="hidden" name="description" value="">
@@ -580,6 +678,101 @@
                 <button type="submit" style="padding: 12px 24px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif; font-weight: 500;">Lưu</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Add Product Modal -->
+<div id="addProductModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 12px; width: 520px; max-width: 90%; max-height: 90vh; display: flex; flex-direction: column;">
+        <!-- Sticky Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #e2e8f0; flex-shrink: 0;">
+            <h3 style="font-size: 18px; font-weight: 600; font-family: 'Signika', sans-serif; margin: 0;">Thêm sản phẩm</h3>
+            <button type="button" onclick="closeAddProductModal()" style="padding: 8px 16px; background: #f1f5f9; color: #334155; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif;">Đóng</button>
+        </div>
+        <!-- Scrollable Content -->
+        <div style="padding: 20px 24px; overflow-y: auto; flex: 1;">
+        <form id="addProductForm">
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Chọn hãng </label>
+                <select name="brand" id="addProductBrand" required style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+                    <option value="">-- Danh sách hãng --</option>
+                    {% for brand in brands %}
+                    <option value="{{ brand.id }}">{{ brand.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Tên sản phẩm *</label>
+                <input type="text" name="name" id="addProductName" required placeholder="Nhập tên sản phẩm..." style="width: 100%; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Ảnh sản phẩm</label>
+                <div style="border: 2px dashed #ddd; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer;" onclick="document.getElementById('addProductImage').click()">
+                    <input type="file" name="image" id="addProductImage" accept="image/*" style="display: none;" onchange="previewAddProductImage(event)">
+                    <div id="addImagePreviewContainer" style="display: none;">
+                        <img id="addImagePreview" style="max-width: 200px; max-height: 150px; border-radius: 8px;">
+                        <p style="margin-top: 10px; color: #64748b; font-size: 13px;">Click để thay đổi ảnh</p>
+                    </div>
+                    <div id="addImagePlaceholder">
+                        <svg style="width: 48px; height: 48px; color: #94a3b8; margin-bottom: 10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        <p style="color: #64748b; font-size: 14px;">Click để tải ảnh lên</p>
+                    </div>
+                </div>
+            </div>
+        </form>
+        </div>
+        <!-- Sticky Footer -->
+        <div style="padding: 16px 24px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px; flex-shrink: 0;">
+            <button type="submit" form="addProductForm" style="padding: 12px 32px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif; font-weight: 500;">Thêm</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Product Modal -->
+<div id="editProductModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 12px; width: 520px; max-width: 90%; max-height: 90vh; display: flex; flex-direction: column;">
+        <!-- Sticky Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #e2e8f0; flex-shrink: 0;">
+            <h3 style="font-size: 18px; font-weight: 600; font-family: 'Signika', sans-serif; margin: 0;">Chỉnh sửa sản phẩm</h3>
+            <button type="button" onclick="closeEditProductModal()" style="padding: 8px 16px; background: #f1f5f9; color: #334155; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif;">Đóng</button>
+        </div>
+        <!-- Scrollable Content -->
+        <div style="padding: 20px 24px; overflow-y: auto; flex: 1;">
+        <form id="editProductForm">
+            <input type="hidden" name="product_id" id="editProductId">
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Chọn hãng *</label>
+                <select name="brand" id="editProductBrand" required style="width: 100%; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+                    <option value="">-- Chọn hãng --</option>
+                    {% for brand in brands %}
+                    <option value="{{ brand.id }}">{{ brand.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Tên sản phẩm *</label>
+                <input type="text" name="name" id="editProductName" required placeholder="Nhập tên sản phẩm..." style="width: 100%; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Ảnh sản phẩm</label>
+                <div style="border: 2px dashed #ddd; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer;" onclick="document.getElementById('editProductImage').click()">
+                    <input type="file" name="image" id="editProductImage" accept="image/*" style="display: none;" onchange="previewEditProductImage(event)">
+                    <div id="editImagePreviewContainer" style="display: none;">
+                        <img id="editImagePreview" style="max-width: 200px; max-height: 150px; border-radius: 8px;">
+                        <p style="margin-top: 10px; color: #64748b; font-size: 13px;">Click để thay đổi ảnh</p>
+                    </div>
+                    <div id="editImagePlaceholder">
+                        <svg style="width: 48px; height: 48px; color: #94a3b8; margin-bottom: 10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        <p style="color: #64748b; font-size: 14px;">Click để tải ảnh lên</p>
+                    </div>
+                </div>
+            </div>
+        </form>
+        </div>
+        <!-- Sticky Footer -->
+        <div style="padding: 16px 24px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px; flex-shrink: 0;">
+            <button type="submit" form="editProductForm" style="padding: 12px 32px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif; font-weight: 500;">Lưu</button>
+        </div>
     </div>
 </div>
 
@@ -625,7 +818,118 @@
     window.brandDeleteUrl = '{% url "store:brand_delete" %}';
     window.userEditUrl = '{% url "store:user_edit" %}';
     window.userDeleteUrl = '{% url "store:user_delete" %}';
+    window.productAddUrl = '{% url "store:product_add" %}';
+    window.productEditUrl = '{% url "store:product_edit" %}';
+    window.productDeleteUrl = '{% url "store:product_delete" %}';
 </script>
 <script src="{% static 'js/dashboard.js' %}"></script>
+<script src="{% static 'js/product.js' %}"></script>
+<script src="{% static 'js/product_detail.js' %}"></script>
+
+<!-- Product Detail Modal -->
+<div id="productDetailModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 12px; width: 700px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+        <!-- Sticky Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #e2e8f0; flex-shrink: 0;">
+            <h3 style="font-size: 18px; font-weight: 600; font-family: 'Signika', sans-serif; margin: 0;">Chi tiết sản phẩm</h3>
+            <button type="button" onclick="closeProductDetailModal()" style="padding: 8px 16px; background: #f1f5f9; color: #334155; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif;">Đóng</button>
+        </div>
+        <!-- Scrollable Content -->
+        <div style="padding: 20px 24px; overflow-y: auto; flex: 1;">
+            
+            <!-- Product Name Section -->
+            <div style="margin-bottom: 24px;">
+                <h4 style="margin: 0 0 12px; font-size: 16px; font-weight: 600;">Tên sản phẩm</h4>
+                <p id="detailProductName" style="margin: 0; font-size: 16px; color: #1e293b; font-weight: 500;"></p>
+            </div>
+            
+            <!-- Price Section -->
+            <div style="margin-bottom: 24px;">
+                <h4 style="margin: 0 0 12px; font-size: 16px; font-weight: 600;">Thông tin giá</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #333;">Giá gốc (VNĐ)</label>
+                        <input type="number" id="detailOriginalPrice" placeholder="0" min="0" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #333;">% Giảm giá</label>
+                        <input type="number" id="detailDiscountPercent" value="0" min="0" max="100" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #333;">Giá sau giảm</label>
+                        <input type="text" id="detailDiscountedPrice" disabled style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif; background: #f5f5f5; color: #dc2626; font-weight: 600;">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Stock Section -->
+            <div style="margin-bottom: 24px;">
+                <h4 style="margin: 0 0 12px; font-size: 16px; font-weight: 600;">Số lượng còn trong kho</h4>
+                <input type="number" id="detailStock" placeholder="0" min="0" style="width: 200px; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+            </div>
+            
+            <!-- SKU Section -->
+            <div style="margin-bottom: 24px;">
+                <h4 style="margin: 0 0 12px; font-size: 16px; font-weight: 600;">Tạo mã SKU</h4>
+                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                    <input type="text" id="detailSku" placeholder="Nhập SKU..." style="flex: 1; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+                    <button onclick="saveSkuOnly()" style="padding: 10px 20px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif;">Lưu SKU</button>
+                </div>
+                <div id="skuList" style="border: 1px solid #e2e8f0; border-radius: 8px; max-height: 150px; overflow-y: auto;"></div>
+            </div>
+            
+            <button onclick="saveProductDetail()" style="padding: 12px 24px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif; font-weight: 500;">Lưu tất cả</button>
+        </div>
+            
+            <!-- Variant Form (Hidden by default) -->
+            <div id="variantFormSection" style="display: none; margin-bottom: 24px; padding: 16px; background: #f8fafc; border-radius: 8px;">
+                <h4 id="variantFormTitle" style="margin: 0 0 12px; font-size: 15px; font-weight: 600;">Thêm biến thể</h4>
+                <input type="hidden" id="variantId">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">Tên màu *</label>
+                        <input type="text" id="variantColorName" placeholder="Ví dụ: Titan Tự Nhiên" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">Mã màu (hex)</label>
+                        <input type="text" id="variantColorHex" placeholder="#FFFFFF" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">Dung lượng *</label>
+                        <input type="text" id="variantStorage" placeholder="Ví dụ: 128GB" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">Giá (VNĐ) *</label>
+                        <input type="number" id="variantPrice" placeholder="0" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">SKU biến thể</label>
+                        <input type="text" id="variantSku" placeholder="SKU..." style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">Số lượng kho</label>
+                        <input type="number" id="variantStock" placeholder="0" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box;">
+                    </div>
+                </div>
+                <div style="margin-top: 12px; display: flex; gap: 8px;">
+                    <button onclick="saveVariant()" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">Lưu</button>
+                    <button onclick="closeVariantForm()" style="padding: 10px 20px; background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: 14px;">Hủy</button>
+                </div>
+            </div>
+            
+            <!-- Upload Image Form (Hidden by default) -->
+            <div id="uploadImageSection" style="display: none; margin-bottom: 24px; padding: 16px; background: #f8fafc; border-radius: 8px;">
+                <h4 style="margin: 0 0 12px; font-size: 15px; font-weight: 600;">Upload ảnh</h4>
+                <input type="hidden" id="uploadImageType">
+                <input type="hidden" id="uploadVariantId">
+                <input type="file" id="uploadImageFiles" accept="image/*" multiple style="margin-bottom: 12px;">
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="uploadProductImages()" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">Upload</button>
+                    <button onclick="closeUploadImageForm()" style="padding: 10px 20px; background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: 14px;">Hủy</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 {% endblock %}
