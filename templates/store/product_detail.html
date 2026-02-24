@@ -1,381 +1,1174 @@
 {% extends 'base.html' %}
 {% load custom_filters %}
+{% load static %}
 
 {% block title %}{{ product.name }} - QHUN22 Mobile{% endblock %}
 
 {% block content %}
 <style>
-.product-detail-page {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 24px;
+/* ========== Product Detail Page ========== */
+.pd-page {
+    width: 100%;
+    padding: 0 0 40px;
+    font-family: 'Signika', sans-serif;
 }
-.breadcrumb {
+
+/* Breadcrumb */
+.pd-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 18px;
+    font-size: 13px;
+    color: #94a3b8;
+    flex-wrap: wrap;
+}
+.pd-breadcrumb a { color: #64748b; text-decoration: none; }
+.pd-breadcrumb a:hover { color: #dc2626; }
+.pd-breadcrumb .current { color: #334155; font-weight: 500; }
+
+/* Product Name */
+.pd-product-name {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 20px;
+    line-height: 1.3;
+}
+
+/* Main Grid: images left, info right */
+.pd-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 36px;
+    align-items: start;
+}
+
+/* === Images Column === */
+.pd-images {
+    position: sticky;
+    top: 20px;
+}
+
+.pd-main-image {
+    width: 100%;
+    aspect-ratio: 4/3;
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    position: relative;
+}
+.pd-main-image img {
+    max-width: 90%;
+    max-height: 90%;
+    object-fit: contain;
+    transition: opacity 0.6s ease-in-out;
+}
+
+/* Nút prev/next */
+.pd-img-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.85);
+    border: 1px solid #e2e8f0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    z-index: 2;
+}
+.pd-img-nav:hover { background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+.pd-img-nav.prev { left: 10px; }
+.pd-img-nav.next { right: 10px; }
+.pd-img-nav svg { width: 18px; height: 18px; color: #475569; }
+
+/* === Info Column === */
+.pd-info { }
+
+/* Price Section */
+.pd-price-section {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+}
+.pd-price-current {
+    font-size: 28px;
+    font-weight: 700;
+    color: #dc2626;
+}
+.pd-price-original {
+    font-size: 16px;
+    color: #94a3b8;
+    text-decoration: line-through;
+}
+.pd-sku-inline {
+    font-size: 13px;
+    color: #64748b;
+    margin-left: auto;
+}
+
+/* Installment info */
+.pd-installment {
+    font-size: 13px;
+    color: #059669;
+    margin-bottom: 20px;
+}
+
+/* Variant Sections */
+.pd-variant-section {
+    margin-bottom: 20px;
+}
+.pd-variant-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 10px;
+}
+
+/* Storage buttons */
+.pd-storage-options {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.pd-storage-btn {
+    padding: 10px 18px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+    cursor: pointer;
+    text-align: center;
+    min-width: 100px;
+    transition: all 0.2s;
+    position: relative;
+    font-family: 'Signika', sans-serif;
+}
+.pd-storage-btn:hover { border-color: #dc2626; }
+.pd-storage-btn.selected {
+    border-color: #dc2626;
+    background: #fff;
+}
+.pd-storage-btn.selected::after {
+    content: '✓';
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 20px;
+    height: 20px;
+    background: #dc2626;
+    color: white;
+    font-size: 11px;
+    border-radius: 8px 0 8px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.pd-storage-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 2px;
+}
+.pd-storage-price {
+    font-size: 13px;
+    color: #dc2626;
+    font-weight: 500;
+}
+
+/* Color buttons */
+.pd-color-options {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.pd-color-btn {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 24px;
-    font-size: 14px;
-    color: #64748b;
-}
-.breadcrumb a {
-    color: #64748b;
-    text-decoration: none;
-}
-.breadcrumb a:hover {
-    color: #dc2626;
-}
-.breadcrumb span {
-    color: #334155;
-}
-.product-detail-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 40px;
-}
-.product-images {
-    position: sticky;
-    top: 24px;
-}
-.main-image {
-    width: 100%;
-    aspect-ratio: 1;
-    background: #f5f5f5;
-    border-radius: 12px;
-    overflow: hidden;
-    margin-bottom: 12px;
-}
-.main-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-.thumbnails {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-.thumbnail {
-    width: 80px;
-    height: 80px;
-    border-radius: 8px;
-    overflow: hidden;
+    padding: 8px 14px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
     cursor: pointer;
-    border: 2px solid transparent;
+    transition: all 0.2s;
+    flex: 1 1 0;
+    min-width: 120px;
+    max-width: 180px;
+    position: relative;
+    font-family: 'Signika', sans-serif;
+    box-sizing: border-box;
 }
-.thumbnail:hover, .thumbnail.active {
+.pd-color-btn:hover { border-color: #dc2626; }
+.pd-color-btn.selected {
     border-color: #dc2626;
 }
-.thumbnail img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-.product-info h1 {
-    font-size: 28px;
-    font-weight: 700;
-    margin-bottom: 16px;
-    color: var(--qh-text);
-}
-.price-section {
-    margin-bottom: 24px;
-}
-.price-current {
-    font-size: 32px;
-    font-weight: 700;
-    color: #dc2626;
-}
-.price-original {
-    font-size: 18px;
-    color: #94a3b8;
-    text-decoration: line-through;
-    margin-left: 12px;
-}
-.discount-badge {
-    display: inline-block;
+.pd-color-btn.selected::after {
+    content: '✓';
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 20px;
+    height: 20px;
     background: #dc2626;
     color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 14px;
+    font-size: 11px;
+    border-radius: 8px 0 8px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.pd-color-thumb {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #f1f5f9;
+    flex-shrink: 0;
+}
+.pd-color-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+.pd-color-info {
+    text-align: left;
+}
+.pd-color-name {
+    font-size: 13px;
     font-weight: 600;
-    margin-left: 12px;
+    color: #1e293b;
 }
-.variant-section {
-    margin-bottom: 24px;
-}
-.variant-label {
-    font-size: 14px;
-    font-weight: 600;
-    margin-bottom: 12px;
-    display: block;
-}
-.color-options, .storage-options {
+
+/* Buy section */
+.pd-buy-section {
+    margin-top: 24px;
     display: flex;
     gap: 10px;
-    flex-wrap: wrap;
 }
-.color-btn {
-    padding: 10px 16px;
-    border: 2px solid #e2e8f0;
-    border-radius: 8px;
-    background: white;
-    cursor: pointer;
-    font-size: 14px;
-    transition: all 0.2s;
-}
-.color-btn:hover {
-    border-color: #dc2626;
-}
-.color-btn.selected {
-    background: #dc2626;
-    color: white;
-    border-color: #dc2626;
-}
-.storage-btn {
-    padding: 10px 20px;
-    border: 2px solid #e2e8f0;
-    border-radius: 8px;
-    background: white;
-    cursor: pointer;
-    font-size: 14px;
-    transition: all 0.2s;
-}
-.storage-btn:hover {
-    border-color: #dc2626;
-}
-.storage-btn.selected {
-    background: #dc2626;
-    color: white;
-    border-color: #dc2626;
-}
-.stock-info {
-    margin-bottom: 20px;
-}
-.stock-badge {
-    display: inline-block;
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 600;
-}
-.stock-badge.in-stock {
-    background: #d1fae5;
-    color: #059669;
-}
-.stock-badge.out-of-stock {
-    background: #fee2e2;
-    color: #dc2626;
-}
-.sku-info {
-    font-size: 14px;
-    color: #64748b;
-    margin-bottom: 24px;
-}
-.action-buttons {
-    display: flex;
-    gap: 12px;
-}
-.btn-buy {
+.pd-btn-buy {
     flex: 1;
-    padding: 16px 32px;
+    padding: 14px 24px;
     background: #dc2626;
     color: white;
     border: none;
-    border-radius: 8px;
-    font-size: 18px;
+    border-radius: 10px;
+    font-size: 16px;
     font-weight: 600;
     cursor: pointer;
     transition: background 0.2s;
+    font-family: 'Signika', sans-serif;
+    text-align: center;
 }
-.btn-buy:hover {
-    background: #b91c1c;
-}
-.btn-wishlist {
-    padding: 16px;
-    background: #f1f5f9;
+.pd-btn-buy:hover { background: #b91c1c; }
+.pd-btn-buy span { display: block; font-size: 12px; font-weight: 400; opacity: 0.85; margin-top: 2px; }
+.pd-btn-cart {
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #dc2626;
+    color: white;
     border: none;
-    border-radius: 8px;
+    border-radius: 10px;
     cursor: pointer;
+    transition: background 0.2s;
+    flex-shrink: 0;
 }
-.btn-wishlist:hover {
-    background: #e2e8f0;
+.pd-btn-cart:hover { background: #b91c1c; }
+.pd-btn-cart svg { width: 22px; height: 22px; }
+
+/* Bottom tabs: color thumbs + spec + info */
+.pd-bottom-tabs {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 14px;
+    flex-wrap: wrap;
 }
-.btn-wishlist svg {
-    width: 24px;
-    height: 24px;
+.pd-bottom-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+    padding: 8px 6px;
+    border-radius: 10px;
+    transition: all 0.2s;
+    flex: 1 1 0;
+    min-width: 80px;
+    max-width: 120px;
+    height: 90px;
+    border: 1.5px solid transparent;
+    box-sizing: border-box;
+    background: #f8fafc;
 }
-.product-description {
-    margin-top: 40px;
-    padding-top: 24px;
-    border-top: 1px solid #e2e8f0;
+.pd-bottom-tab:hover { background: #f1f5f9; border-color: #cbd5e1; }
+.pd-bottom-tab.active { background: #f0fdfa; border-color: #14b8a6; }
+.pd-bottom-tab-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
-.product-description h3 {
-    font-size: 20px;
+.pd-bottom-tab-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+.pd-bottom-tab-icon svg { width: 24px; height: 24px; color: #64748b; }
+.pd-bottom-tab-label {
+    font-size: 11px;
+    color: #64748b;
+    text-align: center;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+
+/* Gallery Lightbox */
+.pd-gallery-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.pd-gallery-overlay.show { display: flex; }
+.pd-gallery-box {
+    background: #fff;
+    border-radius: 16px;
+    max-width: 1060px;
+    width: 100%;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    animation: pdGalleryIn 0.25s ease;
+    overflow: hidden;
+}
+@keyframes pdGalleryIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+/* Color tabs row */
+.pd-gallery-color-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 0 20px;
+    border-bottom: 1px solid #e2e8f0;
+    position: relative;
+}
+.pd-gallery-color-tab {
+    padding: 14px 18px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #64748b;
+    cursor: pointer;
+    border-bottom: 2.5px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+    white-space: nowrap;
+}
+.pd-gallery-color-tab:hover { color: #1e293b; }
+.pd-gallery-color-tab.active {
+    color: #2563eb;
+    border-bottom-color: #2563eb;
     font-weight: 600;
+}
+.pd-gallery-close {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: none;
+    background: #f1f5f9;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+.pd-gallery-close:hover { background: #e2e8f0; }
+.pd-gallery-close svg { width: 18px; height: 18px; color: #475569; }
+/* Main image area */
+.pd-gallery-main-area {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 20px 0;
+    min-height: 0;
+    background: #fff;
+}
+.pd-gallery-main-img {
+    max-width: 80%;
+    max-height: 55vh;
+    object-fit: contain;
+    user-select: none;
+    -webkit-user-drag: none;
+    transition: opacity 0.2s;
+}
+.pd-gallery-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0,0,0,0.06);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    z-index: 2;
+}
+.pd-gallery-nav:hover { background: rgba(0,0,0,0.12); }
+.pd-gallery-nav svg { width: 22px; height: 22px; color: #334155; }
+.pd-gallery-nav.prev { left: 16px; }
+.pd-gallery-nav.next { right: 16px; }
+/* Thumbnail strip */
+.pd-gallery-thumbs {
+    display: flex;
+    gap: 10px;
+    padding: 14px 20px 18px;
+    overflow-x: auto;
+    border-top: 1px solid #f1f5f9;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    justify-content: center;
+}
+.pd-gallery-thumbs::-webkit-scrollbar { display: none; }
+.pd-gallery-thumb {
+    width: 72px;
+    height: 72px;
+    border-radius: 8px;
+    border: 2px solid #e2e8f0;
+    overflow: hidden;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8fafc;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    flex-shrink: 0;
+}
+.pd-gallery-thumb:hover { border-color: #94a3b8; }
+.pd-gallery-thumb.active {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 1px #2563eb;
+}
+.pd-gallery-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+    -webkit-user-drag: none;
+}
+
+/* Spec table */
+.pd-spec-section {
+    margin-top: 32px;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 24px;
+}
+.pd-spec-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1e293b;
     margin-bottom: 16px;
 }
-.description-content {
-    font-size: 15px;
-    line-height: 1.7;
-    color: #475569;
+.pd-spec-group-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    padding: 10px 14px;
+    background: #f1f5f9;
+    border-radius: 8px 8px 0 0;
+    margin-top: 12px;
+}
+.pd-spec-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 4px;
+}
+.pd-spec-table tr { border-bottom: 1px solid #f1f5f9; }
+.pd-spec-table td {
+    padding: 10px 14px;
+    font-size: 14px;
+    color: #334155;
+    vertical-align: top;
+}
+.pd-spec-table td:first-child {
+    width: 40%;
+    color: #64748b;
+    font-weight: 500;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .pd-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    .pd-images { position: static; }
+    .pd-product-name { font-size: 18px; }
+    .pd-price-current { font-size: 24px; }
+    .pd-main-image { aspect-ratio: auto; min-height: 300px; }
 }
 </style>
 
-<div class="product-detail-page">
+<div class="pd-page">
     <!-- Breadcrumb -->
-    <div class="breadcrumb">
-        <a href="/">Trang chủ</a>
-        <span>/</span>
-        <a href="/">Điện thoại</a>
-        <span>/</span>
-        <span>{{ product.name }}</span>
+    <div class="pd-breadcrumb">
+        <a href="/">Trang chủ</a> <span>›</span>
+        <a href="/">Điện thoại</a> <span>›</span>
+        {% if product.brand %}<a href="/">{{ product.brand.name }}</a> <span>›</span>{% endif %}
+        <span class="current">{{ product.name }}</span>
     </div>
-    
-    <div class="product-detail-grid">
-        <!-- Images -->
-        <div class="product-images">
-            <div class="main-image">
-                <img id="mainImage" src="{{ product.image.url|default:'/static/images/no-image.png' }}" alt="{{ product.name }}">
-            </div>
-            <div class="thumbnails" id="thumbnails"></div>
-        </div>
-        
-        <!-- Info -->
-        <div class="product-info">
-            <h1>{{ product.name }}</h1>
-            
-            <!-- Price -->
-            <div class="price-section">
-                <span class="price-current" id="currentPrice">{{ product.price|format_price }}đ</span>
-                {% if product.original_price and product.original_price > product.price %}
-                <span class="price-original">{{ product.original_price|format_price }}đ</span>
-                <span class="discount-badge">-{{ product.get_discount_percent }}%</span>
-                {% endif %}
-            </div>
-            
-            <!-- Color Selection -->
-            <div class="variant-section">
-                <label class="variant-label">Chọn màu:</label>
-                <div class="color-options" id="colorOptions">
-                    {% for variant in variants %}
-                    <button class="color-btn {% if forloop.first %}selected{% endif %}" 
-                            data-color="{{ variant.color_name }}" 
-                            data-color-hex="{{ variant.color_hex }}"
-                            onclick="selectColor(this)">
-                        {{ variant.color_name }}
-                    </button>
-                    {% endfor %}
-                </div>
-            </div>
-            
-            <!-- Storage Selection -->
-            <div class="variant-section">
-                <label class="variant-label">Chọn dung lượng:</label>
-                <div class="storage-options" id="storageOptions">
-                    {% for variant in storage_variants %}
-                    <button class="storage-btn {% if forloop.first %}selected{% endif %}" 
-                            data-storage="{{ variant.storage }}" 
-                            data-price="{{ variant.price }}"
-                            data-stock="{{ variant.stock_quantity }}"
-                            data-sku="{{ variant.sku }}"
-                            onclick="selectStorage(this)">
-                        {{ variant.storage }} - {{ variant.price|format_price }}đ
-                    </button>
-                    {% endfor %}
-                </div>
-            </div>
-            
-            <!-- Stock -->
-            <div class="stock-info">
-                <span class="stock-badge in-stock" id="stockBadge">Còn {{ first_variant.stock_quantity }} sản phẩm</span>
-            </div>
-            
-            <!-- SKU -->
-            <div class="sku-info">
-                SKU: <span id="skuValue">{{ first_variant.sku|default:'-' }}</span>
-            </div>
-            
-            <!-- Actions -->
-            <div class="action-buttons">
-                <button class="btn-buy" onclick="buyNow()">Mua ngay</button>
-                <button class="btn-wishlist" onclick="addToWishlist()">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
-                    </svg>
+
+    <!-- Product Name -->
+    <h1 class="pd-product-name">{{ product.name }}</h1>
+
+    <div class="pd-grid">
+        <!-- ===== LEFT: Images ===== -->
+        <div class="pd-images">
+            <div class="pd-main-image" 
+                 onmouseenter="pauseAutoSlide()" 
+                 onmouseleave="resumeAutoSlide()">
+                <button class="pd-img-nav prev" onclick="prevImage()">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <img id="pdMainImg" src="{{ product.image.url|default:'/static/logos/sean.gif' }}" alt="{{ product.name }}" data-fallback="{{ product.image.url|default:'/static/logos/sean.gif' }}">
+                <button class="pd-img-nav next" onclick="nextImage()">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </button>
             </div>
-            
-            <!-- Description -->
-            {% if product_detail.description %}
-            <div class="product-description">
-                <h3>Mô tả sản phẩm</h3>
-                <div class="description-content">
-                    {{ product_detail.description|linebreaks }}
+
+            <!-- Bottom color tabs (mini thumbnails) -->
+            <div class="pd-bottom-tabs" id="pdBottomTabs"></div>
+        </div>
+
+        <!-- ===== RIGHT: Info ===== -->
+        <div class="pd-info">
+            <!-- Price -->
+            <div class="pd-price-section">
+                <span class="pd-price-current" id="pdPrice">
+                    {% if first_variant %}{{ first_variant.price|format_price }} đ{% else %}Liên hệ{% endif %}
+                </span>
+                <span class="pd-price-original" id="pdOriginalPrice">
+                    {% if first_variant and first_variant.original_price > first_variant.price %}{{ first_variant.original_price|format_price }} đ{% endif %}
+                </span>
+                <span class="pd-sku-inline">SKU: <strong id="pdSku">{{ first_variant.sku|default:'-' }}</strong></span>
+            </div>
+
+            <!-- Installment -->
+            <div class="pd-installment" id="pdInstallment"></div>
+
+            <!-- Storage Selection -->
+            <div class="pd-variant-section">
+                <div class="pd-variant-label">Lựa chọn phiên bản</div>
+                <div class="pd-storage-options" id="pdStorageOptions">
+                    {% for storage in storage_list %}
+                    <button class="pd-storage-btn{% if forloop.first %} selected{% endif %}" data-storage="{{ storage }}" onclick="selectStorage(this)">
+                        <div class="pd-storage-name">{{ storage }}</div>
+                        <div class="pd-storage-price" id="storagePrice_{{ forloop.counter }}"></div>
+                    </button>
+                    {% endfor %}
                 </div>
             </div>
-            {% endif %}
+
+            <!-- Color Selection -->
+            <div class="pd-variant-section">
+                <div class="pd-variant-label">Lựa chọn màu và xem địa chỉ còn hàng</div>
+                <div class="pd-color-options" id="pdColorOptions">
+                    {% for c in color_list %}
+                    <button class="pd-color-btn{% if forloop.first %} selected{% endif %}" data-color="{{ c.color_name }}" data-sku="{{ c.sku }}" onclick="selectColor(this)">
+                        <div class="pd-color-thumb" id="colorThumb_{{ forloop.counter0 }}"></div>
+                        <div class="pd-color-info">
+                            <div class="pd-color-name">{{ c.color_name }}</div>
+                        </div>
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Buy Section -->
+            <div class="pd-buy-section">
+                <button class="pd-btn-buy" onclick="buyNow()">
+                    MUA NGAY
+                    <span>(Giao tận nhà hoặc nhận tại cửa hàng)</span>
+                </button>
+                <button class="pd-btn-cart" onclick="addToCart()">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z"/></svg>
+                </button>
+            </div>
         </div>
+    </div>
+
+    <!-- Specifications Section -->
+    <div class="pd-spec-section" id="pdSpecSection" style="display: none;">
+        <h2 class="pd-spec-title">Thông số kỹ thuật</h2>
+        <div id="pdSpecContent"></div>
+    </div>
+
+    <!-- Product Description Section -->
+    <div class="pd-spec-section" id="pdDescSection" style="display: none;">
+        <h2 class="pd-spec-title">Thông tin sản phẩm</h2>
+        <div id="pdDescContent" style="font-size: 14px; color: #334155; line-height: 1.7; white-space: pre-line;"></div>
+    </div>
+</div>
+
+<!-- Gallery Lightbox -->
+<div class="pd-gallery-overlay" id="pdGalleryOverlay" onclick="closeGalleryOverlay(event)">
+    <div class="pd-gallery-box" onclick="event.stopPropagation()">
+        <!-- Color tabs -->
+        <div class="pd-gallery-color-tabs" id="pdGalleryColorTabs"></div>
+        <!-- Main image with nav -->
+        <div class="pd-gallery-main-area">
+            <button class="pd-gallery-nav prev" onclick="galleryPrev()">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <img class="pd-gallery-main-img" id="pdGalleryMainImg" src="" alt="" draggable="false">
+            <button class="pd-gallery-nav next" onclick="galleryNext()">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+        </div>
+        <!-- Thumbnails -->
+        <div class="pd-gallery-thumbs" id="pdGalleryThumbs"></div>
     </div>
 </div>
 
 <script>
+// ========== Data from Django ==========
+const variantsData = {{ variants_json|safe }};
+const colorImagesData = {{ color_images_json|safe }};
+const specData = {{ spec_data_json|safe }};
+
+// ========== State ==========
 let selectedColor = null;
 let selectedStorage = null;
-let variantsData = {{ variants_json|safe }};
+let currentImages = [];
+let currentImageIndex = 0;
+let autoSlideInterval = null;
+let isAutoSlideActive = true;
 
+// ========== Init ==========
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize default selection
-    const firstColorBtn = document.querySelector('.color-btn');
-    const firstStorageBtn = document.querySelector('.storage-btn');
-    if (firstColorBtn) selectColor(firstColorBtn);
+    // Select first storage
+    const firstStorageBtn = document.querySelector('.pd-storage-btn');
     if (firstStorageBtn) selectStorage(firstStorageBtn);
+
+    // Select first color
+    const firstColorBtn = document.querySelector('.pd-color-btn');
+    if (firstColorBtn) selectColor(firstColorBtn);
+
+    // Update storage prices
+    updateStoragePrices();
+
+    // Update color button thumbs
+    updateColorButtons();
+
+    // Render bottom tabs
+    renderBottomTabs();
+
+    // Render spec
+    if (specData) renderSpec(specData);
+    
+    // Start auto slide after everything is loaded
+    setTimeout(function() {
+        startAutoSlide();
+    }, 2000);
 });
 
-function selectColor(btn) {
-    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-    selectedColor = btn.dataset.color;
-    updateVariantInfo();
-}
+// Stop auto slide when leaving the page
+window.addEventListener('beforeunload', function() {
+    stopAutoSlide();
+});
 
+// Pause auto slide when page is not visible
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        pauseAutoSlide();
+    } else {
+        resumeAutoSlide();
+    }
+});
+
+// ========== Storage Selection ==========
 function selectStorage(btn) {
-    document.querySelectorAll('.storage-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelectorAll('.pd-storage-btn').forEach(function(b) { b.classList.remove('selected'); });
     btn.classList.add('selected');
     selectedStorage = btn.dataset.storage;
-    updateVariantInfo();
+    updatePriceDisplay();
+    updateStoragePrices();
 }
 
-function updateVariantInfo() {
-    if (!selectedColor || !selectedStorage) return;
-    
-    const variant = variantsData.find(v => v.color_name === selectedColor && v.storage === selectedStorage);
-    
-    if (variant) {
-        // Update price
-        document.getElementById('currentPrice').textContent = parseInt(variant.price).toLocaleString('vi-VN') + 'đ';
-        
-        // Update stock
-        const stockBadge = document.getElementById('stockBadge');
-        if (variant.stock_quantity > 0) {
-            stockBadge.textContent = `Còn ${variant.stock_quantity} sản phẩm`;
-            stockBadge.className = 'stock-badge in-stock';
-        } else {
-            stockBadge.textContent = 'Hết hàng';
-            stockBadge.className = 'stock-badge out-of-stock';
+function updateStoragePrices() {
+    var storageBtns = document.querySelectorAll('.pd-storage-btn');
+    storageBtns.forEach(function(btn) {
+        var storage = btn.dataset.storage;
+        var v = variantsData.find(function(x) { return x.storage === storage; });
+        var priceEl = btn.querySelector('.pd-storage-price');
+        if (v && priceEl) {
+            priceEl.textContent = formatPrice(v.price) + ' đ';
         }
-        
-        // Update SKU
-        document.getElementById('skuValue').textContent = variant.sku || '-';
+    });
+}
+
+// ========== Color Selection ==========
+function selectColor(btn) {
+    document.querySelectorAll('.pd-color-btn').forEach(function(b) { b.classList.remove('selected'); });
+    btn.classList.add('selected');
+    selectedColor = btn.dataset.color;
+
+    // Update images for this color
+    var sku = btn.dataset.sku;
+    loadColorImages(sku);
+
+    updatePriceDisplay();
+
+    // Update bottom tabs active
+    document.querySelectorAll('.pd-bottom-tab[data-color]').forEach(function(t) {
+        t.classList.toggle('active', t.dataset.color === selectedColor);
+    });
+}
+
+function updateColorButtons() {
+    var colorBtns = document.querySelectorAll('.pd-color-btn');
+    colorBtns.forEach(function(btn, idx) {
+        var sku = btn.dataset.sku;
+        var thumbEl = document.getElementById('colorThumb_' + idx);
+        var nameEl = btn.querySelector('.pd-color-name');
+
+        if (colorImagesData[sku]) {
+            // Set thumbnail from first image
+            if (thumbEl && colorImagesData[sku].images.length > 0) {
+                thumbEl.innerHTML = '<img src="' + colorImagesData[sku].images[0] + '" alt="">';
+            }
+            // Fix color name from FolderColorImage (clean name)
+            if (nameEl && colorImagesData[sku].color_name) {
+                nameEl.textContent = colorImagesData[sku].color_name;
+            }
+        }
+    });
+}
+
+
+
+// ========== Image Gallery ==========
+function loadColorImages(sku) {
+    if (colorImagesData[sku] && colorImagesData[sku].images.length > 0) {
+        currentImages = colorImagesData[sku].images;
+    } else {
+        var fallbackImg = document.getElementById('pdMainImg').dataset.fallback || '/static/logos/sean.gif';
+        currentImages = [fallbackImg];
+    }
+    currentImageIndex = 0;
+    renderGallery();
+    
+    // Restart auto slide with new images
+    stopAutoSlide();
+    setTimeout(function() {
+        startAutoSlide();
+    }, 1000); // Start after 1 second to let image load
+}
+
+function renderGallery() {
+    // Main image
+    var mainImg = document.getElementById('pdMainImg');
+    if (mainImg && currentImages.length > 0) {
+        mainImg.style.opacity = '0';
+        setTimeout(function() {
+            mainImg.src = currentImages[currentImageIndex];
+            mainImg.style.opacity = '1';
+        }, 300);
     }
 }
 
-function buyNow() {
-    alert('Chức năng mua đang được phát triển!');
+// ========== Auto Slide Functionality ==========
+function startAutoSlide() {
+    if (autoSlideInterval) clearInterval(autoSlideInterval);
+    
+    if (currentImages && currentImages.length > 1 && isAutoSlideActive) {
+        autoSlideInterval = setInterval(function() {
+            currentImageIndex = (currentImageIndex + 1) % currentImages.length;
+            renderGallery();
+        }, 3000); // 3 seconds
+    }
 }
 
-function addToWishlist() {
-    alert('Đã thêm vào wishlist!');
+function stopAutoSlide() {
+    if (autoSlideInterval) {
+        clearInterval(autoSlideInterval);
+        autoSlideInterval = null;
+    }
+}
+
+function pauseAutoSlide() {
+    isAutoSlideActive = false;
+    stopAutoSlide();
+}
+
+function resumeAutoSlide() {
+    isAutoSlideActive = true;
+    startAutoSlide();
+}
+
+function prevImage() {
+    if (currentImages.length === 0) return;
+    
+    // Pause auto slide temporarily when user manually navigates
+    pauseAutoSlide();
+    setTimeout(function() {
+        resumeAutoSlide();
+    }, 5000); // Resume after 5 seconds
+    
+    currentImageIndex = (currentImageIndex - 1 + currentImages.length) % currentImages.length;
+    renderGallery();
+}
+
+function nextImage() {
+    if (currentImages.length === 0) return;
+    
+    // Pause auto slide temporarily when user manually navigates
+    pauseAutoSlide();
+    setTimeout(function() {
+        resumeAutoSlide();
+    }, 5000); // Resume after 5 seconds
+    
+    currentImageIndex = (currentImageIndex + 1) % currentImages.length;
+    renderGallery();
+}
+
+// ========== Price Display ==========
+function updatePriceDisplay() {
+    if (!selectedColor || !selectedStorage) return;
+
+    var variant = variantsData.find(function(v) { return v.color_name === selectedColor && v.storage === selectedStorage; });
+    if (!variant) return;
+
+    // Price
+    document.getElementById('pdPrice').textContent = formatPrice(variant.price) + ' đ';
+
+    // Original price
+    var origEl = document.getElementById('pdOriginalPrice');
+    if (variant.original_price > variant.price) {
+        origEl.textContent = formatPrice(variant.original_price) + ' đ';
+        origEl.style.display = '';
+    } else {
+        origEl.style.display = 'none';
+    }
+
+    // SKU
+    document.getElementById('pdSku').textContent = variant.sku || '-';
+
+    // Installment calculation
+    var installEl = document.getElementById('pdInstallment');
+    if (variant.price > 0) {
+        var monthly = Math.round(variant.price / 6);
+        installEl.textContent = 'Trả góp 0% thẻ TD/CTTC chỉ từ ' + formatPrice(monthly) + ' đ x 6 tháng >';
+    } else {
+        installEl.textContent = '';
+    }
+}
+
+// ========== Bottom Tabs (color minis + spec icon) ==========
+function renderBottomTabs() {
+    var container = document.getElementById('pdBottomTabs');
+    if (!container) return;
+
+    var html = '';
+
+    // Color tabs with first image
+    var colorBtns = document.querySelectorAll('.pd-color-btn');
+    colorBtns.forEach(function(btn) {
+        var sku = btn.dataset.sku;
+        var color = btn.dataset.color;
+        var imgData = colorImagesData[sku];
+        var thumbUrl = (imgData && imgData.images.length > 0) ? imgData.images[0] : '';
+        var displayName = (imgData && imgData.color_name) ? imgData.color_name : color;
+
+        html += '<div class="pd-bottom-tab' + (color === selectedColor ? ' active' : '') + '" data-color="' + color + '" onclick="selectColorByName(\'' + color.replace(/'/g, "\\'") + '\')">';
+        html += '<div class="pd-bottom-tab-icon">';
+        if (thumbUrl) html += '<img src="' + thumbUrl + '" alt="">';
+        html += '</div>';
+        html += '<div class="pd-bottom-tab-label">' + displayName + '</div>';
+        html += '</div>';
+    });
+
+    // Spec tab
+    if (specData) {
+        html += '<div class="pd-bottom-tab" onclick="scrollToSpec()">';
+        html += '<div class="pd-bottom-tab-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg></div>';
+        html += '<div class="pd-bottom-tab-label">Thông số kỹ thuật</div>';
+        html += '</div>';
+    }
+
+    // Product info tab
+    html += '<div class="pd-bottom-tab" onclick="scrollToDescription()">';
+    html += '<div class="pd-bottom-tab-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>';
+    html += '<div class="pd-bottom-tab-label">Thông tin sản phẩm</div>';
+    html += '</div>';
+
+    // Gallery tab
+    html += '<div class="pd-bottom-tab" onclick="openGallery()">';
+    html += '<div class="pd-bottom-tab-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>';
+    html += '<div class="pd-bottom-tab-label">Xem chi tiết ảnh</div>';
+    html += '</div>';
+
+    container.innerHTML = html;
+}
+
+function selectColorByName(colorName) {
+    var btn = document.querySelector('.pd-color-btn[data-color="' + colorName + '"]');
+    if (btn) selectColor(btn);
+}
+
+function scrollToSpec() {
+    var el = document.getElementById('pdSpecSection');
+    if (el) {
+        el.style.display = 'block';
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function scrollToDescription() {
+    var el = document.getElementById('pdDescSection');
+    if (el) {
+        el.style.display = 'block';
+        var content = document.getElementById('pdDescContent');
+        if (content && !content.innerHTML.trim()) {
+            var desc = '{{ product.description|escapejs }}';
+            content.textContent = desc || 'Chưa có thông tin sản phẩm.';
+        }
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+// ========== Gallery Lightbox ==========
+var galleryImages = [];
+var galleryIndex = 0;
+var galleryCurrentSku = null;
+
+function openGallery() {
+    var overlay = document.getElementById('pdGalleryOverlay');
+    if (!overlay) return;
+
+    // Build color tabs
+    buildGalleryColorTabs();
+
+    // Use current selected color
+    var activeBtn = document.querySelector('.pd-color-btn.selected');
+    if (activeBtn) {
+        galleryCurrentSku = activeBtn.dataset.sku;
+    } else {
+        var firstSku = Object.keys(colorImagesData)[0];
+        galleryCurrentSku = firstSku || null;
+    }
+
+    loadGalleryColor(galleryCurrentSku);
+    overlay.classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function buildGalleryColorTabs() {
+    var container = document.getElementById('pdGalleryColorTabs');
+    if (!container) return;
+    var html = '';
+    var colorBtns = document.querySelectorAll('.pd-color-btn');
+    colorBtns.forEach(function(btn) {
+        var sku = btn.dataset.sku;
+        var imgData = colorImagesData[sku];
+        var displayName = (imgData && imgData.color_name) ? imgData.color_name : btn.dataset.color;
+        html += '<div class="pd-gallery-color-tab" data-sku="' + sku + '" onclick="switchGalleryColor(\'' + sku.replace(/'/g, "\\'") + '\')">' + displayName + '</div>';
+    });
+    html += '<button class="pd-gallery-close" onclick="closeGallery()">';
+    html += '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>';
+    html += '</button>';
+    container.innerHTML = html;
+}
+
+function switchGalleryColor(sku) {
+    galleryCurrentSku = sku;
+    loadGalleryColor(sku);
+}
+
+function loadGalleryColor(sku) {
+    var images = [];
+    if (sku && colorImagesData[sku]) {
+        images = colorImagesData[sku].images || [];
+    } else {
+        images = currentImages;
+    }
+    galleryImages = images;
+    galleryIndex = 0;
+
+    // Update active tab
+    var tabs = document.querySelectorAll('.pd-gallery-color-tab');
+    tabs.forEach(function(tab) {
+        tab.classList.toggle('active', tab.dataset.sku === sku);
+    });
+
+    updateGalleryMainImg();
+    buildGalleryThumbs();
+}
+
+function updateGalleryMainImg() {
+    var img = document.getElementById('pdGalleryMainImg');
+    if (!img) return;
+    if (galleryImages.length === 0) {
+        img.src = '';
+        img.alt = 'Chưa có ảnh';
+        return;
+    }
+    img.src = galleryImages[galleryIndex];
+    img.alt = 'Ảnh ' + (galleryIndex + 1);
+    var thumbs = document.querySelectorAll('.pd-gallery-thumb');
+    thumbs.forEach(function(t, i) {
+        t.classList.toggle('active', i === galleryIndex);
+    });
+}
+
+function buildGalleryThumbs() {
+    var container = document.getElementById('pdGalleryThumbs');
+    if (!container) return;
+    if (galleryImages.length === 0) {
+        container.innerHTML = '<p style="color:#94a3b8;font-size:13px;">Chưa có ảnh cho màu này.</p>';
+        return;
+    }
+    var html = '';
+    galleryImages.forEach(function(url, idx) {
+        html += '<div class="pd-gallery-thumb' + (idx === galleryIndex ? ' active' : '') + '" onclick="galleryGoTo(' + idx + ')">';
+        html += '<img src="' + url + '" alt="" draggable="false">';
+        html += '</div>';
+    });
+    container.innerHTML = html;
+}
+
+function galleryGoTo(idx) {
+    galleryIndex = idx;
+    updateGalleryMainImg();
+}
+
+function galleryPrev() {
+    if (galleryImages.length === 0) return;
+    galleryIndex = (galleryIndex - 1 + galleryImages.length) % galleryImages.length;
+    updateGalleryMainImg();
+}
+
+function galleryNext() {
+    if (galleryImages.length === 0) return;
+    galleryIndex = (galleryIndex + 1) % galleryImages.length;
+    updateGalleryMainImg();
+}
+
+function closeGallery() {
+    var overlay = document.getElementById('pdGalleryOverlay');
+    if (overlay) overlay.classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+function closeGalleryOverlay(e) {
+    if (e.target === document.getElementById('pdGalleryOverlay')) closeGallery();
+}
+
+// Keyboard nav for gallery
+document.addEventListener('keydown', function(e) {
+    var overlay = document.getElementById('pdGalleryOverlay');
+    if (!overlay || !overlay.classList.contains('show')) return;
+    if (e.key === 'ArrowLeft') galleryPrev();
+    else if (e.key === 'ArrowRight') galleryNext();
+    else if (e.key === 'Escape') closeGallery();
+});
+
+// ========== Specifications ==========
+function renderSpec(data) {
+    var section = document.getElementById('pdSpecSection');
+    var content = document.getElementById('pdSpecContent');
+    if (!section || !content || !data) return;
+
+    section.style.display = 'block';
+
+    var html = '';
+
+    // If data has "groups" key (structured)
+    if (data.groups && Array.isArray(data.groups)) {
+        data.groups.forEach(function(group) {
+            html += '<div class="pd-spec-group-title">' + (group.name || '') + '</div>';
+            html += '<table class="pd-spec-table">';
+            if (group.specs && Array.isArray(group.specs)) {
+                group.specs.forEach(function(spec) {
+                    html += '<tr><td>' + (spec.name || spec.key || '') + '</td><td>' + (spec.value || '') + '</td></tr>';
+                });
+            }
+            html += '</table>';
+        });
+    }
+    // If data is flat key-value
+    else if (typeof data === 'object') {
+        html += '<table class="pd-spec-table">';
+        for (var key in data) {
+            if (!data.hasOwnProperty(key)) continue;
+            var value = data[key];
+            if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                html += '</table>';
+                html += '<div class="pd-spec-group-title">' + key + '</div>';
+                html += '<table class="pd-spec-table">';
+                for (var k2 in value) {
+                    if (!value.hasOwnProperty(k2)) continue;
+                    html += '<tr><td>' + k2 + '</td><td>' + value[k2] + '</td></tr>';
+                }
+            } else {
+                html += '<tr><td>' + key + '</td><td>' + value + '</td></tr>';
+            }
+        }
+        html += '</table>';
+    }
+
+    content.innerHTML = html;
+}
+
+// ========== Utilities ==========
+function formatPrice(value) {
+    if (!value) return '0';
+    return parseInt(value).toLocaleString('vi-VN').replace(/,/g, '.');
+}
+
+function buyNow() {
+    alert('Chức năng mua hàng đang được phát triển!');
+}
+
+function addToCart() {
+    alert('Đã thêm vào giỏ hàng!');
 }
 </script>
 {% endblock %}

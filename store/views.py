@@ -104,7 +104,7 @@ def send_otp_view(request):
 
 def product_detail_view(request, product_id):
     """Trang chi tiết sản phẩm"""
-    from store.models import Product, ProductDetail, ProductVariant, FolderColorImage
+    from store.models import Product, ProductDetail, ProductVariant, FolderColorImage, ProductSpecification
     from django.shortcuts import get_object_or_404
     import json
     
@@ -114,14 +114,50 @@ def product_detail_view(request, product_id):
     product_detail, created = ProductDetail.objects.get_or_create(product=product)
     
     # Get variants
-    variants = product_detail.variants.all()
+    variants = product_detail.variants.all().order_by('storage', 'color_name')
     
-    # Get unique colors and storages
-    colors = variants.values('color_name', 'color_hex').distinct()
-    storages = variants.values('storage', 'price', 'stock_quantity', 'sku').distinct()
+    # Build unique colors (giữ thứ tự theo SKU)
+    seen_colors = {}
+    color_list = []
+    for v in variants:
+        if v.color_name not in seen_colors:
+            seen_colors[v.color_name] = True
+            color_list.append({
+                'color_name': v.color_name,
+                'color_hex': v.color_hex or '',
+                'sku': v.sku or '',
+            })
+    
+    # Build unique storages (giữ thứ tự)
+    seen_storages = {}
+    storage_list = []
+    for v in variants:
+        if v.storage not in seen_storages:
+            seen_storages[v.storage] = True
+            storage_list.append(v.storage)
     
     # First variant for default display
     first_variant = variants.first()
+    
+    # Get color images from FolderColorImage (theo brand)
+    # Group by SKU -> color_name -> list of image URLs
+    color_images = {}
+    if product.brand_id:
+        sku_list = list(set(v.sku for v in variants if v.sku))
+        folder_images = FolderColorImage.objects.filter(
+            brand_id=product.brand_id,
+            sku__in=sku_list
+        ).order_by('sku', 'order')
+        
+        for img in folder_images:
+            key = img.sku
+            if key not in color_images:
+                color_images[key] = {
+                    'color_name': img.color_name,
+                    'sku': img.sku,
+                    'images': []
+                }
+            color_images[key]['images'].append(img.image.url)
     
     # Convert to list for JSON (Decimal -> int để JSON serialize được)
     variants_list = []
@@ -132,18 +168,29 @@ def product_detail_view(request, product_id):
             'color_hex': v.color_hex or '',
             'storage': v.storage,
             'price': int(v.price) if v.price is not None else 0,
+            'original_price': int(v.original_price) if v.original_price is not None else 0,
+            'discount_percent': int(v.discount_percent) if v.discount_percent is not None else 0,
             'sku': v.sku or '',
             'stock_quantity': int(v.stock_quantity) if v.stock_quantity is not None else 0,
         })
-    variants_json = json.dumps(variants_list)
+    
+    # Get specifications
+    spec_data = None
+    try:
+        spec = ProductSpecification.objects.get(detail=product_detail)
+        spec_data = spec.spec_json
+    except ProductSpecification.DoesNotExist:
+        pass
     
     context = {
         'product': product,
         'product_detail': product_detail,
-        'variants': colors,
-        'storage_variants': storages,
+        'color_list': color_list,
+        'storage_list': storage_list,
         'first_variant': first_variant,
-        'variants_json': variants_json,
+        'variants_json': json.dumps(variants_list),
+        'color_images_json': json.dumps(color_images),
+        'spec_data_json': json.dumps(spec_data) if spec_data else 'null',
     }
     
     return render(request, 'store/product_detail.html', context)
