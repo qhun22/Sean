@@ -1608,7 +1608,7 @@ def get_product_detail(request):
     if not request.user.is_superuser:
         return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
     
-    from store.models import Product, ProductDetail, ProductVariant, FolderColorImage
+    from store.models import Product, ProductDetail, ProductVariant, FolderColorImage, ProductSpecification
     
     product_id = request.GET.get('product_id')
     
@@ -1661,6 +1661,15 @@ def get_product_detail(request):
                 skus_with_color.append({'sku': s, 'color_name': sku_to_color.get(s, '')})
                 existing_skus.add(s)
     
+    # Lấy thông số kỹ thuật nếu có
+    spec_data = None
+    if detail:
+        try:
+            spec = ProductSpecification.objects.get(detail=detail)
+            spec_data = spec.spec_json
+        except ProductSpecification.DoesNotExist:
+            pass
+    
     return JsonResponse({
         'success': True,
         'product_name': product.name,
@@ -1669,6 +1678,7 @@ def get_product_detail(request):
         'detail_id': detail_id,
         'variants': variants,
         'skus_with_color': skus_with_color,
+        'spec_data': spec_data,
     })
 
 # ==================== SKU Management ====================
@@ -1820,3 +1830,87 @@ def sku_delete(request):
         return JsonResponse({'success': False, 'message': 'SKU không tồn tại!'}, status=404)
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def product_specification_upload(request):
+    """Upload JSON file cho Thông số kỹ thuật sản phẩm"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+    
+    from store.models import ProductDetail, ProductSpecification
+    import json
+    
+    try:
+        detail_id = request.POST.get('detail_id')
+        json_file = request.FILES.get('json_file')
+        
+        if not detail_id or not json_file:
+            return JsonResponse({'success': False, 'message': 'Thiếu thông tin hoặc file!'}, status=400)
+        
+        # Validate file type
+        if not json_file.name.endswith('.json'):
+            return JsonResponse({'success': False, 'message': 'File phải có đuôi .json!'}, status=400)
+        
+        # Get ProductDetail
+        detail = ProductDetail.objects.get(id=detail_id)
+        
+        # Read and validate JSON
+        try:
+            file_content = json_file.read().decode('utf-8')
+            spec_data = json.loads(file_content)
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'message': 'File JSON không hợp lệ!'}, status=400)
+        except UnicodeDecodeError:
+            return JsonResponse({'success': False, 'message': 'Mã hóa file không hợp lệ! Hãy dùng UTF-8'}, status=400)
+        
+        # Create or update specification
+        spec, created = ProductSpecification.objects.get_or_create(detail=detail)
+        spec.spec_json = spec_data
+        spec.save()
+        
+        message = 'Tải file thông số kỹ thuật thành công!'
+        return JsonResponse({
+            'success': True,
+            'message': message,
+            'spec_id': spec.id,
+            'spec_data': spec_data
+        })
+    
+    except ProductDetail.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Chi tiết sản phẩm không tồn tại!'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Lỗi: {str(e)}'}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def product_specification_delete(request):
+    """Xóa Thông số kỹ thuật sản phẩm"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+    
+    from store.models import ProductDetail, ProductSpecification
+    
+    try:
+        detail_id = request.POST.get('detail_id')
+        if not detail_id:
+            return JsonResponse({'success': False, 'message': 'Thiếu thông tin!'}, status=400)
+        
+        detail = ProductDetail.objects.get(id=detail_id)
+        
+        try:
+            spec = ProductSpecification.objects.get(detail=detail)
+            spec.delete()
+            return JsonResponse({'success': True, 'message': 'Đã xóa thông số kỹ thuật!'})
+        except ProductSpecification.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Chưa có thông số kỹ thuật nào!'}, status=404)
+    
+    except ProductDetail.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Chi tiết sản phẩm không tồn tại!'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Lỗi: {str(e)}'}, status=500)
+

@@ -248,6 +248,24 @@ class ProductVariant(models.Model):
         return f"{self.detail.product.name} - {self.color_name} - {self.storage}"
 
 
+class ProductSpecification(models.Model):
+    """Thông số kỹ thuật sản phẩm - lưu JSON"""
+    detail = models.OneToOneField(ProductDetail, on_delete=models.CASCADE, related_name='specification', verbose_name='Chi tiết sản phẩm')
+    
+    # Lưu JSON dạng text
+    spec_json = models.JSONField(default=dict, blank=True, verbose_name='Thông số kỹ thuật (JSON)')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Thông số kỹ thuật sản phẩm'
+        verbose_name_plural = 'Thông số kỹ thuật sản phẩm'
+    
+    def __str__(self):
+        return f"Specs: {self.detail.product.name}"
+
+
 class ProductImage(models.Model):
     """Hình ảnh sản phẩm"""
     IMAGE_TYPES = [

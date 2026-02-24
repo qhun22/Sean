@@ -43,6 +43,8 @@ urlpatterns = [
     path('products/detail/get/', views.get_product_detail, name='get_product_detail'),
     path('products/variant/save/', views.product_variant_save, name='product_variant_save'),
     path('products/variant/delete/', views.product_variant_delete, name='product_variant_delete'),
+    path('products/specification/upload/', views.product_specification_upload, name='product_specification_upload'),
+    path('products/specification/delete/', views.product_specification_delete, name='product_specification_delete'),
     path('products/image/upload/', views.product_image_upload, name='product_image_upload'),
     path('products/image/delete/', views.product_image_delete, name='product_image_delete'),
     # Product image folders management

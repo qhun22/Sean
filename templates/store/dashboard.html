@@ -1034,6 +1034,8 @@
     window.productAddUrl = '{% url "store:product_add" %}';
     window.productEditUrl = '{% url "store:product_edit" %}';
     window.productDeleteUrl = '{% url "store:product_delete" %}';
+    window.specUploadUrl = '{% url "store:product_specification_upload" %}';
+    window.specDeleteUrl = '{% url "store:product_specification_delete" %}';
 </script>
 <script src="{% static 'js/dashboard.js' %}"></script>
 <script src="{% static 'js/product.js' %}"></script>
@@ -1050,11 +1052,11 @@
         <!-- Scrollable Content (chỉ phần giữa cuộn) -->
         <div style="padding: 20px 24px; overflow-y: auto; flex: 1; min-height: 0; scrollbar-width: thin; scrollbar-color: #c1c1c1 #f8fafc;">
             
-            <!-- Tên sản phẩm | Số lượng còn trong kho (hai cột giống ảnh) -->
-            <div style="margin-bottom: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start;">
+            <!-- Tên sản phẩm | Số lượng còn trong kho -->
+            <div style="margin-bottom: 24px; padding: 16px; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start;">
                 <div>
                     <h4 style="margin: 0 0 8px; font-size: 16px; font-weight: 600; color: #1e293b;">Tên sản phẩm</h4>
-                    <p id="detailProductName" style="margin: 0; font-size: 16px; color: #1e293b; font-weight: 500;"></p>
+                    <p id="detailProductName" style="margin: 0; font-size: 16px; color: #1e293b; font-weight: 400;"></p>
                 </div>
                 <div>
                     <h4 style="margin: 0 0 8px; font-size: 16px; font-weight: 600; color: #1e293b;">Số lượng còn trong kho</h4>
@@ -1062,8 +1064,21 @@
                 </div>
             </div>
             
+            <!-- Thông số kỹ thuật sản phẩm -->
+            <div style="margin-bottom: 24px; padding: 16px; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0;">
+                <h4 style="margin: 0 0 14px; font-size: 16px; font-weight: 600; color: #1e293b;">Thông số kỹ thuật</h4>
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <input type="file" id="specJsonFileInput" accept=".json" style="display: none;" onchange="handleSpecFileChange(event)">
+                    <button type="button" onclick="document.getElementById('specJsonFileInput').click()" style="padding: 8px 14px; background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-size: 13px; font-family: 'Signika', sans-serif; font-weight: 500; transition: all 0.2s;">Chọn file JSON</button>
+                    <button type="button" onclick="uploadSpecification()" style="padding: 8px 14px; background: #22c55e; border: 2px solid #A9CCF0; color: white; border-radius: 6px; cursor: pointer; font-size: 13px; font-family: 'Signika', sans-serif; font-weight: 500; transition: all 0.2s;">Tải file lên</button>
+                    <button type="button" onclick="deleteSpecification()" style="padding: 8px 14px; background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; border-radius: 6px; cursor: pointer; font-size: 13px; font-family: 'Signika', sans-serif; font-weight: 500; transition: all 0.2s;">Xóa file JSON</button>
+                    <span id="specFileName" style="font-size: 12px; color: #64748b; font-family: 'Signika', sans-serif;"></span>
+                </div>
+                <div id="specStatusLabel" style="margin-top: 8px; font-size: 11px; color: #9ca3af;">Bạn chưa tải file JSON nào.</div>
+            </div>
+            
             <!-- Dung lượng & màu: layout theo ảnh - hàng 1: Giá gốc | Giá sau giảm; hàng 2: Chọn màu | Dung lượng, % Giảm, Thêm -->
-            <div style="margin-bottom: 24px;">
+            <div style="margin-bottom: 24px; padding: 16px; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0;">
                 <h4 style="margin: 0 0 14px; font-size: 16px; font-weight: 600; color: #334155;">Dung lượng &amp; màu sản phẩm</h4>
                 <style>
                     #productDetailModalBox .variant-form-field { width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif; }
@@ -1109,7 +1124,19 @@
                         </div>
                     </div>
                 </div>
-                <p style="margin-top: 10px; font-size: 16px; font-weight: 600; color: #334155;">Danh sách đã thêm</p>
+            </div>
+
+            <!-- Nút toggle danh sách đã thêm -->
+            <div style="margin-bottom: 12px;">
+                <button type="button" id="toggleVariantsListBtn" onclick="toggleVariantsList()" style="padding: 9px 16px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: 'Signika', sans-serif; font-weight: 500; display: flex; align-items: center; gap: 6px; transition: all 0.2s;">
+                    <svg id="toggleVariantsIcon" width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="transition: transform 0.2s;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    <span id="toggleVariantsText">Xem danh sách đã thêm</span>
+                </button>
+            </div>
+            
+            <!-- Danh sách đã thêm (mặc định ẩn) -->
+            <div id="variantsListBox" style="display: none; margin-bottom: 24px; padding: 16px; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0;">
+                <h4 style="margin: 0 0 14px; font-size: 16px; font-weight: 600; color: #334155;">Danh sách đã thêm</h4>
                 <style>
                     .variant-group { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(59,130,246,0.08); }
                     .variant-group .vg-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; align-items: start; }
