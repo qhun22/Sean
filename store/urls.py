@@ -45,6 +45,19 @@ urlpatterns = [
     path('products/variant/delete/', views.product_variant_delete, name='product_variant_delete'),
     path('products/image/upload/', views.product_image_upload, name='product_image_upload'),
     path('products/image/delete/', views.product_image_delete, name='product_image_delete'),
+    # Product image folders management
+    path('product-images/folders/list/', views.image_folder_list, name='image_folder_list'),
+    path('product-images/folders/create/', views.image_folder_create, name='image_folder_create'),
+    path('product-images/color/list/', views.folder_color_image_list, name='folder_color_image_list'),
+    path('product-images/color/upload/', views.folder_color_image_upload, name='folder_color_image_upload'),
+    path('product-images/color/delete/', views.folder_color_image_delete, name='folder_color_image_delete'),
+    # Product List JSON
+    path('products/list/json/', views.product_list_json, name='product_list_json'),
+    # SKU Management
+    path('products/sku/list/', views.sku_list, name='sku_list'),
+    path('products/sku/add/', views.sku_add, name='sku_add'),
+    path('products/sku/edit/', views.sku_edit, name='sku_edit'),
+    path('products/sku/delete/', views.sku_delete, name='sku_delete'),
     # Quen mat khau
     path('forgot-password/', views.forgot_password_view, name='forgot_password'),
     path('send-otp-forgot-password/', views.send_otp_forgot_password_view, name='send_otp_forgot_password'),

@@ -49,6 +49,10 @@
         list-style: none;
         padding: 0;
         margin: 0;
+        flex: 1;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
     }
     
     .qh-sidebar-item {
@@ -80,6 +84,39 @@
         flex-shrink: 0;
     }
     
+    .qh-sidebar-pagination {
+        padding: 12px 16px;
+        border-top: 1px solid var(--qh-border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .qh-sidebar-pagination button {
+        min-width: 32px;
+        padding: 6px 10px;
+        border: 1px solid var(--qh-border);
+        background: var(--qh-white);
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        font-family: 'Signika', sans-serif;
+        color: var(--qh-text);
+    }
+    .qh-sidebar-pagination button:hover:not(:disabled) {
+        background: #e2e8f0;
+    }
+    .qh-sidebar-pagination button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .qh-sidebar-pagination button.active-page {
+        background: var(--qh-primary);
+        color: white;
+        border-color: var(--qh-primary);
+    }
+    
     .qh-sidebar-footer {
         padding: 16px 20px;
         border-top: 1px solid var(--qh-border);
@@ -91,6 +128,8 @@
         flex: 1;
         padding: 24px;
         overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #c1c1c1 #f8fafc;
     }
     
     .qh-content-header {
@@ -259,7 +298,7 @@
         <div class="qh-sidebar-header">
             <div class="qh-sidebar-title">TRANG QUẢN TRỊ</div>
         </div>
-        <ul class="qh-sidebar-menu">
+        <ul class="qh-sidebar-menu" id="qhSidebarMenu">
             <li class="qh-sidebar-item active" data-section="stats" onclick="window.location.href='?section=stats'">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
@@ -284,7 +323,20 @@
                 </svg>
                 Treo sản phẩm
             </li>
+            <li class="qh-sidebar-item" data-section="product-images" onclick="window.location.href='?section=product-images'">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+                Ảnh sản phẩm
+            </li>
+            <li class="qh-sidebar-item" data-section="sku" onclick="window.location.href='?section=sku'">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                </svg>
+                SKU
+            </li>
         </ul>
+        <div class="qh-sidebar-pagination" id="qhSidebarPagination" style="display: none;"></div>
     </div>
     
     <!-- Main Content -->
@@ -454,21 +506,19 @@
             </div>
             
             {% if users_paginated.has_other_pages %}
-            <div style="display: flex; justify-content: center; gap: 8px; margin-top: 24px;">
+            <div style="display: flex; justify-content: center; gap: 8px; margin-top: 24px; flex-wrap: wrap;">
                 {% if users_paginated.has_previous %}
-                <a href="?section=users&user_page={{ users_paginated.previous_page_number }}" style="padding: 8px 14px; background: #f1f5f9; color: #334155; border-radius: 6px; text-decoration: none; font-size: 13px;">&laquo; Trước</a>
+                <a href="?section=users&amp;user_page={{ users_paginated.previous_page_number }}{% if request.GET.user_search %}&amp;user_search={{ request.GET.user_search|urlencode }}{% endif %}" style="padding: 8px 14px; background: #f1f5f9; color: #334155; border-radius: 6px; text-decoration: none; font-size: 13px;">&laquo; Trước</a>
                 {% endif %}
-                
                 {% for num in users_paginated.paginator.page_range %}
                     {% if users_paginated.number == num %}
                     <span style="padding: 8px 14px; background: #3b82f6; color: white; border-radius: 6px; text-decoration: none; font-size: 13px;">{{ num }}</span>
                     {% elif num > users_paginated.number|add:'-2' and num < users_paginated.number|add:'2' %}
-                    <a href="?section=users&user_page={{ num }}" style="padding: 8px 14px; background: #f1f5f9; color: #334155; border-radius: 6px; text-decoration: none; font-size: 13px;">{{ num }}</a>
+                    <a href="?section=users&amp;user_page={{ num }}{% if request.GET.user_search %}&amp;user_search={{ request.GET.user_search|urlencode }}{% endif %}" style="padding: 8px 14px; background: #f1f5f9; color: #334155; border-radius: 6px; text-decoration: none; font-size: 13px;">{{ num }}</a>
                     {% endif %}
                 {% endfor %}
-                
                 {% if users_paginated.has_next %}
-                <a href="?section=users&user_page={{ users_paginated.next_page_number }}" style="padding: 8px 14px; background: #f1f5f9; color: #334155; border-radius: 6px; text-decoration: none; font-size: 13px;">Sau &raquo;</a>
+                <a href="?section=users&amp;user_page={{ users_paginated.next_page_number }}{% if request.GET.user_search %}&amp;user_search={{ request.GET.user_search|urlencode }}{% endif %}" style="padding: 8px 14px; background: #f1f5f9; color: #334155; border-radius: 6px; text-decoration: none; font-size: 13px;">Sau &raquo;</a>
                 {% endif %}
             </div>
             {% endif %}
@@ -528,21 +578,19 @@
             </div>
             
             {% if brands_paginated.has_other_pages %}
-            <div style="display: flex; justify-content: center; gap: 8px; margin-top: 24px;">
+            <div style="display: flex; justify-content: center; gap: 8px; margin-top: 24px; flex-wrap: wrap;">
                 {% if brands_paginated.has_previous %}
-                <a href="?section=brands&brand_page={{ brands_paginated.previous_page_number }}" style="padding: 8px 14px; background: #f1f5f9; color: #334155; border-radius: 6px; text-decoration: none; font-size: 13px;">&laquo; Trước</a>
+                <a href="?section=brands&amp;brand_page={{ brands_paginated.previous_page_number }}{% if request.GET.brand_search %}&amp;brand_search={{ request.GET.brand_search|urlencode }}{% endif %}" style="padding: 8px 14px; background: #f1f5f9; color: #334155; border-radius: 6px; text-decoration: none; font-size: 13px;">&laquo; Trước</a>
                 {% endif %}
-                
                 {% for num in brands_paginated.paginator.page_range %}
                     {% if brands_paginated.number == num %}
                     <span style="padding: 8px 14px; background: #3b82f6; color: white; border-radius: 6px; text-decoration: none; font-size: 13px;">{{ num }}</span>
                     {% elif num > brands_paginated.number|add:'-2' and num < brands_paginated.number|add:'2' %}
-                    <a href="?section=brands&brand_page={{ num }}" style="padding: 8px 14px; background: #f1f5f9; color: #334155; border-radius: 6px; text-decoration: none; font-size: 13px;">{{ num }}</a>
+                    <a href="?section=brands&amp;brand_page={{ num }}{% if request.GET.brand_search %}&amp;brand_search={{ request.GET.brand_search|urlencode }}{% endif %}" style="padding: 8px 14px; background: #f1f5f9; color: #334155; border-radius: 6px; text-decoration: none; font-size: 13px;">{{ num }}</a>
                     {% endif %}
                 {% endfor %}
-                
                 {% if brands_paginated.has_next %}
-                <a href="?section=brands&brand_page={{ brands_paginated.next_page_number }}" style="padding: 8px 14px; background: #f1f5f9; color: #334155; border-radius: 6px; text-decoration: none; font-size: 13px;">Sau &raquo;</a>
+                <a href="?section=brands&amp;brand_page={{ brands_paginated.next_page_number }}{% if request.GET.brand_search %}&amp;brand_search={{ request.GET.brand_search|urlencode }}{% endif %}" style="padding: 8px 14px; background: #f1f5f9; color: #334155; border-radius: 6px; text-decoration: none; font-size: 13px;">Sau &raquo;</a>
                 {% endif %}
             </div>
             {% endif %}
@@ -559,7 +607,6 @@
                     <button onclick="resetProductSearch()" style="padding: 10px 16px; background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif;">Reset</button>
                 </div>
                 <button type="button" onclick="openAddProductModal(); return false;" style="background: #3b82f6; color: white; border: none; border-radius: 8px; padding: 10px 16px; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; font-family: 'Signika', sans-serif;">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     Thêm sản phẩm
                 </button>
             </div>
@@ -595,8 +642,8 @@
                             <td style="padding: 12px 16px; font-size: 14px; font-weight: 500;">{{ product.name }}</td>
                             <td style="padding: 12px 16px; font-size: 14px;">{% if product.brand %}{{ product.brand.name }}{% else %}-{% endif %}</td>
                             <td style="padding: 12px 16px; font-size: 14px;">{% if product.stock > 0 %}{{ product.stock }}{% else %}<span style="color: #dc2626;">Hết hàng</span>{% endif %}</td>
-                            <td style="padding: 12px 16px; font-size: 14px;">{% if product.detail.original_price %}{{ product.detail.original_price|format_price }}đ{% else %}-{% endif %}</td>
-                            <td style="padding: 12px 16px; font-size: 14px;">{% if product.detail.discount_percent > 0 %}{{ product.detail.discount_percent }}%{% else %}-{% endif %}</td>
+                            <td style="padding: 12px 16px; font-size: 14px;">{% if product.detail.summary_original_price %}{{ product.detail.summary_original_price|format_price }}đ{% else %}-{% endif %}</td>
+                            <td style="padding: 12px 16px; font-size: 14px;">{% if product.detail.summary_discount_percent > 0 %}{{ product.detail.summary_discount_percent }}%{% else %}-{% endif %}</td>
                             <td style="padding: 12px 16px; font-size: 14px; color: #dc2626; font-weight: 600;">{% if product.detail.discounted_price %}{{ product.detail.discounted_price|format_price }}đ{% else %}-{% endif %}</td>
                             <td style="padding: 12px 16px;">
                                 <div style="display: flex; gap: 6px;">
@@ -618,27 +665,23 @@
             </div>
             
             {% if products_paginated.has_other_pages %}
-            <div style="display: flex; justify-content: center; gap: 8px; margin-top: 24px;">
+            <div style="display: flex; justify-content: center; gap: 8px; margin-top: 24px; flex-wrap: wrap;">
                 {% if products_paginated.has_previous %}
-                <a href="?section=products&product_page={{ products_paginated.previous_page_number }}" style="padding: 8px 14px; background: #f1f5f9; color: #334155; border-radius: 6px; text-decoration: none; font-size: 13px;">&laquo; Trước</a>
+                <a href="?section=products&amp;product_page={{ products_paginated.previous_page_number }}{% if request.GET.product_search %}&amp;product_search={{ request.GET.product_search|urlencode }}{% endif %}" style="padding: 8px 14px; background: #f1f5f9; color: #334155; border-radius: 6px; text-decoration: none; font-size: 13px;">&laquo; Trước</a>
                 {% endif %}
-                
                 {% for num in products_paginated.paginator.page_range %}
                     {% if products_paginated.number == num %}
                     <span style="padding: 8px 14px; background: #3b82f6; color: white; border-radius: 6px; text-decoration: none; font-size: 13px;">{{ num }}</span>
                     {% elif num > products_paginated.number|add:'-2' and num < products_paginated.number|add:'2' %}
-                    <a href="?section=products&product_page={{ num }}" style="padding: 8px 14px; background: #f1f5f9; color: #334155; border-radius: 6px; text-decoration: none; font-size: 13px;">{{ num }}</a>
+                    <a href="?section=products&amp;product_page={{ num }}{% if request.GET.product_search %}&amp;product_search={{ request.GET.product_search|urlencode }}{% endif %}" style="padding: 8px 14px; background: #f1f5f9; color: #334155; border-radius: 6px; text-decoration: none; font-size: 13px;">{{ num }}</a>
                     {% endif %}
                 {% endfor %}
-                
                 {% if products_paginated.has_next %}
-                <a href="?section=products&product_page={{ products_paginated.next_page_number }}" style="padding: 8px 14px; background: #f1f5f9; color: #334155; border-radius: 6px; text-decoration: none; font-size: 13px;">Sau &raquo;</a>
+                <a href="?section=products&amp;product_page={{ products_paginated.next_page_number }}{% if request.GET.product_search %}&amp;product_search={{ request.GET.product_search|urlencode }}{% endif %}" style="padding: 8px 14px; background: #f1f5f9; color: #334155; border-radius: 6px; text-decoration: none; font-size: 13px;">Sau &raquo;</a>
                 {% endif %}
             </div>
             {% endif %}
         </div>
-    </div>
-</div>
 
 <!-- Add Brand Modal -->
 <div id="addBrandModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
@@ -681,6 +724,176 @@
     </div>
 </div>
 
+        <!-- Product Images Section -->
+        <div id="product-images-section" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <div style="position: relative;">
+                        <input type="text" id="imageFolderSearchInput" placeholder="Tìm theo tên thư mục ảnh..." onkeydown="if(event.key==='Enter')searchImageFolders()" style="width: 260px; padding: 10px 16px 10px 40px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; font-family: 'Signika', sans-serif; box-sizing: border-box;">
+                        <svg style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: #94a3b8;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </div>
+                    <button type="button" onclick="resetImageFolderSearch()" style="padding: 10px 16px; background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif;">Reset</button>
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button type="button" onclick="openAddImageFolderModal(); return false;" style="background: #0f172a; color: #e5e7eb; border: none; border-radius: 8px; padding: 10px 16px; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; font-family: 'Signika', sans-serif;">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h16v4H4zM4 12h8v8H4zM16 12h4v8h-4z"/></svg>
+                        Thêm thư mục chứa ảnh
+                    </button>
+                    <button type="button" onclick="openAddColorImageModal(); return false;" style="background: #3b82f6; color: white; border: none; border-radius: 8px; padding: 10px 16px; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; font-family: 'Signika', sans-serif;">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        Thêm màu - Ảnh sản phẩm
+                    </button>
+                </div>
+            </div>
+
+            <!-- Table: STT | Thư mục ảnh | Màu sản phẩm | SKU | Hành động -->
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <thead>
+                        <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                            <th style="padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b;">STT</th>
+                            <th style="padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b;">Thư mục ảnh</th>
+                            <th style="padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b;">Màu sản phẩm</th>
+                            <th style="padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b;">SKU</th>
+                            <th style="padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b;">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="imageFolderTableBody">
+                        <tr>
+                            <td colspan="5" style="padding: 40px; text-align: center; color: #64748b; font-size: 14px; font-family: 'Signika', sans-serif;">
+                                Chưa có màu ảnh nào.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Preview grid cho ảnh của 1 màu (trong modal) sẽ render bằng JS -->
+        </div>
+        
+        <!-- Modal: Thêm thư mục chứa ảnh -->
+        <div id="addImageFolderModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+            <div style="background: white; border-radius: 12px; width: 420px; max-width: 90%; max-height: 90vh; display: flex; flex-direction: column;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #e2e8f0; flex-shrink: 0;">
+                    <h3 style="font-size: 18px; font-weight: 600; font-family: 'Signika', sans-serif; margin: 0;">Thêm thư mục chứa ảnh</h3>
+                </div>
+                <div style="padding: 20px 22px; overflow-y: auto; flex: 1; scrollbar-width: thin; scrollbar-color: #c1c1c1 #f8fafc;">
+                    <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Nhập tên thư mục *</label>
+                    <input type="text" id="imageFolderNameInput" placeholder="Ví dụ: iphone-17" style="width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+                    <p style="margin-top: 8px; font-size: 12px; color: #64748b; font-family: 'Signika', sans-serif;">Thư mục sẽ được tạo bên trong <strong>media/products/YYYY/MM/</strong>.</p>
+                </div>
+                <div style="padding: 14px 20px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 8px; flex-shrink: 0;">
+                    <button type="button" onclick="closeAddImageFolderModal()" style="padding: 9px 18px; background: #f1f5f9; color: #334155; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: 'Signika', sans-serif;">Hủy</button>
+                    <button type="button" onclick="saveImageFolder()" style="padding: 9px 20px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: 'Signika', sans-serif; font-weight: 500;">Lưu</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Thêm màu - Ảnh sản phẩm -->
+        <div id="addColorImageModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+            <div style="background: white; border-radius: 12px; width: 620px; max-width: 94%; max-height: 92vh; display: flex; flex-direction: column;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 22px; border-bottom: 1px solid #e2e8f0; flex-shrink: 0;">
+                    <h3 style="font-size: 18px; font-weight: 600; font-family: 'Signika', sans-serif; margin: 0;">Thêm màu - Ảnh sản phẩm</h3>
+                    <button type="button" onclick="closeAddColorImageModal()" style="padding: 6px 12px; background: #f1f5f9; color: #334155; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-family: 'Signika', sans-serif;">Đóng</button>
+                </div>
+                <div style="padding: 18px 22px 4px; overflow-y: auto; flex: 1; scrollbar-width: thin; scrollbar-color: #c1c1c1 #f8fafc;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 16px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Chọn thư mục *</label>
+                            <select id="colorImageFolderSelect" style="width: 100%; padding: 9px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+                                <option value="">-- Chọn thư mục --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Chọn Hãng *</label>
+                            <select id="colorImageBrandSelect" style="width: 100%; padding: 9px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+                                <option value="">-- Chọn hãng --</option>
+                                {% for brand in brands %}
+                                <option value="{{ brand.id }}">{{ brand.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Chọn SKU *</label>
+                            <select id="colorImageSkuSelect" style="width: 100%; padding: 9px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+                                <option value="">-- Chọn SKU --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Nhập tên màu sắc *</label>
+                            <input type="text" id="colorImageNameInput" placeholder="Ví dụ: Xanh dương" style="width: 100%; padding: 9px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 14px;">
+                        <label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Upload ảnh</label>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <input type="file" id="colorImageFileInput" accept="image/*" style="display: none;" onchange="handleColorImageFileChange(event)">
+                            <button type="button" onclick="document.getElementById('colorImageFileInput').click()" style="padding: 9px 16px; background: #f1f5f9; color: #334155; border: 1px dashed #cbd5f5; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: 'Signika', sans-serif;">Chọn ảnh</button>
+                            <button type="button" onclick="uploadColorImage()" style="padding: 9px 16px; background: #22c55e; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: 'Signika', sans-serif; font-weight: 500;">Tải ảnh lên</button>
+                            <span id="colorImageFileName" style="font-size: 13px; color: #64748b; font-family: 'Signika', sans-serif;"></span>
+                        </div>
+                        <p style="margin-top: 6px; font-size: 12px; color: #94a3b8; font-family: 'Signika', sans-serif;">Mỗi lần bấm \"Tải ảnh lên\" sẽ upload 1 ảnh, hiển thị dạng ô vuông nhỏ bên dưới.</p>
+                    </div>
+                    <div id="colorImagePreviewGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; margin-top: 10px;">
+                        <!-- Thumbnail ảnh (JS render) -->
+                    </div>
+                </div>
+                <div style="padding: 14px 22px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px; flex-shrink: 0;">
+                    <button type="button" onclick="closeAddColorImageModal()" style="padding: 10px 20px; background: #f1f5f9; color: #334155; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif;">Đóng</button>
+                    <button type="button" onclick="saveColorImageModal()" style="padding: 10px 24px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif; font-weight: 500;">Lưu</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SKU Section -->
+        <div id="sku-section" style="display: none;">
+            <!-- Search & Filter -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <!-- Search by SKU -->
+                    <div style="position: relative;">
+                        <input type="text" id="skuSearchInput" placeholder="Tìm theo tên SKU..." onkeydown="if(event.key==='Enter')searchSku()" style="width: 220px; padding: 10px 16px 10px 40px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; font-family: 'Signika', sans-serif; box-sizing: border-box;">
+                        <svg style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: #94a3b8;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </div>
+                    <!-- Filter by Brand -->
+                    <select id="skuBrandFilter" onchange="filterSkuByBrand()" style="padding: 10px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; font-family: 'Signika', sans-serif; min-width: 150px; cursor: pointer;">
+                        <option value="">Tất cả hãng</option>
+                        {% for brand in brands %}
+                        <option value="{{ brand.id }}">{{ brand.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <button onclick="resetSkuSearch()" style="padding: 10px 16px; background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif;">Reset</button>
+                </div>
+                <button type="button" onclick="openAddSkuModal()" style="background: #3b82f6; color: white; border: none; border-radius: 8px; padding: 10px 16px; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; font-family: 'Signika', sans-serif;">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    Thêm SKU
+                </button>
+            </div>
+            
+            <!-- SKU Table -->
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <thead>
+                        <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                            <th style="padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b;">STT</th>
+                            <th style="padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b;">SKU</th>
+                            <th style="padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b;">Sản phẩm</th>
+                            <th style="padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b;">Hãng</th>
+                            <th style="padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b;">Ngày thêm</th>
+                            <th style="padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b;">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="skuTableBody">
+                        <tr>
+                            <td colspan="6" style="padding: 40px; text-align: center; color: #64748b; font-size: 14px;">
+                                CHƯA CÓ SKU NÀO !
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
 <!-- Add Product Modal -->
 <div id="addProductModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
     <div style="background: white; border-radius: 12px; width: 520px; max-width: 90%; max-height: 90vh; display: flex; flex-direction: column;">
@@ -690,7 +903,7 @@
             <button type="button" onclick="closeAddProductModal()" style="padding: 8px 16px; background: #f1f5f9; color: #334155; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif;">Đóng</button>
         </div>
         <!-- Scrollable Content -->
-        <div style="padding: 20px 24px; overflow-y: auto; flex: 1;">
+        <div style="padding: 20px 24px; overflow-y: auto; flex: 1; scrollbar-width: thin; scrollbar-color: #c1c1c1 #f8fafc;">
         <form id="addProductForm">
             <div style="margin-bottom: 16px;">
                 <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Chọn hãng </label>
@@ -737,7 +950,7 @@
             <button type="button" onclick="closeEditProductModal()" style="padding: 8px 16px; background: #f1f5f9; color: #334155; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif;">Đóng</button>
         </div>
         <!-- Scrollable Content -->
-        <div style="padding: 20px 24px; overflow-y: auto; flex: 1;">
+        <div style="padding: 20px 24px; overflow-y: auto; flex: 1; scrollbar-width: thin; scrollbar-color: #c1c1c1 #f8fafc;">
         <form id="editProductForm">
             <input type="hidden" name="product_id" id="editProductId">
             <div style="margin-bottom: 16px;">
@@ -828,108 +1041,162 @@
 
 <!-- Product Detail Modal -->
 <div id="productDetailModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
-    <div style="background: white; border-radius: 12px; width: 700px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+    <div id="productDetailModalBox" style="background: white; border-radius: 12px; width: 700px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;">
         <!-- Sticky Header -->
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #e2e8f0; flex-shrink: 0;">
             <h3 style="font-size: 18px; font-weight: 600; font-family: 'Signika', sans-serif; margin: 0;">Chi tiết sản phẩm</h3>
             <button type="button" onclick="closeProductDetailModal()" style="padding: 8px 16px; background: #f1f5f9; color: #334155; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif;">Đóng</button>
         </div>
-        <!-- Scrollable Content -->
-        <div style="padding: 20px 24px; overflow-y: auto; flex: 1;">
+        <!-- Scrollable Content (chỉ phần giữa cuộn) -->
+        <div style="padding: 20px 24px; overflow-y: auto; flex: 1; min-height: 0; scrollbar-width: thin; scrollbar-color: #c1c1c1 #f8fafc;">
             
-            <!-- Product Name Section -->
-            <div style="margin-bottom: 24px;">
-                <h4 style="margin: 0 0 12px; font-size: 16px; font-weight: 600;">Tên sản phẩm</h4>
-                <p id="detailProductName" style="margin: 0; font-size: 16px; color: #1e293b; font-weight: 500;"></p>
-            </div>
-            
-            <!-- Price Section -->
-            <div style="margin-bottom: 24px;">
-                <h4 style="margin: 0 0 12px; font-size: 16px; font-weight: 600;">Thông tin giá</h4>
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
-                    <div>
-                        <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #333;">Giá gốc (VNĐ)</label>
-                        <input type="number" id="detailOriginalPrice" placeholder="0" min="0" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
-                    </div>
-                    <div>
-                        <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #333;">% Giảm giá</label>
-                        <input type="number" id="detailDiscountPercent" value="0" min="0" max="100" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
-                    </div>
-                    <div>
-                        <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #333;">Giá sau giảm</label>
-                        <input type="text" id="detailDiscountedPrice" disabled style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif; background: #f5f5f5; color: #dc2626; font-weight: 600;">
-                    </div>
+            <!-- Tên sản phẩm | Số lượng còn trong kho (hai cột giống ảnh) -->
+            <div style="margin-bottom: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start;">
+                <div>
+                    <h4 style="margin: 0 0 8px; font-size: 16px; font-weight: 600; color: #1e293b;">Tên sản phẩm</h4>
+                    <p id="detailProductName" style="margin: 0; font-size: 16px; color: #1e293b; font-weight: 500;"></p>
+                </div>
+                <div>
+                    <h4 style="margin: 0 0 8px; font-size: 16px; font-weight: 600; color: #1e293b;">Số lượng còn trong kho</h4>
+                    <input type="number" id="detailStock" placeholder="0" min="0" style="width: 100%; max-width: 140px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif; background: #fff;">
                 </div>
             </div>
             
-            <!-- Stock Section -->
+            <!-- Dung lượng & màu: layout theo ảnh - hàng 1: Giá gốc | Giá sau giảm; hàng 2: Chọn màu | Dung lượng, % Giảm, Thêm -->
             <div style="margin-bottom: 24px;">
-                <h4 style="margin: 0 0 12px; font-size: 16px; font-weight: 600;">Số lượng còn trong kho</h4>
-                <input type="number" id="detailStock" placeholder="0" min="0" style="width: 200px; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
-            </div>
-            
-            <!-- SKU Section -->
-            <div style="margin-bottom: 24px;">
-                <h4 style="margin: 0 0 12px; font-size: 16px; font-weight: 600;">Tạo mã SKU</h4>
-                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-                    <input type="text" id="detailSku" placeholder="Nhập SKU..." style="flex: 1; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
-                    <button onclick="saveSkuOnly()" style="padding: 10px 20px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif;">Lưu SKU</button>
+                <h4 style="margin: 0 0 14px; font-size: 16px; font-weight: 600; color: #334155;">Dung lượng &amp; màu sản phẩm</h4>
+                <style>
+                    #productDetailModalBox .variant-form-field { width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif; }
+                    #productDetailModalBox .variant-form-label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #334155; }
+                    #productDetailModalBox .variant-color-options { display: flex; flex-direction: column; gap: 10px; max-height: 200px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; background: #fff; }
+                    #productDetailModalBox .variant-color-option { padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; font-family: 'Signika', sans-serif; cursor: pointer; background: #fff; color: #334155; transition: background 0.2s, border-color 0.2s; }
+                    #productDetailModalBox .variant-color-option:hover { border-color: #cbd5e1; background: #f8fafc; }
+                    #productDetailModalBox .variant-color-option.selected { border-color: #3b82f6; background: #eff6ff; color: #1e40af; }
+                </style>
+                <!-- Hàng 1: Giá gốc | Giá sau giảm (chia đều) -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                    <div>
+                        <label class="variant-form-label">Giá gốc</label>
+                        <input type="number" id="variantSimpleBasePrice" placeholder="0" min="0" oninput="calculateVariantSimplePrice()" class="variant-form-field" style="width: 100%;">
+                    </div>
+                    <div>
+                        <label class="variant-form-label">Giá sau giảm</label>
+                        <input type="text" id="variantSimpleFinalPrice" disabled class="variant-form-field" style="width: 100%; background: #f8fafc; color: #dc2626; font-weight: 600;">
+                    </div>
                 </div>
-                <div id="skuList" style="border: 1px solid #e2e8f0; border-radius: 8px; max-height: 150px; overflow-y: auto;"></div>
+                <!-- Hàng 2: Chọn màu (trái) | Dung lượng, % Giảm, Thêm (phải) -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start;">
+                    <div>
+                        <label class="variant-form-label">Chọn màu</label>
+                        <div id="variantSimpleColorOptions" class="variant-color-options">
+                            <!-- JS render danh sách SKU - Màu -->
+                        </div>
+                        <div id="variantSimpleSelectedLabels" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; font-size: 11px; color: #64748b;">
+                            Chưa chọn màu nào.
+                        </div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 16px;">
+                        <div>
+                            <label class="variant-form-label">Dung lượng</label>
+                            <input type="text" id="variantSimpleStorage" placeholder="Nhập dung lượng" class="variant-form-field" style="width: 100%;">
+                        </div>
+                        <div>
+                            <label class="variant-form-label">% Giảm giá</label>
+                            <input type="number" id="variantSimpleDiscountPercent" placeholder="0" value="0" min="0" max="100" oninput="calculateVariantSimplePrice()" class="variant-form-field" style="width: 100%;">
+                        </div>
+                        <div>
+                            <button type="button" onclick="addVariantSimple()" style="width: 100%; padding: 9px 16px; background: #16a34a; color: white; border: 2px solid #A9CCF0; border-radius: 6px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif; font-weight: 500;">Thêm</button>
+                        </div>
+                    </div>
+                </div>
+                <p style="margin-top: 10px; font-size: 16px; font-weight: 600; color: #334155;">Danh sách đã thêm</p>
+                <style>
+                    .variant-group { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(59,130,246,0.08); }
+                    .variant-group .vg-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; align-items: start; }
+                    .variant-group .vg-field { width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif; background: #fff; color: #334155; }
+                    .variant-group .vg-field:focus { border-color: #3b82f6; outline: none; }
+                    .variant-group .vg-label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #334155; }
+                    .variant-group .vg-colors { border: 1px solid #e2e8f0; border-radius: 6px; background: #f8fafc; padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 60px; }
+                    .variant-group .vg-color-item { padding: 10px 12px; border: 1px solid #93c5fd; border-radius: 6px; font-size: 14px; background: #eff6ff; color: #1e40af; font-family: 'Signika', sans-serif; }
+                    .variant-group .vg-footer { padding: 10px 12px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; background: #fafafa; }
+                    .variant-group .vg-delete { padding: 8px 16px; background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; border-radius: 6px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif; font-weight: 500; }
+                    .variant-group .vg-delete:hover { background: #fecaca; border-color: #dc2626; }
+                </style>
+                <!-- Danh sách biến thể: gộp theo dung lượng, mỗi block = 1 dung lượng + nhiều màu -->
+                <div style="margin-top: 12px; max-height: 320px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #c1c1c1 #f8fafc;">
+                    <div id="variantsList">
+                        <!-- renderVariants sẽ gộp theo storage và render từng block -->
+                    </div>
+                </div>
             </div>
-            
-            <button onclick="saveProductDetail()" style="padding: 12px 24px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif; font-weight: 500;">Lưu tất cả</button>
         </div>
-            
-            <!-- Variant Form (Hidden by default) -->
-            <div id="variantFormSection" style="display: none; margin-bottom: 24px; padding: 16px; background: #f8fafc; border-radius: 8px;">
-                <h4 id="variantFormTitle" style="margin: 0 0 12px; font-size: 15px; font-weight: 600;">Thêm biến thể</h4>
-                <input type="hidden" id="variantId">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                    <div>
-                        <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">Tên màu *</label>
-                        <input type="text" id="variantColorName" placeholder="Ví dụ: Titan Tự Nhiên" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box;">
-                    </div>
-                    <div>
-                        <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">Mã màu (hex)</label>
-                        <input type="text" id="variantColorHex" placeholder="#FFFFFF" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box;">
-                    </div>
-                    <div>
-                        <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">Dung lượng *</label>
-                        <input type="text" id="variantStorage" placeholder="Ví dụ: 128GB" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box;">
-                    </div>
-                    <div>
-                        <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">Giá (VNĐ) *</label>
-                        <input type="number" id="variantPrice" placeholder="0" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box;">
-                    </div>
-                    <div>
-                        <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">SKU biến thể</label>
-                        <input type="text" id="variantSku" placeholder="SKU..." style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box;">
-                    </div>
-                    <div>
-                        <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">Số lượng kho</label>
-                        <input type="number" id="variantStock" placeholder="0" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box;">
-                    </div>
-                </div>
-                <div style="margin-top: 12px; display: flex; gap: 8px;">
-                    <button onclick="saveVariant()" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">Lưu</button>
-                    <button onclick="closeVariantForm()" style="padding: 10px 20px; background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: 14px;">Hủy</button>
-                </div>
+        <!-- Sticky Footer: Lưu tất cả (luôn hiện, không bị khuất khi cuộn) -->
+        <div style="flex-shrink: 0; padding: 16px 24px; border-top: 1px solid #e2e8f0; background: #fff;">
+            <button type="button" onclick="saveProductDetail()" style="padding: 12px 24px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif; font-weight: 500;">Lưu tất cả</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add SKU Modal -->
+<div id="addSkuModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 12px; width: 500px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+        <!-- Sticky Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #e2e8f0; flex-shrink: 0;">
+            <h3 style="font-size: 18px; font-weight: 600; font-family: 'Signika', sans-serif; margin: 0;">Thêm SKU</h3>
+            <button type="button" onclick="closeAddSkuModal()" style="padding: 8px 16px; background: #f1f5f9; color: #334155; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif;">Đóng</button>
+        </div>
+        <!-- Scrollable Content -->
+        <div style="padding: 20px 24px; overflow-y: auto; flex: 1; scrollbar-width: thin; scrollbar-color: #c1c1c1 #f8fafc;">
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Chọn hãng *</label>
+                <select id="addSkuBrand" onchange="loadProductsByBrand()" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+                    <option value="">-- CHỌN HÃNG --</option>
+                    {% for brand in brands %}
+                    <option value="{{ brand.id }}">{{ brand.name }}</option>
+                    {% endfor %}
+                </select>
             </div>
-            
-            <!-- Upload Image Form (Hidden by default) -->
-            <div id="uploadImageSection" style="display: none; margin-bottom: 24px; padding: 16px; background: #f8fafc; border-radius: 8px;">
-                <h4 style="margin: 0 0 12px; font-size: 15px; font-weight: 600;">Upload ảnh</h4>
-                <input type="hidden" id="uploadImageType">
-                <input type="hidden" id="uploadVariantId">
-                <input type="file" id="uploadImageFiles" accept="image/*" multiple style="margin-bottom: 12px;">
-                <div style="display: flex; gap: 8px;">
-                    <button onclick="uploadProductImages()" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">Upload</button>
-                    <button onclick="closeUploadImageForm()" style="padding: 10px 20px; background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: 14px;">Hủy</button>
-                </div>
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Chọn sản phẩm *</label>
+                <select id="addSkuProduct" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+                    <option value="">-- CHỌN HÃNG TRƯỚC NHÉ --</option>
+                </select>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Nhập SKU *</label>
+                <input type="text" id="addSkuInput" placeholder="Nhập mã SKU" style="width: 100%; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+            </div>
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                <button type="button" onclick="closeAddSkuModal()" style="padding: 12px 24px; background: #f1f5f9; color: #334155; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif;">Hủy</button>
+                <button type="button" onclick="saveSku()" style="padding: 12px 24px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif; font-weight: 500;">Lưu</button>
             </div>
         </div>
     </div>
+</div>
+
+<!-- Edit SKU Modal (box nổi có style đồng bộ dashboard) -->
+<style>
+    #editSkuInput { outline: none; }
+    #editSkuInput:focus { border-color: #94a3b8; box-shadow: 0 0 0 1px #94a3b8; }
+</style>
+<div id="editSkuModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 12px; width: 420px; max-width: 95%; box-shadow: 0 10px 40px rgba(0,0,0,0.15); overflow: hidden;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #e2e8f0;">
+            <h3 style="font-size: 18px; font-weight: 600; font-family: 'Signika', sans-serif; margin: 0; color: #1e293b;">Sửa SKU</h3>
+            <button type="button" onclick="closeEditSkuModal()" style="padding: 8px 16px; background: #f1f5f9; color: #334155; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif;">Đóng</button>
+        </div>
+        <div style="padding: 20px 24px;">
+            <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: #334155; font-family: 'Signika', sans-serif;">Mã SKU</label>
+            <input type="text" id="editSkuInput" placeholder="Nhập mã SKU" style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+            <input type="hidden" id="editSkuId" value="">
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" onclick="closeEditSkuModal()" style="padding: 12px 24px; background: #f1f5f9; color: #334155; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif;">Hủy</button>
+                <button type="button" onclick="saveEditSku()" style="padding: 12px 24px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif; font-weight: 500;">Lưu</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 </div>
 
 {% endblock %}

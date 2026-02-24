@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.db import models
+from django.utils.text import slugify
 
 
 class CustomUserManager(UserManager):
@@ -169,6 +170,31 @@ class ProductDetail(models.Model):
         if min_price > 0:
             return min_price
         return self.original_price if self.original_price else 0
+
+    @property
+    def summary_original_price(self):
+        """
+        Giá gốc hiển thị trên dashboard:
+        - Nếu đã nhập giá gốc tổng thì dùng luôn
+        - Nếu không, lấy original_price nhỏ nhất từ các biến thể
+        """
+        if self.original_price:
+            return int(self.original_price)
+        agg = self.variants.aggregate(models.Min('original_price'))
+        value = agg.get('original_price__min') if agg else None
+        return int(value) if value else 0
+
+    @property
+    def summary_discount_percent(self):
+        """
+        % giảm giá hiển thị trên dashboard:
+        - Nếu đã nhập % giảm tổng thì dùng luôn
+        - Nếu không, lấy % giảm của biến thể có giá sau giảm nhỏ nhất
+        """
+        if self.discount_percent:
+            return int(self.discount_percent)
+        cheapest = self.variants.order_by('price').first()
+        return int(cheapest.discount_percent) if cheapest and cheapest.discount_percent else 0
     
     def get_min_price(self):
         """Lấy giá nhỏ nhất từ các biến thể"""
@@ -203,7 +229,9 @@ class ProductVariant(models.Model):
     storage = models.CharField(max_length=20, verbose_name='Dung lượng')  # ví dụ: 64GB, 128GB
     
     # Giá và SKU
-    price = models.DecimalField(max_digits=15, decimal_places=0, default=0, verbose_name='Giá (VNĐ)')
+    original_price = models.DecimalField(max_digits=15, decimal_places=0, default=0, verbose_name='Giá gốc (VNĐ)')
+    discount_percent = models.PositiveIntegerField(default=0, verbose_name='% Giảm giá')
+    price = models.DecimalField(max_digits=15, decimal_places=0, default=0, verbose_name='Giá sau giảm (VNĐ)')
     sku = models.CharField(max_length=100, blank=True, verbose_name='SKU biến thể')
     stock_quantity = models.PositiveIntegerField(default=0, verbose_name='Số lượng trong kho')
     
@@ -247,6 +275,65 @@ class ProductImage(models.Model):
 
     def __str__(self):
         return f"{self.image_type} - {self.detail.product.name if self.detail else self.variant.detail.product.name}"
+
+
+def image_folder_upload_path(instance, filename):
+    """
+    Đường dẫn lưu ảnh thư mục riêng:
+    media/products/YYYY/MM/<folder_slug>/filename
+    """
+    from datetime import datetime
+    import os
+
+    now = datetime.now()
+    year = now.year
+    month = now.strftime('%m')
+    folder_slug = instance.folder.slug
+    return os.path.join('products', str(year), month, folder_slug, filename)
+
+
+class ImageFolder(models.Model):
+    """Thư mục ảnh riêng để quản lý ảnh sản phẩm theo thư mục"""
+    name = models.CharField(max_length=150, unique=True, verbose_name='Thư mục ảnh')
+    slug = models.SlugField(max_length=150, unique=True, verbose_name='Slug thư mục')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'store_imagefolder'
+        verbose_name = 'Thư mục ảnh'
+        verbose_name_plural = 'Thư mục ảnh'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
+
+class FolderColorImage(models.Model):
+    """
+    Ảnh màu theo thư mục:
+    - Mỗi bản ghi là 1 ảnh thuộc 1 màu + SKU trong 1 thư mục
+    """
+    folder = models.ForeignKey(ImageFolder, on_delete=models.CASCADE, related_name='images', verbose_name='Thư mục ảnh')
+    brand = models.ForeignKey(Brand, on_delete=models.SET_NULL, null=True, blank=True, related_name='folder_images', verbose_name='Hãng')
+    sku = models.CharField(max_length=100, verbose_name='SKU')
+    color_name = models.CharField(max_length=100, verbose_name='Màu sản phẩm')
+    image = models.ImageField(upload_to=image_folder_upload_path, verbose_name='Ảnh')
+    order = models.PositiveIntegerField(default=0, verbose_name='Thứ tự')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'store_foldercolorimage'
+        verbose_name = 'Ảnh màu theo thư mục'
+        verbose_name_plural = 'Ảnh màu theo thư mục'
+        ordering = ['folder__name', 'color_name', 'order']
+
+    def __str__(self):
+        return f"{self.folder.name} - {self.color_name} - {self.sku}"
 
 
 class Product(models.Model):

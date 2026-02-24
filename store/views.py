@@ -104,7 +104,7 @@ def send_otp_view(request):
 
 def product_detail_view(request, product_id):
     """Trang chi tiết sản phẩm"""
-    from store.models import Product, ProductDetail, ProductVariant
+    from store.models import Product, ProductDetail, ProductVariant, FolderColorImage
     from django.shortcuts import get_object_or_404
     import json
     
@@ -123,10 +123,18 @@ def product_detail_view(request, product_id):
     # First variant for default display
     first_variant = variants.first()
     
-    # Convert to list for JSON
-    variants_list = list(variants.values(
-        'id', 'color_name', 'color_hex', 'storage', 'price', 'sku', 'stock_quantity'
-    ))
+    # Convert to list for JSON (Decimal -> int để JSON serialize được)
+    variants_list = []
+    for v in variants:
+        variants_list.append({
+            'id': v.id,
+            'color_name': v.color_name,
+            'color_hex': v.color_hex or '',
+            'storage': v.storage,
+            'price': int(v.price) if v.price is not None else 0,
+            'sku': v.sku or '',
+            'stock_quantity': int(v.stock_quantity) if v.stock_quantity is not None else 0,
+        })
     variants_json = json.dumps(variants_list)
     
     context = {
@@ -206,6 +214,27 @@ def product_search(request):
         'query': query,
     }
     return render(request, 'store/search.html', context)
+
+
+@require_http_methods(["GET"])
+def product_list_json(request):
+    """Lấy danh sách sản phẩm dạng JSON"""
+    from store.models import Product
+    try:
+        products = Product.objects.select_related('brand').order_by('-created_at')
+        
+        product_list = []
+        for p in products:
+            product_list.append({
+                'id': p.id,
+                'name': p.name,
+                'brand_id': p.brand.id if p.brand else None,
+                'brand_name': p.brand.name if p.brand else None,
+            })
+        
+        return JsonResponse({'success': True, 'products': product_list})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
 
 def cart_detail(request):
@@ -515,9 +544,9 @@ def dashboard_view(request):
             models.Q(first_name__icontains=user_search)
         )
     
-    # Phân trang người dùng (5 người dùng/trang)
+    # Phân trang người dùng (8 người dùng/trang)
     user_page = request.GET.get('user_page', 1)
-    user_paginator = Paginator(users, 10)
+    user_paginator = Paginator(users, 8)
     try:
         users_paginated = user_paginator.page(user_page)
     except PageNotAnInteger:
@@ -546,7 +575,7 @@ def dashboard_view(request):
         all_brands = all_brands.filter(name__icontains=brand_search)
     
     brand_page = request.GET.get('brand_page', 1)
-    brand_paginator = Paginator(all_brands, 10)
+    brand_paginator = Paginator(all_brands, 8)
     try:
         brands_paginated = brand_paginator.page(brand_page)
     except PageNotAnInteger:
@@ -562,7 +591,7 @@ def dashboard_view(request):
         all_products = all_products.filter(name__icontains=product_search)
     
     product_page = request.GET.get('product_page', 1)
-    product_paginator = Paginator(all_products, 10)
+    product_paginator = Paginator(all_products, 8)
     try:
         products_paginated = product_paginator.page(product_page)
     except PageNotAnInteger:
@@ -616,6 +645,7 @@ def dashboard_view(request):
         'brands': brands_for_stats,
         'brands_paginated': brands_paginated,
         'products_paginated': products_paginated,
+        'products': all_products[:50],  # For SKU dropdown
     }
     return render(request, 'store/dashboard.html', context)
 
@@ -649,9 +679,9 @@ def brand_list(request):
     if search:
         brands = brands.filter(name__icontains=search)
     
-    # Pagination
+    # Pagination (8 hãng / trang)
     brand_page = request.GET.get('brand_page', 1)
-    brand_paginator = Paginator(brands, 10)
+    brand_paginator = Paginator(brands, 8)
     try:
         brands_paginated = brand_paginator.page(brand_page)
     except PageNotAnInteger:
@@ -1047,16 +1077,19 @@ def product_delete(request):
 @require_http_methods(["POST"])
 @csrf_exempt
 def product_detail_save(request):
-    """Lưu chi tiết sản phẩm (tạo/cập nhật Product)"""
+    """Lưu chi tiết sản phẩm (tạo/cập nhật Product và ProductDetail)"""
     if not request.user.is_superuser:
         return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
     
-    from store.models import Product
+    from store.models import Product, ProductDetail, ProductVariant, FolderColorImage
     
     product_id = request.POST.get('product_id')
     original_price = request.POST.get('original_price', '0').strip()
     discount_percent = request.POST.get('discount_percent', '0').strip()
     stock = request.POST.get('stock', '0').strip()
+    sku = request.POST.get('sku', '').strip()
+    save_sku_only = request.POST.get('save_sku_only', 'false').strip().lower() == 'true'
+    delete_sku = request.POST.get('delete_sku', 'false').strip().lower() == 'true'
     
     if not product_id:
         return JsonResponse({'success': False, 'message': 'Thiếu thông tin sản phẩm!'}, status=400)
@@ -1066,6 +1099,55 @@ def product_detail_save(request):
     except Product.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Sản phẩm không tồn tại!'}, status=404)
     
+    # Get or create ProductDetail
+    detail = ProductDetail.objects.filter(product=product).first()
+    
+    # Handle delete SKU
+    if delete_sku:
+        sku_to_delete = request.POST.get('sku', '').strip()
+        if not detail or not detail.sku:
+            return JsonResponse({'success': False, 'message': 'Không có SKU để xóa!'}, status=400)
+        
+        existing_skus = detail.sku.split(',') if detail.sku else []
+        if sku_to_delete in existing_skus:
+            existing_skus.remove(sku_to_delete)
+            detail.sku = ','.join(existing_skus)
+            detail.save(update_fields=['sku'])
+        
+        return JsonResponse({
+            'success': True, 
+            'message': f'Đã xóa SKU: {sku_to_delete}!',
+            'sku': detail.sku
+        })
+    
+    # If save_sku_only, only save SKU
+    if save_sku_only:
+        if not sku:
+            return JsonResponse({'success': False, 'message': 'Vui lòng nhập SKU!'}, status=400)
+        
+        if not detail:
+            # Check for duplicate in case detail was just created but we have a new request
+            # Create new ProductDetail
+            detail = ProductDetail.objects.create(product=product, sku=sku)
+        else:
+            # Append SKU if not already in list (comma separated)
+            existing_skus = detail.sku.split(',') if detail.sku else []
+            if sku in existing_skus:
+                return JsonResponse({
+                    'success': False, 
+                    'message': f'SKU "{sku}" đã tồn tại!',
+                }, status=400)
+            existing_skus.append(sku)
+            detail.sku = ','.join(existing_skus)
+            detail.save(update_fields=['sku'])
+        
+        return JsonResponse({
+            'success': True, 
+            'message': f'Đã lưu SKU: {sku}!',
+            'sku': detail.sku
+        })
+    
+    # Save all fields
     try:
         original_price = int(original_price) if original_price else 0
         discount_percent = int(discount_percent) if discount_percent else 0
@@ -1080,11 +1162,31 @@ def product_detail_save(request):
     
     # Save to Product model
     product.original_price = original_price
+    product.discount_percent = discount_percent
     product.price = discounted_price
     product.stock = stock
-    product.save(update_fields=['original_price', 'price', 'stock'])
+    product.save(update_fields=['original_price', 'discount_percent', 'price', 'stock'])
     
-    return JsonResponse({'success': True, 'message': f'Đã lưu thông tin sản phẩm!'})
+    # Save to ProductDetail model (for template display)
+    if not detail:
+        detail = ProductDetail.objects.create(
+            product=product,
+            original_price=original_price,
+            discount_percent=discount_percent,
+            sku=sku
+        )
+    else:
+        detail.original_price = original_price
+        detail.discount_percent = discount_percent
+        if sku:
+            # Append SKU if not already in list
+            existing_skus = detail.sku.split(',') if detail.sku else []
+            if sku not in existing_skus:
+                existing_skus.append(sku)
+                detail.sku = ','.join(existing_skus)
+        detail.save(update_fields=['original_price', 'discount_percent', 'sku'])
+    
+    return JsonResponse({'success': True, 'message': f'Đã lưu thông tin sản phẩm!', 'detail_id': detail.id})
 
 
 @login_required
@@ -1095,28 +1197,44 @@ def product_variant_save(request):
     if not request.user.is_superuser:
         return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
     
-    from store.models import ProductDetail, ProductVariant
+    from store.models import Product, ProductDetail, ProductVariant, FolderColorImage
     
     variant_id = request.POST.get('variant_id')
     detail_id = request.POST.get('detail_id')
+    product_id = request.POST.get('product_id')
     color_name = request.POST.get('color_name', '').strip()
     color_hex = request.POST.get('color_hex', '').strip()
     storage = request.POST.get('storage', '').strip()
+    original_price = request.POST.get('original_price', request.POST.get('base_price', '0')).strip()
+    discount_percent = request.POST.get('discount_percent', '0').strip()
     price = request.POST.get('price', '0').strip()
     variant_sku = request.POST.get('sku', '').strip()
     stock_quantity = request.POST.get('stock_quantity', '0').strip()
     
-    if not detail_id or not color_name or not storage:
+    if not color_name or not storage:
         return JsonResponse({'success': False, 'message': 'Thiếu thông tin biến thể!'}, status=400)
     
-    try:
-        detail = ProductDetail.objects.get(id=detail_id)
-    except ProductDetail.DoesNotExist:
-        return JsonResponse({'success': False, 'message': 'Chi tiết sản phẩm không tồn tại!'}, status=404)
+    # Xác định ProductDetail (detail) từ detail_id hoặc product_id
+    detail = None
+    if detail_id:
+        try:
+            detail = ProductDetail.objects.get(id=detail_id)
+        except ProductDetail.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Chi tiết sản phẩm không tồn tại!'}, status=404)
+    else:
+        if not product_id:
+            return JsonResponse({'success': False, 'message': 'Thiếu thông tin sản phẩm!'}, status=400)
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Sản phẩm không tồn tại!'}, status=404)
+        detail, _ = ProductDetail.objects.get_or_create(product=product)
     
     try:
         price = int(price) if price else 0
         stock_quantity = int(stock_quantity) if stock_quantity else 0
+        original_price = int(original_price) if original_price else 0
+        discount_percent = min(100, max(0, int(discount_percent) if discount_percent else 0))
     except ValueError:
         return JsonResponse({'success': False, 'message': 'Giá và số lượng phải là số!'}, status=400)
     
@@ -1127,6 +1245,8 @@ def product_variant_save(request):
             variant.color_name = color_name
             variant.color_hex = color_hex
             variant.storage = storage
+            variant.original_price = original_price
+            variant.discount_percent = discount_percent
             variant.price = price
             variant.sku = variant_sku
             variant.stock_quantity = stock_quantity
@@ -1142,6 +1262,8 @@ def product_variant_save(request):
             storage=storage,
             defaults={
                 'color_hex': color_hex,
+                'original_price': original_price,
+                'discount_percent': discount_percent,
                 'price': price,
                 'sku': variant_sku,
                 'stock_quantity': stock_quantity
@@ -1271,12 +1393,222 @@ def product_image_delete(request):
 
 @login_required
 @require_http_methods(["GET"])
+def image_folder_list(request):
+    """Danh sách màu ảnh theo thư mục (group theo thư mục + màu + SKU)"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+
+    from store.models import ImageFolder, FolderColorImage
+
+    search = request.GET.get('search', '').strip()
+
+    try:
+        images_qs = FolderColorImage.objects.select_related('folder', 'brand')
+        if search:
+            images_qs = images_qs.filter(folder__name__icontains=search)
+
+        # Group theo (folder, color_name, sku)
+        rows_map = {}
+        for img in images_qs.order_by('folder__name', 'color_name', 'sku', 'order'):
+            key = (img.folder_id, img.color_name, img.sku)
+            if key not in rows_map:
+                rows_map[key] = {
+                    'id': img.id,
+                    'folder_id': img.folder_id,
+                    'folder_name': img.folder.name,
+                    'color_name': img.color_name,
+                    'sku': img.sku,
+                    'brand_name': img.brand.name if img.brand else None,
+                }
+
+        rows = list(rows_map.values())
+
+        # Danh sách tất cả thư mục (cho dropdown), không phụ thuộc search
+        folders_qs = ImageFolder.objects.all().order_by('-created_at')
+        folders = [{'id': f.id, 'name': f.name} for f in folders_qs]
+
+        return JsonResponse({'success': True, 'rows': rows, 'folders': folders})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def image_folder_create(request):
+    """Tạo thư mục ảnh mới"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+
+    from store.models import ImageFolder
+
+    name = request.POST.get('name', '').strip()
+    if not name:
+        return JsonResponse({'success': False, 'message': 'Vui lòng nhập tên thư mục!'}, status=400)
+
+    try:
+        # Tự sinh slug từ name (trong model)
+        folder, created = ImageFolder.objects.get_or_create(name=name)
+        # Tạo thư mục vật lý: media/products/YYYY/MM/<slug>/
+        now = timezone.now()
+        year = now.year
+        month = now.strftime('%m')
+        dir_path = os.path.join(settings.MEDIA_ROOT, 'products', str(year), month, folder.slug)
+        try:
+            os.makedirs(dir_path, exist_ok=True)
+        except OSError as e:
+            return JsonResponse({'success': False, 'message': f'Không tạo được thư mục trên đĩa: {e}'}, status=500)
+        if created:
+            message = f'Đã tạo thư mục \"{folder.name}\" (đường dẫn: media/products/{year}/{month}/{folder.slug}/).'
+        else:
+            message = f'Thư mục \"{folder.name}\" đã tồn tại.'
+        return JsonResponse({
+            'success': True,
+            'message': message,
+            'folder': {'id': folder.id, 'name': folder.name, 'slug': folder.slug}
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def folder_color_image_list(request):
+    """Danh sách ảnh theo thư mục + SKU + màu (để hiển thị khi bấm Quản lý)"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+
+    from store.models import FolderColorImage
+
+    folder_id = request.GET.get('folder_id')
+    sku = request.GET.get('sku', '').strip()
+    color_name = request.GET.get('color_name', '').strip()
+
+    if not folder_id or not sku or not color_name:
+        return JsonResponse({'success': True, 'images': []})
+
+    try:
+        imgs = FolderColorImage.objects.filter(
+            folder_id=folder_id,
+            sku=sku,
+            color_name=color_name
+        ).order_by('order')
+
+        images = [{'id': img.id, 'url': img.image.url, 'order': img.order} for img in imgs]
+        return JsonResponse({'success': True, 'images': images})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def folder_color_image_upload(request):
+    """
+    Upload ảnh cho 1 màu + SKU trong thư mục:
+    - folder_id
+    - brand_id (optional)
+    - sku
+    - color_name
+    - image (file)
+    """
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+
+    from store.models import ImageFolder, FolderColorImage, Brand
+
+    folder_id = request.POST.get('folder_id')
+    brand_id = request.POST.get('brand_id')
+    sku = request.POST.get('sku', '').strip()
+    color_name = request.POST.get('color_name', '').strip()
+    image_file = request.FILES.get('image')
+
+    if not folder_id or not sku or not color_name or not image_file:
+        return JsonResponse({'success': False, 'message': 'Thiếu thông tin bắt buộc!'}, status=400)
+
+    try:
+        folder = ImageFolder.objects.get(id=folder_id)
+    except ImageFolder.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Thư mục không tồn tại!'}, status=404)
+
+    brand = None
+    if brand_id:
+        try:
+            brand = Brand.objects.get(id=brand_id)
+        except Brand.DoesNotExist:
+            brand = None
+
+    # Lấy thứ tự tiếp theo trong nhóm này
+    max_order = FolderColorImage.objects.filter(
+        folder=folder,
+        sku=sku,
+        color_name=color_name
+    ).aggregate(Max('order'))['order__max'] or 0
+
+    img = FolderColorImage.objects.create(
+        folder=folder,
+        brand=brand,
+        sku=sku,
+        color_name=color_name,
+        image=image_file,
+        order=max_order + 1,
+    )
+
+    return JsonResponse({
+        'success': True,
+        'message': f'Đã upload ảnh màu \"{color_name}\"!',
+        'image': {
+            'id': img.id,
+            'url': img.image.url,
+            'order': img.order,
+            'folder_name': folder.name,
+            'color_name': img.color_name,
+            'sku': img.sku,
+        }
+    })
+
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def folder_color_image_delete(request):
+    """Xóa 1 ảnh màu trong thư mục"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+
+    from store.models import FolderColorImage
+
+    image_id = request.POST.get('image_id')
+    if not image_id:
+        return JsonResponse({'success': False, 'message': 'Thiếu thông tin!'}, status=400)
+
+    try:
+        img = FolderColorImage.objects.get(id=image_id)
+    except FolderColorImage.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Ảnh không tồn tại!'}, status=404)
+
+    # Xóa file vật lý
+    try:
+        if img.image and hasattr(img.image, 'path'):
+            if os.path.isfile(img.image.path):
+                os.remove(img.image.path)
+            img.image.delete(save=False)
+    except Exception:
+        # Không chặn xóa record nếu xóa file lỗi
+        pass
+
+    img.delete()
+    return JsonResponse({'success': True, 'message': 'Đã xóa ảnh màu!'})
+
+
+@login_required
+@require_http_methods(["GET"])
 def get_product_detail(request):
     """Lấy thông tin chi tiết sản phẩm (AJAX)"""
     if not request.user.is_superuser:
         return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
     
-    from store.models import Product
+    from store.models import Product, ProductDetail, ProductVariant, FolderColorImage
     
     product_id = request.GET.get('product_id')
     
@@ -1284,16 +1616,207 @@ def get_product_detail(request):
         return JsonResponse({'success': False, 'message': 'Thiếu thông tin!'}, status=400)
     
     try:
-        product = Product.objects.get(id=product_id)
+        product = Product.objects.select_related('detail').get(id=product_id)
     except Product.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Sản phẩm không tồn tại!'}, status=404)
+    
+    # Ưu tiên lấy từ ProductDetail nếu có
+    detail = getattr(product, 'detail', None)
+    detail_id = detail.id if detail else None
+    
+    variants = []
+    skus_with_color = []
+    if detail:
+        # Biến thể chi tiết (màu + dung lượng + giá)
+        qs = ProductVariant.objects.filter(detail=detail).order_by('price')
+        for v in qs:
+            variants.append({
+                'id': v.id,
+                'color_name': v.color_name,
+                'color_hex': v.color_hex,
+                'storage': v.storage,
+                'original_price': int(v.original_price),
+                'discount_percent': int(v.discount_percent),
+                'price': int(v.price),
+                'sku': v.sku,
+                'stock_quantity': v.stock_quantity,
+            })
+    
+    # Dropdown "Chọn màu (SKU)": lấy SKU + màu từ Ảnh sản phẩm (FolderColorImage) theo hãng
+    # để luôn có dữ liệu dù ProductDetail.sku còn trống
+    sku_to_color = {}
+    if product.brand_id:
+        # Mỗi SKU lấy 1 màu từ Ảnh sản phẩm (FolderColorImage)
+        rows = FolderColorImage.objects.filter(brand_id=product.brand_id).order_by('sku', 'created_at')
+        for row in rows:
+            if row.sku and row.sku not in sku_to_color:
+                sku_to_color[row.sku] = (row.color_name or '').strip()
+    skus_with_color = [{'sku': sku, 'color_name': color} for sku, color in sku_to_color.items()]
+    # Nếu ProductDetail đã có SKU thì giữ thứ tự đó và đảm bảo có trong list
+    if detail and (detail.sku or '').strip():
+        sku_list_raw = [x.strip() for x in (detail.sku or '').split(',') if x.strip()]
+        existing_skus = {s['sku'] for s in skus_with_color}
+        for s in sku_list_raw:
+            if s not in existing_skus:
+                skus_with_color.append({'sku': s, 'color_name': sku_to_color.get(s, '')})
+                existing_skus.add(s)
     
     return JsonResponse({
         'success': True,
         'product_name': product.name,
         'product_image': product.image.url if product.image else None,
         'product_stock': product.stock,
-        'product_original_price': product.original_price or 0,
-        'product_price': product.price or 0,
-        'product_sku': getattr(product, 'sku', '') or ''
+        'detail_id': detail_id,
+        'variants': variants,
+        'skus_with_color': skus_with_color,
     })
+
+# ==================== SKU Management ====================
+@login_required
+@require_http_methods(["GET"])
+def sku_list(request):
+    """Lấy danh sách tất cả SKU"""
+    from store.models import ProductDetail
+    try:
+        # Get all ProductDetails with SKU
+        details = ProductDetail.objects.filter(
+            sku__isnull=False, 
+            sku__gt=''
+        ).select_related('product__brand').order_by('-created_at')
+        
+        skus = []
+        for detail in details:
+            sku_list = detail.sku.split(',')
+            for sku_item in sku_list:
+                sku_item = sku_item.strip()
+                if sku_item:
+                    skus.append({
+                        'id': f'{detail.id}_{sku_item}',  # Composite ID
+                        'sku': sku_item,
+                        'product_id': detail.product.id,
+                        'product_name': detail.product.name,
+                        'brand_id': detail.product.brand.id if detail.product.brand else None,
+                        'brand_name': detail.product.brand.name if detail.product.brand else None,
+                        'created_at': detail.created_at.isoformat() if detail.created_at else None
+                    })
+        
+        return JsonResponse({'success': True, 'skus': skus})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def sku_add(request):
+    """Thêm SKU mới cho sản phẩm"""
+    from store.models import Product, ProductDetail
+    try:
+        product_id = request.POST.get('product_id')
+        sku = request.POST.get('sku', '').strip()
+        
+        if not product_id or not sku:
+            return JsonResponse({'success': False, 'message': 'Thiếu thông tin!'}, status=400)
+        
+        product = Product.objects.get(id=product_id)
+        
+        # Get or create ProductDetail
+        detail, created = ProductDetail.objects.get_or_create(product=product)
+        
+        # Check for duplicate SKU
+        existing_skus = detail.sku.split(',') if detail.sku else []
+        if sku in existing_skus:
+            return JsonResponse({'success': False, 'message': f'SKU "{sku}" đã tồn tại!'}, status=400)
+        
+        # Add new SKU
+        if detail.sku:
+            detail.sku += f',{sku}'
+        else:
+            detail.sku = sku
+        detail.save(update_fields=['sku'])
+        
+        return JsonResponse({'success': True, 'message': f'Đã thêm SKU: {sku}'})
+    except Product.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Sản phẩm không tồn tại!'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def sku_edit(request):
+    """Sửa SKU"""
+    from store.models import ProductDetail
+    try:
+        sku_id = request.POST.get('sku_id')
+        new_sku = request.POST.get('sku', '').strip()
+        
+        if not sku_id or not new_sku:
+            return JsonResponse({'success': False, 'message': 'Thiếu thông tin!'}, status=400)
+        
+        # Parse composite ID - split at first underscore from right (sku might contain underscore)
+        # Format: detailID_skuvalue
+        last_underscore_idx = sku_id.rfind('_')
+        if last_underscore_idx == -1:
+            return JsonResponse({'success': False, 'message': 'ID không hợp lệ!'}, status=400)
+        
+        detail_id = sku_id[:last_underscore_idx]
+        old_sku = sku_id[last_underscore_idx + 1:]
+        
+        detail = ProductDetail.objects.get(id=detail_id)
+        
+        # Replace SKU
+        existing_skus = detail.sku.split(',') if detail.sku else []
+        new_skus = []
+        for s in existing_skus:
+            if s.strip() == old_sku:
+                new_skus.append(new_sku)
+            else:
+                new_skus.append(s)
+        
+        # Check for duplicate (exclude current one being edited)
+        if new_sku in [s.strip() for s in new_skus if s.strip() != old_sku]:
+            return JsonResponse({'success': False, 'message': f'SKU "{new_sku}" đã tồn tại!'}, status=400)
+        
+        detail.sku = ','.join(new_skus)
+        detail.save(update_fields=['sku'])
+        
+        return JsonResponse({'success': True, 'message': f'Đã sửa SKU thành: {new_sku}'})
+    except ProductDetail.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'SKU không tồn tại!'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def sku_delete(request):
+    """Xóa SKU"""
+    from store.models import ProductDetail
+    try:
+        sku_id = request.POST.get('sku_id')
+        
+        if not sku_id:
+            return JsonResponse({'success': False, 'message': 'Thiếu thông tin!'}, status=400)
+        
+        # Parse composite ID - split at first underscore from right
+        last_underscore_idx = sku_id.rfind('_')
+        if last_underscore_idx == -1:
+            return JsonResponse({'success': False, 'message': 'ID không hợp lệ!'}, status=400)
+        
+        detail_id = sku_id[:last_underscore_idx]
+        sku_to_delete = sku_id[last_underscore_idx + 1:]
+        
+        detail = ProductDetail.objects.get(id=detail_id)
+        
+        # Remove SKU
+        existing_skus = detail.sku.split(',') if detail.sku else []
+        existing_skus = [s.strip() for s in existing_skus if s.strip() != sku_to_delete]
+        
+        detail.sku = ','.join(existing_skus)
+        detail.save(update_fields=['sku'])
+        
+        return JsonResponse({'success': True, 'message': f'Đã xóa SKU: {sku_to_delete}'})
+    except ProductDetail.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'SKU không tồn tại!'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)

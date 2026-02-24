@@ -247,14 +247,69 @@ function doDeleteBrand(id) {
     });
 }
 
+// Sidebar: tối đa 8 mục/trang, từ STT 9 trở đi sang trang 2
+const SIDEBAR_PER_PAGE = 8;
+let sidebarCurrentPage = 1;
+
+function showSidebarPage(page) {
+    const menu = document.getElementById('qhSidebarMenu');
+    const paginationEl = document.getElementById('qhSidebarPagination');
+    if (!menu || !paginationEl) return;
+    const items = Array.from(menu.querySelectorAll('.qh-sidebar-item'));
+    const total = items.length;
+    const totalPages = Math.max(1, Math.ceil(total / SIDEBAR_PER_PAGE));
+    page = Math.max(1, Math.min(page, totalPages));
+    sidebarCurrentPage = page;
+
+    const start = (page - 1) * SIDEBAR_PER_PAGE;
+    const end = start + SIDEBAR_PER_PAGE;
+    items.forEach((item, i) => {
+        item.style.display = (i >= start && i < end) ? '' : 'none';
+    });
+
+    if (totalPages <= 1) {
+        paginationEl.style.display = 'none';
+        return;
+    }
+    paginationEl.style.display = 'flex';
+    let html = '<button type="button" class="qh-sidebar-prev" ' + (page <= 1 ? 'disabled' : '') + '>Trước</button>';
+    for (let p = 1; p <= totalPages; p++) {
+        html += '<button type="button" class="qh-sidebar-page' + (p === page ? ' active-page' : '') + '" data-page="' + p + '">' + p + '</button>';
+    }
+    html += '<button type="button" class="qh-sidebar-next" ' + (page >= totalPages ? 'disabled' : '') + '>Sau</button>';
+    paginationEl.innerHTML = html;
+
+    paginationEl.querySelector('.qh-sidebar-prev').onclick = () => showSidebarPage(page - 1);
+    paginationEl.querySelector('.qh-sidebar-next').onclick = () => showSidebarPage(page + 1);
+    paginationEl.querySelectorAll('.qh-sidebar-page').forEach(btn => {
+        btn.onclick = () => showSidebarPage(parseInt(btn.getAttribute('data-page'), 10));
+    });
+}
+
 // Initialize Dashboard
 document.addEventListener('DOMContentLoaded', function() {
     // Lấy section từ URL hoặc mặc định là stats
     const urlParams = new URLSearchParams(window.location.search);
     const currentSection = urlParams.get('section') || 'stats';
+
+    const menu = document.getElementById('qhSidebarMenu');
+    const sidebarItems = menu ? menu.querySelectorAll('.qh-sidebar-item') : [];
+    const totalPages = Math.ceil(sidebarItems.length / SIDEBAR_PER_PAGE);
+    let pageToShow = 1;
+    if (totalPages > 1) {
+        for (let p = 1; p <= totalPages; p++) {
+            const start = (p - 1) * SIDEBAR_PER_PAGE;
+            for (let i = start; i < start + SIDEBAR_PER_PAGE && i < sidebarItems.length; i++) {
+                if (sidebarItems[i].getAttribute('data-section') === currentSection) {
+                    pageToShow = p;
+                    break;
+                }
+            }
+        }
+    }
+    showSidebarPage(pageToShow);
     
     // Cập nhật sidebar active
-    const sidebarItems = document.querySelectorAll('.qh-sidebar-item');
     sidebarItems.forEach(item => {
         const section = item.getAttribute('data-section');
         if (section === currentSection) {
@@ -269,11 +324,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const usersSection = document.getElementById('users-section');
     const brandsSection = document.getElementById('brands-section');
     const productsSection = document.getElementById('products-section');
+    const productImagesSection = document.getElementById('product-images-section');
+    const skuSection = document.getElementById('sku-section');
     
     if (statsSection) statsSection.style.display = (currentSection === 'stats') ? 'block' : 'none';
     if (usersSection) usersSection.style.display = (currentSection === 'users') ? 'block' : 'none';
     if (brandsSection) brandsSection.style.display = (currentSection === 'brands') ? 'block' : 'none';
     if (productsSection) productsSection.style.display = (currentSection === 'products') ? 'block' : 'none';
+    if (productImagesSection) productImagesSection.style.display = (currentSection === 'product-images') ? 'block' : 'none';
+    if (skuSection) {
+        skuSection.style.display = (currentSection === 'sku') ? 'block' : 'none';
+    }
+    
+    // Load SKU list if on SKU section (hoặc khi vào phần Ảnh sản phẩm để dùng dropdown SKU)
+    if (currentSection === 'sku' || currentSection === 'product-images') {
+        loadSkuList();
+    }
     
     // Add Brand Form Submit
     const addBrandForm = document.getElementById('addBrandForm');
@@ -370,5 +436,770 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.target.id === 'addBrandModal') closeAddBrandModal();
         if (e.target.id === 'editBrandModal') closeEditBrandModal();
         if (e.target.id === 'editUserModal') closeEditUserModal();
+        if (e.target.id === 'editSkuModal') closeEditSkuModal();
     });
+    
+    // Load SKU list on page load nếu SKU hoặc Ảnh sản phẩm đang active
+    const sectionParam = urlParams.get('section');
+    if (sectionParam === 'sku' || sectionParam === 'product-images') {
+        loadSkuList();
+    }
+    
+    // Load all products cho SKU management (giữ nguyên)
+    loadAllProducts();
+
+    // Init phần Ảnh sản phẩm
+    if (sectionParam === 'product-images') {
+        initProductImagesSection();
+    }
+});
+
+// ==================== SKU Management ====================
+let allSkus = [];
+
+function loadSkuList() {
+    fetch('/products/sku/list/', {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            allSkus = data.skus;
+            renderSkuTable(allSkus);
+        }
+    })
+    .catch(error => console.error('Error loading SKU list:', error));
+}
+
+// ==================== Product Images (Thư mục ảnh) ====================
+let allImageFolderRows = [];
+let allImageFolders = [];
+let imageFolderPreviewImages = []; // ảnh đã upload cho màu hiện tại trong modal
+
+function initProductImagesSection() {
+    loadImageFolderRows();
+}
+
+function loadImageFolderRows() {
+    fetch('/product-images/folders/list/', {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            allImageFolderRows = data.rows || [];
+            allImageFolders = data.folders || [];
+            renderImageFolderTable(allImageFolderRows);
+            refreshImageFolderOptions();
+        }
+    })
+    .catch(error => {
+        console.error('Error loading image folders:', error);
+    });
+}
+
+function renderImageFolderTable(rows) {
+    const tbody = document.getElementById('imageFolderTableBody');
+    if (!tbody) return;
+
+    if (!rows || rows.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" style="padding: 40px; text-align: center; color: #64748b; font-size: 14px; font-family: 'Signika', sans-serif;">
+                    Chưa có màu ảnh nào.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    let html = '';
+    rows.forEach((row, index) => {
+        html += `
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 12px 16px; font-size: 14px; font-family: 'Signika', sans-serif;">${index + 1}</td>
+                <td style="padding: 12px 16px; font-size: 14px; font-family: 'Signika', sans-serif; font-weight: 500;">${row.folder_name}</td>
+                <td style="padding: 12px 16px; font-size: 14px; font-family: 'Signika', sans-serif;">${row.color_name}</td>
+                <td style="padding: 12px 16px; font-size: 14px; font-family: 'Signika', sans-serif;">${row.sku}</td>
+                <td style="padding: 12px 16px;">
+                    <div style="display: flex; gap: 6px;">
+                        <button type="button" onclick="openAddColorImageModal(${row.folder_id || 'null'}, '${row.sku}', '${row.color_name.replace(/'/g, "\\'")}')" style="background: #dbeafe; color: #1e40af; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: 'Signika', sans-serif;">Quản lý</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+    tbody.innerHTML = html;
+}
+
+function searchImageFolders() {
+    const input = document.getElementById('imageFolderSearchInput');
+    if (!input) return;
+    const term = input.value.toLowerCase();
+    const filtered = allImageFolderRows.filter(r => (r.folder_name || '').toLowerCase().includes(term));
+    renderImageFolderTable(filtered);
+}
+
+function resetImageFolderSearch() {
+    const input = document.getElementById('imageFolderSearchInput');
+    if (input) input.value = '';
+    renderImageFolderTable(allImageFolderRows);
+}
+
+function openAddImageFolderModal() {
+    const modal = document.getElementById('addImageFolderModal');
+    if (!modal) return;
+    const input = document.getElementById('imageFolderNameInput');
+    if (input) input.value = '';
+    modal.style.display = 'flex';
+    modal.onclick = function(e) {
+        if (e.target === modal) {
+            closeAddImageFolderModal();
+        }
+    };
+}
+
+function closeAddImageFolderModal() {
+    const modal = document.getElementById('addImageFolderModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function saveImageFolder() {
+    const input = document.getElementById('imageFolderNameInput');
+    if (!input) return;
+    const name = input.value.trim();
+    if (!name) {
+        window.QHToast && window.QHToast.show && window.QHToast.show('Vui lòng nhập tên thư mục!', 'error');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('name', name);
+
+    fetch('/product-images/folders/create/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': window.csrfToken
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (window.QHToast && window.QHToast.show) {
+                window.QHToast.show(data.message, 'success');
+            }
+            closeAddImageFolderModal();
+            loadImageFolderRows();
+        } else {
+            window.QHToast && window.QHToast.show && window.QHToast.show(data.message || 'Không thể tạo thư mục.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error creating image folder:', error);
+        window.QHToast && window.QHToast.show && window.QHToast.show('Có lỗi xảy ra!', 'error');
+    });
+}
+
+function refreshImageFolderOptions() {
+    const select = document.getElementById('colorImageFolderSelect');
+    if (!select) return;
+    const currentValue = select.value;
+    let html = '<option value="">-- Chọn thư mục --</option>';
+    (allImageFolders || []).forEach(folder => {
+        if (folder.id && folder.name) {
+            html += `<option value="${folder.id}">${folder.name}</option>`;
+        }
+    });
+    select.innerHTML = html;
+    if (currentValue) select.value = currentValue;
+}
+
+function openAddColorImageModal(folderId = null, sku = '', colorName = '') {
+    const modal = document.getElementById('addColorImageModal');
+    if (!modal) return;
+
+    const folderSelect = document.getElementById('colorImageFolderSelect');
+    const brandSelect = document.getElementById('colorImageBrandSelect');
+    const skuSelect = document.getElementById('colorImageSkuSelect');
+    const colorInput = document.getElementById('colorImageNameInput');
+    const fileNameEl = document.getElementById('colorImageFileName');
+    const previewGrid = document.getElementById('colorImagePreviewGrid');
+
+    refreshImageFolderOptions();
+
+    if (folderId && folderSelect) {
+        folderSelect.value = String(folderId);
+    } else if (folderSelect) {
+        folderSelect.value = '';
+    }
+
+    if (brandSelect) {
+        brandSelect.value = '';
+    }
+
+    populateColorImageSkuOptions();
+
+    if (skuSelect) {
+        skuSelect.value = sku || '';
+    }
+
+    if (colorInput) {
+        colorInput.value = colorName || '';
+    }
+
+    if (fileNameEl) fileNameEl.textContent = '';
+    if (previewGrid) previewGrid.innerHTML = '';
+    imageFolderPreviewImages = [];
+
+    modal.style.display = 'flex';
+    modal.onclick = function(e) {
+        if (e.target === modal) {
+            closeAddColorImageModal();
+        }
+    };
+
+    if (folderId && sku && colorName) {
+        loadColorImageList(folderId, sku, colorName).then(images => {
+            imageFolderPreviewImages = (images || []).map(img => ({ id: img.id, url: img.url }));
+            renderColorImagePreview();
+        });
+    }
+}
+
+function closeAddColorImageModal() {
+    const modal = document.getElementById('addColorImageModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function saveColorImageModal() {
+    if (window.QHToast && window.QHToast.show) {
+        window.QHToast.show('Đã lưu.', 'success');
+    }
+    loadImageFolderRows();
+    closeAddColorImageModal();
+}
+
+function loadColorImageList(folderId, sku, colorName) {
+    if (!folderId || !sku || !colorName) return Promise.resolve({ images: [] });
+    const params = new URLSearchParams({ folder_id: folderId, sku: sku, color_name: colorName });
+    return fetch('/product-images/color/list/?' + params.toString(), {
+        method: 'GET',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => data.success && data.images ? data.images : [])
+    .catch(() => []);
+}
+
+function populateColorImageSkuOptions() {
+    const skuSelect = document.getElementById('colorImageSkuSelect');
+    const brandSelect = document.getElementById('colorImageBrandSelect');
+    if (!skuSelect) return;
+
+    const brandId = brandSelect ? brandSelect.value : '';
+    let skus = allSkus || [];
+    if (brandId) {
+        skus = skus.filter(s => String(s.brand_id) === String(brandId));
+    }
+
+    let html = '<option value="">-- Chọn SKU --</option>';
+    skus.forEach(s => {
+        const label = `${s.sku} - ${s.product_name || ''} ${s.brand_name ? '(' + s.brand_name + ')' : ''}`;
+        html += `<option value="${s.sku}">${label}</option>`;
+    });
+    skuSelect.innerHTML = html;
+}
+
+// Khi chọn hãng trong modal màu ảnh -> lọc lại SKU
+const colorImageBrandSelectEl = document.getElementById('colorImageBrandSelect');
+if (colorImageBrandSelectEl) {
+    colorImageBrandSelectEl.addEventListener('change', populateColorImageSkuOptions);
+}
+
+function handleColorImageFileChange(event) {
+    const file = event.target.files && event.target.files[0];
+    const fileNameEl = document.getElementById('colorImageFileName');
+    if (fileNameEl) {
+        fileNameEl.textContent = file ? file.name : '';
+    }
+}
+
+function renderColorImagePreview() {
+    const previewGrid = document.getElementById('colorImagePreviewGrid');
+    if (!previewGrid) return;
+
+    if (!imageFolderPreviewImages.length) {
+        previewGrid.innerHTML = '';
+        return;
+    }
+
+    let html = '';
+    imageFolderPreviewImages.forEach((img, index) => {
+        html += `
+            <div style="position: relative; width: 100%; padding-top: 100%; background: #f1f5f9; border-radius: 10px; overflow: hidden;">
+                <img src="${img.url}" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;">
+                <button type="button" onclick="deleteColorImage(${img.id}, ${index})" style="position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border-radius: 999px; border: none; background: rgba(15,23,42,0.8); color: #f9fafb; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;">×</button>
+                <div style="position: absolute; bottom: 4px; left: 4px; padding: 2px 6px; border-radius: 999px; background: rgba(15,23,42,0.75); color: #e5e7eb; font-size: 11px; font-family: 'Signika', sans-serif;">#${index + 1}</div>
+            </div>
+        `;
+    });
+    previewGrid.innerHTML = html;
+}
+
+function uploadColorImage() {
+    const folderSelect = document.getElementById('colorImageFolderSelect');
+    const brandSelect = document.getElementById('colorImageBrandSelect');
+    const skuSelect = document.getElementById('colorImageSkuSelect');
+    const colorInput = document.getElementById('colorImageNameInput');
+    const fileInput = document.getElementById('colorImageFileInput');
+
+    const folderId = folderSelect ? folderSelect.value : '';
+    const brandId = brandSelect ? brandSelect.value : '';
+    const sku = skuSelect ? skuSelect.value : '';
+    const colorName = colorInput ? colorInput.value.trim() : '';
+    const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+
+    if (!folderId || !sku || !colorName || !file) {
+        window.QHToast && window.QHToast.show && window.QHToast.show('Vui lòng chọn thư mục, hãng, SKU, màu và ảnh!', 'error');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('folder_id', folderId);
+    if (brandId) formData.append('brand_id', brandId);
+    formData.append('sku', sku);
+    formData.append('color_name', colorName);
+    formData.append('image', file);
+
+    fetch('/product-images/color/upload/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': window.csrfToken
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.image) {
+            imageFolderPreviewImages.push({
+                id: data.image.id,
+                url: data.image.url
+            });
+            renderColorImagePreview();
+            if (window.QHToast && window.QHToast.show) {
+                const index = imageFolderPreviewImages.length;
+                window.QHToast.show(`Đã upload thành công ảnh thứ ${index}.`, 'success');
+            }
+            // reset file input
+            if (fileInput) fileInput.value = '';
+            const fileNameEl = document.getElementById('colorImageFileName');
+            if (fileNameEl) fileNameEl.textContent = '';
+
+            // reload bảng để cập nhật dòng mới
+            loadImageFolderRows();
+        } else {
+            window.QHToast && window.QHToast.show && window.QHToast.show(data.message || 'Không thể upload ảnh.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error uploading color image:', error);
+        window.QHToast && window.QHToast.show && window.QHToast.show('Có lỗi xảy ra!', 'error');
+    });
+}
+
+function deleteColorImage(imageId, indexInPreview) {
+    if (!imageId) return;
+
+    const formData = new FormData();
+    formData.append('image_id', imageId);
+
+    fetch('/product-images/color/delete/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': window.csrfToken
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (typeof indexInPreview === 'number') {
+                imageFolderPreviewImages.splice(indexInPreview, 1);
+                renderColorImagePreview();
+            }
+            if (window.QHToast && window.QHToast.show) {
+                window.QHToast.show(data.message || 'Đã xóa ảnh.', 'success');
+            }
+            loadImageFolderRows();
+        } else {
+            window.QHToast && window.QHToast.show && window.QHToast.show(data.message || 'Không thể xóa ảnh.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting color image:', error);
+        window.QHToast && window.QHToast.show && window.QHToast.show('Có lỗi xảy ra!', 'error');
+    });
+}
+
+function renderSkuTable(skus) {
+    const tbody = document.getElementById('skuTableBody');
+    if (!tbody) return;
+    
+    if (skus.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="padding: 40px; text-align: center; color: #64748b; font-size: 14px;">
+                    CHƯA CÓ SKU NÀO !
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    let html = '';
+    skus.forEach((sku, index) => {
+        const date = new Date(sku.created_at).toLocaleDateString('vi-VN');
+        const skuIdEscaped = String(sku.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        const skuEscaped = (sku.sku || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        const escapeHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const productNameEscaped = escapeHtml(sku.product_name || '-');
+        const brandDisplay = escapeHtml(sku.brand_name || '-');
+        html += `
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 12px 16px; font-size: 14px; font-family: 'Signika', sans-serif;">${index + 1}</td>
+                <td style="padding: 12px 16px; font-size: 14px; font-weight: 500; font-family: 'Signika', sans-serif;">${escapeHtml(sku.sku)}</td>
+                <td style="padding: 12px 16px; font-size: 14px; font-family: 'Signika', sans-serif;">${productNameEscaped}</td>
+                <td style="padding: 12px 16px; font-size: 14px; font-family: 'Signika', sans-serif;">${brandDisplay}</td>
+                <td style="padding: 12px 16px; font-size: 14px; font-family: 'Signika', sans-serif;">${date}</td>
+                <td style="padding: 12px 16px;">
+                    <div style="display: flex; gap: 6px;">
+                        <button type="button" onclick="editSku('${skuIdEscaped}', '${skuEscaped}')" style="background: #fef3c7; color: #b45309; border: none; border-radius: 6px; padding: 6px 12px; font-size: 13px; cursor: pointer; font-family: 'Signika', sans-serif;">Sửa</button>
+                        <button type="button" onclick="deleteSkuItem('${skuIdEscaped}', '${skuEscaped}')" style="background: #fee2e2; color: #dc2626; border: none; border-radius: 6px; padding: 6px 12px; font-size: 13px; cursor: pointer; font-family: 'Signika', sans-serif;">Xóa</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+    tbody.innerHTML = html;
+}
+
+function filterSkuByBrand() {
+    const brandFilter = document.getElementById('skuBrandFilter');
+    const searchInput = document.getElementById('skuSearchInput');
+    if (!brandFilter || !searchInput) return;
+    
+    const brandId = brandFilter.value;
+    const searchTerm = searchInput.value.toLowerCase();
+    
+    let filtered = allSkus;
+    
+    if (brandId) {
+        filtered = filtered.filter(s => s.brand_id == brandId);
+    }
+    
+    if (searchTerm) {
+        filtered = filtered.filter(s => s.sku.toLowerCase().includes(searchTerm));
+    }
+    
+    renderSkuTable(filtered);
+}
+
+function addNewSku() {
+    const productId = document.getElementById('skuProductSelect').value;
+    const sku = document.getElementById('newSkuInput').value.trim();
+    
+    if (!productId) {
+        alert('Vui lòng chọn sản phẩm!');
+        return;
+    }
+    
+    if (!sku) {
+        alert('Vui lòng nhập SKU!');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('product_id', productId);
+    formData.append('sku', sku);
+    
+    fetch('/products/sku/add/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': window.csrfToken
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.QHToast.show(data.message, 'success');
+            document.getElementById('newSkuInput').value = '';
+            loadSkuList();
+        } else {
+            window.QHToast.show(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error adding SKU:', error);
+        window.QHToast.show('Có lỗi xảy ra!', 'error');
+    });
+}
+
+function editSku(id, sku) {
+    const modal = document.getElementById('editSkuModal');
+    const input = document.getElementById('editSkuInput');
+    const idInput = document.getElementById('editSkuId');
+    if (!modal || !input || !idInput) return;
+    idInput.value = id;
+    input.value = sku || '';
+    input.setAttribute('data-original', sku || '');
+    input.placeholder = 'Nhập mã SKU';
+    modal.style.display = 'flex';
+}
+
+function closeEditSkuModal() {
+    const modal = document.getElementById('editSkuModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function saveEditSku() {
+    const idInput = document.getElementById('editSkuId');
+    const input = document.getElementById('editSkuInput');
+    if (!idInput || !input) return;
+    const id = idInput.value;
+    const newSku = (input.value || '').trim();
+    const originalSku = (input.getAttribute('data-original') || '').trim();
+    if (!newSku) {
+        window.QHToast.show('Vui lòng nhập mã SKU.', 'error');
+        return;
+    }
+    if (newSku === originalSku) {
+        closeEditSkuModal();
+        return;
+    }
+    const formData = new FormData();
+    formData.append('sku_id', id);
+    formData.append('sku', newSku);
+    fetch('/products/sku/edit/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': window.csrfToken
+        }
+    })
+    .then(response => {
+        const ct = response.headers.get('content-type') || '';
+        if (ct.includes('application/json')) {
+            return response.json().then(data => ({ ok: response.ok, data }));
+        }
+        return response.text().then(() => ({ ok: false, data: { message: 'Phản hồi không hợp lệ.' } }));
+    })
+    .then(({ ok, data }) => {
+        if (ok && data.success) {
+            window.QHToast.show(data.message || 'Đã sửa SKU.', 'success');
+            closeEditSkuModal();
+            loadSkuList();
+        } else {
+            window.QHToast.show(data.message || 'Không thể sửa SKU.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error editing SKU:', error);
+        window.QHToast.show('Có lỗi xảy ra!', 'error');
+    });
+}
+
+function deleteSkuItem(id, sku) {
+    if (window.QHConfirm && window.QHConfirm.show) {
+        window.QHConfirm.show(
+            `Bạn có chắc muốn xóa SKU: <strong>${sku}</strong>?`,
+            () => {
+                performDeleteSkuItem(id);
+            }
+        );
+    } else {
+        if (confirm(`Bạn có chắc muốn xóa SKU: ${sku}?`)) {
+            performDeleteSkuItem(id);
+        }
+    }
+}
+
+function performDeleteSkuItem(id) {
+    const formData = new FormData();
+    formData.append('sku_id', id);
+    
+    fetch('/products/sku/delete/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': window.csrfToken
+        }
+    })
+    .then(response => {
+        const ct = response.headers.get('content-type') || '';
+        if (ct.includes('application/json')) {
+            return response.json().then(data => ({ ok: response.ok, data }));
+        }
+        return response.text().then(() => ({ ok: false, data: { message: 'Phản hồi không hợp lệ.' } }));
+    })
+    .then(({ ok, data }) => {
+        if (ok && data.success) {
+            window.QHToast.show(data.message || 'Đã xóa SKU.', 'success');
+            loadSkuList();
+        } else {
+            window.QHToast.show(data.message || 'Không thể xóa SKU.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting SKU:', error);
+        window.QHToast.show('Có lỗi xảy ra!', 'error');
+    });
+}
+
+// Search SKU
+const skuSearchInput = document.getElementById('skuSearchInput');
+if (skuSearchInput) {
+    skuSearchInput.addEventListener('input', filterSkuByBrand);
+}
+
+// ==================== Add SKU Modal Functions ====================
+function openAddSkuModal() {
+    const modal = document.getElementById('addSkuModal');
+    modal.style.display = 'flex';
+    document.getElementById('addSkuBrand').value = '';
+    document.getElementById('addSkuProduct').innerHTML = '<option value="">-- CHỌN HÃNG TRƯỚC NHÉ --</option>';
+    document.getElementById('addSkuInput').value = '';
+    
+    // Close modal when clicking outside
+    modal.onclick = function(e) {
+        if (e.target === modal) {
+            closeAddSkuModal();
+        }
+    };
+    
+    // Enter key to save
+    document.getElementById('addSkuInput').onkeypress = function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            saveSku();
+        }
+    };
+}
+
+function closeAddSkuModal() {
+    document.getElementById('addSkuModal').style.display = 'none';
+}
+
+function loadProductsByBrand() {
+    const brandId = document.getElementById('addSkuBrand').value;
+    const productSelect = document.getElementById('addSkuProduct');
+    
+    if (!brandId) {
+        productSelect.innerHTML = '<option value="">-- CHỌN HÃNG TRƯỚC NHÉ --</option>';
+        return;
+    }
+    
+    // Filter products by brand
+    const products = window.allProducts || [];
+    const filtered = products.filter(p => p.brand_id == brandId);
+    
+    if (filtered.length === 0) {
+        productSelect.innerHTML = '<option value="">-- Không có sản phẩm --</option>';
+        return;
+    }
+    
+    let html = '<option value="">-- Chọn sản phẩm --</option>';
+    filtered.forEach(p => {
+        html += `<option value="${p.id}">${p.name}</option>`;
+    });
+    productSelect.innerHTML = html;
+}
+
+function saveSku() {
+    const productId = document.getElementById('addSkuProduct').value;
+    const sku = document.getElementById('addSkuInput').value.trim();
+    
+    if (!productId) {
+        window.QHToast.show('Vui lòng chọn sản phẩm!', 'error');
+        return;
+    }
+    
+    if (!sku) {
+        window.QHToast.show('Vui lòng nhập SKU!', 'error');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('product_id', productId);
+    formData.append('sku', sku);
+    
+    fetch('/products/sku/add/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': window.csrfToken
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.QHToast.show(data.message, 'success');
+            closeAddSkuModal();
+            loadSkuList();
+        } else {
+            window.QHToast.show(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving SKU:', error);
+        window.QHToast.show('Có lỗi xảy ra!', 'error');
+    });
+}
+
+function searchSku() {
+    filterSkuByBrand();
+}
+
+function resetSkuSearch() {
+    const skuSearchInput = document.getElementById('skuSearchInput');
+    const skuBrandFilter = document.getElementById('skuBrandFilter');
+    if (skuSearchInput) skuSearchInput.value = '';
+    if (skuBrandFilter) skuBrandFilter.value = '';
+    renderSkuTable(allSkus);
+}
+
+// Load products for SKU management
+function loadAllProducts() {
+    fetch('/products/list/json/', {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.allProducts = data.products;
+        }
+    })
+    .catch(error => console.error('Error loading products:', error));
+}
+
+// Load products when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadAllProducts();
 });

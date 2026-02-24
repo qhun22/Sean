@@ -130,9 +130,9 @@
                 {% endif %}
                 
                 <!-- Discount Badge -->
-                {% if product.detail and product.detail.original_price and product.detail.original_price > product.detail.discounted_price %}
+                {% if product.detail and product.detail.summary_original_price and product.detail.summary_original_price > product.detail.discounted_price and product.detail.summary_discount_percent > 0 %}
                 <div class="discount-badge">
-                    -{{ product.detail.discount_percent }}%
+                    -{{ product.detail.summary_discount_percent }}%
                 </div>
                 {% endif %}
                 
@@ -159,9 +159,9 @@
                 
                 <!-- Price -->
                 <div class="qh-product-price" style="margin-bottom: 10px;">
-                    {% if product.detail and product.detail.original_price and product.detail.original_price > product.detail.discounted_price %}
+                    {% if product.detail and product.detail.summary_original_price and product.detail.summary_original_price > product.detail.discounted_price and product.detail.summary_discount_percent > 0 %}
                     <span style="font-size: 14px; color: var(--qh-text-light); text-decoration: line-through; display: block; margin-bottom: 2px;">
-                        {{ product.detail.original_price|format_price_with_unit }}
+                        {{ product.detail.summary_original_price|format_price_with_unit }}
                     </span>
                     <span style="font-size: 18px; font-weight: 700; color: var(--qh-primary);">
                         {{ product.detail.discounted_price|format_price_with_unit }}
