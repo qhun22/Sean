@@ -27,7 +27,10 @@ document.addEventListener('DOMContentLoaded', function () {
     updateColorButtons();
     renderBottomTabs();
 
-    if (typeof specData !== 'undefined' && specData) renderSpec(specData);
+    if (typeof specData !== 'undefined' && specData) {
+        renderSpec(specData);
+        setupSpecScrollSpy();
+    }
 
     setTimeout(function () { startAutoSlide(); }, 2000);
 });
@@ -244,11 +247,8 @@ function selectColorByName(colorName) {
 }
 
 function scrollToSpec() {
-    var el = document.getElementById('pdSpecSection');
-    if (el) {
-        el.style.display = 'block';
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    // Open spec modal instead of scrolling to inline section
+    openSpecModal();
 }
 
 function scrollToDescription() {
@@ -384,48 +384,154 @@ document.addEventListener('keydown', function (e) {
     else if (e.key === 'Escape') closeGallery();
 });
 
-// ========== Specifications ==========
-function renderSpec(data) {
-    var section = document.getElementById('pdSpecSection');
-    var content = document.getElementById('pdSpecContent');
-    if (!section || !content || !data) return;
+// ========== Specifications (FPTShop-style) ==========
+var specGroups = []; // Parsed groups: [{name, specs: [{name, value}]}]
 
-    section.style.display = 'block';
-    var html = '';
+function parseSpecData(data) {
+    var groups = [];
+    if (!data) return groups;
 
     if (data.groups && Array.isArray(data.groups)) {
-        data.groups.forEach(function (group) {
-            html += '<div class="pd-spec-group-title">' + (group.name || '') + '</div>';
-            html += '<table class="pd-spec-table">';
-            if (group.specs && Array.isArray(group.specs)) {
-                group.specs.forEach(function (spec) {
-                    html += '<tr><td>' + (spec.name || spec.key || '') + '</td><td>' + (spec.value || '') + '</td></tr>';
+        // Structured format: {groups: [{name/title, specs/items: [{name/key/label, value}]}]}
+        data.groups.forEach(function (g) {
+            var specs = [];
+            var specArr = g.specs || g.items || [];
+            if (Array.isArray(specArr)) {
+                specArr.forEach(function (s) {
+                    specs.push({ name: s.name || s.key || s.label || '', value: s.value || '' });
                 });
             }
-            html += '</table>';
+            groups.push({ name: g.name || g.title || '', specs: specs });
         });
     } else if (typeof data === 'object') {
-        html += '<table class="pd-spec-table">';
+        // Flat format: {key: value} or {key: {k2: v2}}
+        var flatSpecs = [];
         for (var key in data) {
             if (!data.hasOwnProperty(key)) continue;
             var value = data[key];
             if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-                html += '</table>';
-                html += '<div class="pd-spec-group-title">' + key + '</div>';
-                html += '<table class="pd-spec-table">';
+                var subSpecs = [];
                 for (var k2 in value) {
                     if (!value.hasOwnProperty(k2)) continue;
-                    html += '<tr><td>' + k2 + '</td><td>' + value[k2] + '</td></tr>';
+                    subSpecs.push({ name: k2, value: value[k2] });
                 }
+                groups.push({ name: key, specs: subSpecs });
             } else {
-                html += '<tr><td>' + key + '</td><td>' + value + '</td></tr>';
+                flatSpecs.push({ name: key, value: String(value) });
             }
         }
-        html += '</table>';
+        if (flatSpecs.length > 0) {
+            groups.unshift({ name: 'Thông tin chung', specs: flatSpecs });
+        }
     }
-
-    content.innerHTML = html;
+    return groups;
 }
+
+function renderSpec(data) {
+    specGroups = parseSpecData(data);
+}
+
+function openSpecModal() {
+    var overlay = document.getElementById('pdSpecOverlay');
+    if (!overlay) return;
+
+    renderSpecTabs();
+    renderSpecModalBody();
+
+    overlay.classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function renderSpecTabs() {
+    var container = document.getElementById('pdSpecTabs');
+    if (!container) return;
+
+    var html = '';
+    specGroups.forEach(function (group, idx) {
+        html += '<div class="pd-spec-tab' + (idx === 0 ? ' active' : '') + '" data-group="' + idx + '" onclick="specTabClick(' + idx + ')">' + group.name + '</div>';
+    });
+    container.innerHTML = html;
+}
+
+function renderSpecModalBody() {
+    var body = document.getElementById('pdSpecModalBody');
+    if (!body) return;
+
+    var html = '';
+    specGroups.forEach(function (group, idx) {
+        html += '<div class="pd-spec-group" id="specGroup_' + idx + '">';
+        html += '<div class="pd-spec-group-title">' + group.name + '</div>';
+        html += '<table>';
+        group.specs.forEach(function (s) {
+            html += '<tr><td>' + s.name + '</td><td>' + s.value + '</td></tr>';
+        });
+        html += '</table>';
+        html += '</div>';
+    });
+    body.innerHTML = html;
+}
+
+function specTabClick(idx) {
+    // Update active tab
+    document.querySelectorAll('.pd-spec-tab').forEach(function (tab) {
+        tab.classList.toggle('active', parseInt(tab.dataset.group) === idx);
+    });
+
+    // Scroll to group section
+    var target = document.getElementById('specGroup_' + idx);
+    var body = document.getElementById('pdSpecModalBody');
+    if (target && body) {
+        body.scrollTo({ top: target.offsetTop - body.offsetTop, behavior: 'smooth' });
+    }
+}
+
+// Update active tab on scroll
+function setupSpecScrollSpy() {
+    var body = document.getElementById('pdSpecModalBody');
+    if (!body) return;
+
+    body.addEventListener('scroll', function () {
+        var scrollTop = body.scrollTop;
+        var activeIdx = 0;
+
+        for (var i = 0; i < specGroups.length; i++) {
+            var el = document.getElementById('specGroup_' + i);
+            if (el && (el.offsetTop - body.offsetTop) <= scrollTop + 60) {
+                activeIdx = i;
+            }
+        }
+
+        document.querySelectorAll('.pd-spec-tab').forEach(function (tab) {
+            tab.classList.toggle('active', parseInt(tab.dataset.group) === activeIdx);
+        });
+
+        // Auto-scroll tab into view
+        var activeTab = document.querySelector('.pd-spec-tab.active');
+        if (activeTab) {
+            activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+    });
+}
+
+function closeSpecModal(e) {
+    if (e.target === document.getElementById('pdSpecOverlay')) closeSpecModalBtn();
+}
+
+function closeSpecModalBtn() {
+    var overlay = document.getElementById('pdSpecOverlay');
+    if (overlay) {
+        overlay.classList.remove('show');
+        document.body.style.overflow = '';
+    }
+}
+
+// Close spec modal with Escape
+document.addEventListener('keydown', function (e) {
+    var overlay = document.getElementById('pdSpecOverlay');
+    if (overlay && overlay.classList.contains('show') && e.key === 'Escape') {
+        closeSpecModalBtn();
+    }
+});
 
 // ========== Utilities ==========
 function formatPrice(value) {

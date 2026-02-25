@@ -96,16 +96,24 @@
         </div>
     </div>
 
-    <!-- Specifications Section -->
-    <div class="pd-spec-section" id="pdSpecSection" style="display: none;">
-        <h2 class="pd-spec-title">Thông số kỹ thuật</h2>
-        <div id="pdSpecContent"></div>
-    </div>
-
     <!-- Product Description Section -->
     <div class="pd-spec-section" id="pdDescSection" style="display: none;">
         <h2 class="pd-spec-title">Thông tin sản phẩm</h2>
         <div id="pdDescContent" style="font-size: 14px; color: #334155; line-height: 1.7; white-space: pre-line;"></div>
+    </div>
+</div>
+
+<!-- Spec Panel (slide from right) -->
+<div class="pd-spec-overlay" id="pdSpecOverlay" onclick="closeSpecModal(event)">
+    <div class="pd-spec-panel" id="pdSpecPanel" onclick="event.stopPropagation()">
+        <div class="pd-spec-panel-header">
+            <h2 class="pd-spec-panel-title">Thông số kỹ thuật</h2>
+            <button class="pd-spec-panel-close" onclick="closeSpecModalBtn()">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="pd-spec-tabs" id="pdSpecTabs"></div>
+        <div class="pd-spec-panel-body" id="pdSpecModalBody"></div>
     </div>
 </div>
 
