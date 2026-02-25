@@ -164,11 +164,11 @@
 /* Color Dropdown */
 .qh-cart-color-dropdown {
     position: relative;
-    display: inline-block;
-    margin-bottom: 12px;
+    display: block;
+    margin-bottom: 8px;
 }
 .qh-cart-color-selected {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 6px;
     padding: 6px 12px;
@@ -180,6 +180,7 @@
     background: white;
     transition: border-color 0.2s;
     user-select: none;
+    font-family: 'Signika', sans-serif;
 }
 .qh-cart-color-selected:hover {
     border-color: var(--qh-primary);
@@ -198,11 +199,9 @@
     display: none;
     flex-wrap: wrap;
     gap: 8px;
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid #f3f4f6;
+    padding: 10px 0 4px;
 }
-.qh-cart-color-options.open {
+.qh-cart-color-dropdown.open .qh-cart-color-options {
     display: flex;
 }
 .qh-cart-color-opt {
@@ -218,6 +217,7 @@
     color: var(--qh-text);
     background: white;
     transition: all 0.2s;
+    font-family: 'Signika', sans-serif;
 }
 .qh-cart-color-opt:hover {
     border-color: var(--qh-primary);
@@ -231,6 +231,67 @@
     height: 32px;
     border-radius: 4px;
     object-fit: cover;
+}
+
+/* Storage Dropdown (reuses color dropdown pattern) */
+.qh-cart-storage-dropdown {
+    position: relative;
+    display: block;
+    margin-bottom: 8px;
+}
+.qh-cart-storage-selected {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid var(--qh-border);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--qh-text);
+    background: white;
+    transition: border-color 0.2s;
+    user-select: none;
+    font-family: 'Signika', sans-serif;
+}
+.qh-cart-storage-selected:hover {
+    border-color: var(--qh-primary);
+}
+.qh-cart-storage-selected svg {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.2s;
+}
+.qh-cart-storage-dropdown.open .qh-cart-storage-selected svg {
+    transform: rotate(180deg);
+}
+.qh-cart-storage-options {
+    display: none;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 0 4px;
+}
+.qh-cart-storage-dropdown.open .qh-cart-storage-options {
+    display: flex;
+}
+.qh-cart-storage-opt {
+    padding: 6px 16px;
+    border: 2px solid var(--qh-border);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--qh-text);
+    background: white;
+    transition: all 0.2s;
+    font-family: 'Signika', sans-serif;
+}
+.qh-cart-storage-opt:hover {
+    border-color: var(--qh-primary);
+}
+.qh-cart-storage-opt.selected {
+    border-color: var(--qh-primary);
+    background: rgba(var(--qh-primary-rgb, 79, 70, 229), 0.05);
 }
 
 /* Price + Quantity + Delete (right section) */
@@ -287,9 +348,14 @@
     font-weight: 500;
     color: var(--qh-text);
     transition: background 0.2s;
+    font-family: 'Signika', sans-serif;
 }
-.qh-cart-qty-btn:hover {
+.qh-cart-qty-btn:hover:not(:disabled) {
     background: #e5e7eb;
+}
+.qh-cart-qty-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
 }
 .qh-cart-qty-input {
     width: 44px;
@@ -302,6 +368,7 @@
     font-weight: 600;
     color: var(--qh-text);
     outline: none;
+    font-family: 'Signika', sans-serif;
     -moz-appearance: textfield;
 }
 .qh-cart-qty-input::-webkit-outer-spin-button,
@@ -336,7 +403,7 @@
     padding: 24px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     position: sticky;
-    top: 20px;
+    top: 100px;
 }
 .qh-cart-summary-title {
     font-size: 20px;
@@ -356,6 +423,7 @@
     border-radius: 8px;
     font-size: 14px;
     outline: none;
+    font-family: 'Signika', sans-serif;
 }
 .qh-cart-voucher-input input:focus {
     border-color: var(--qh-primary);
@@ -369,6 +437,7 @@
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
+    font-family: 'Signika', sans-serif;
 }
 .qh-cart-voucher-input button:hover {
     opacity: 0.9;
@@ -409,6 +478,7 @@
     cursor: pointer;
     margin-top: 20px;
     transition: all 0.3s;
+    font-family: 'Signika', sans-serif;
 }
 .qh-cart-checkout-btn:hover {
     opacity: 0.9;
@@ -472,9 +542,13 @@
 
                 <!-- Image -->
                 <div class="qh-cart-item-img">
-                    {% if item.product.image %}
+                    {% if item.color_thumbnail %}
                     <a href="{% url 'store:product_detail' item.product.id %}">
-                        <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}">
+                        <img src="{{ item.color_thumbnail }}" alt="{{ item.product.name }}" id="itemImg_{{ item.id }}">
+                    </a>
+                    {% elif item.product.image %}
+                    <a href="{% url 'store:product_detail' item.product.id %}">
+                        <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" id="itemImg_{{ item.id }}">
                     </a>
                     {% else %}
                     <div class="qh-cart-no-img">
@@ -500,23 +574,48 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                             </svg>
                         </div>
+                        <!-- Color Options (inside the dropdown so toggle controls both) -->
+                        {% if item.color_options %}
+                        <div class="qh-cart-color-options" id="colorOptions_{{ item.id }}">
+                            {% for opt in item.color_options %}
+                            <button class="qh-cart-color-opt{% if opt.is_selected %} selected{% endif %}"
+                                    data-item-id="{{ item.id }}"
+                                    data-color="{{ opt.color_name }}"
+                                    data-thumbnail="{{ opt.thumbnail }}"
+                                    onclick="changeColor(this, {{ item.id }}, '{{ opt.color_name }}')">
+                                {% if opt.thumbnail %}
+                                <img src="{{ opt.thumbnail }}" alt="{{ opt.color_name }}">
+                                {% endif %}
+                                <span>{{ opt.color_name }}</span>
+                            </button>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
                     </div>
                     {% endif %}
 
-                    <!-- Color Options (shown when dropdown is open) -->
-                    {% if item.color_options %}
-                    <div class="qh-cart-color-options" id="colorOptions_{{ item.id }}">
-                        {% for opt in item.color_options %}
-                        <button class="qh-cart-color-opt{% if opt.is_selected %} selected{% endif %}"
-                                data-item-id="{{ item.id }}"
-                                data-color="{{ opt.color_name }}"
-                                onclick="changeColor(this, {{ item.id }}, '{{ opt.color_name }}')">
-                            {% if opt.thumbnail %}
-                            <img src="{{ opt.thumbnail }}" alt="{{ opt.color_name }}">
-                            {% endif %}
-                            <span>{{ opt.color_name }}</span>
-                        </button>
-                        {% endfor %}
+                    <!-- Storage Dropdown -->
+                    {% if item.storage %}
+                    <div class="qh-cart-storage-dropdown" data-item-id="{{ item.id }}">
+                        <div class="qh-cart-storage-selected" onclick="toggleStorageDropdown(this)">
+                            <span>Dung lượng: {{ item.storage }}</span>
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </div>
+                        <!-- Storage Options (inside the dropdown) -->
+                        {% if item.storage_options and item.storage_options|length > 1 %}
+                        <div class="qh-cart-storage-options" id="storageOptions_{{ item.id }}">
+                            {% for opt in item.storage_options %}
+                            <button class="qh-cart-storage-opt{% if opt.is_selected %} selected{% endif %}"
+                                    data-item-id="{{ item.id }}"
+                                    data-storage="{{ opt.storage }}"
+                                    onclick="changeStorage(this, {{ item.id }}, '{{ opt.storage }}')">
+                                {{ opt.storage }}
+                            </button>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
                     </div>
                     {% endif %}
                 </div>
@@ -538,9 +637,9 @@
 
                     <div class="qh-cart-item-actions">
                         <div class="qh-cart-qty">
-                            <button class="qh-cart-qty-btn" onclick="updateCartQuantity({{ item.id }}, {{ item.quantity|add:'-1' }})">−</button>
+                            <button class="qh-cart-qty-btn qh-cart-qty-minus" data-item-id="{{ item.id }}" {% if item.quantity <= 1 %}disabled{% endif %} onclick="updateCartQuantity({{ item.id }}, parseInt(document.getElementById('qtyInput_{{ item.id }}').value) - 1)">−</button>
                             <input type="number" class="qh-cart-qty-input" id="qtyInput_{{ item.id }}" value="{{ item.quantity }}" min="1" onchange="updateCartQuantity({{ item.id }}, this.value)">
-                            <button class="qh-cart-qty-btn" onclick="updateCartQuantity({{ item.id }}, {{ item.quantity|add:'1' }})">+</button>
+                            <button class="qh-cart-qty-btn" onclick="updateCartQuantity({{ item.id }}, parseInt(document.getElementById('qtyInput_{{ item.id }}').value) + 1)">+</button>
                         </div>
                         <button class="qh-cart-delete-btn" onclick="removeFromCart({{ item.id }})" title="Xóa sản phẩm">
                             <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -566,7 +665,7 @@
             <!-- Order Info -->
             <div class="qh-cart-summary-row">
                 <span>Tổng tiền</span>
-                <span class="qh-cart-value" id="summarySubtotal">{{ cart.get_total_price|format_price_with_unit }}</span>
+                <span class="qh-cart-value" id="summarySubtotal">0 đ</span>
             </div>
             <div class="qh-cart-summary-row">
                 <span>Voucher đang áp dụng</span>
@@ -578,7 +677,7 @@
             </div>
             <div class="qh-cart-summary-row total">
                 <span>Cần thanh toán</span>
-                <span class="qh-cart-value" id="summaryTotal">{{ cart.get_total_price|format_price_with_unit }}</span>
+                <span class="qh-cart-value" id="summaryTotal">0 đ</span>
             </div>
 
             <button class="qh-cart-checkout-btn" onclick="checkout()">
@@ -642,10 +741,29 @@ function toggleSelectAll(checkbox) {
 }
 
 function updateSelectedCount() {
-    var checked = document.querySelectorAll('.cart-item-check:checked').length;
+    var checked = document.querySelectorAll('.cart-item-check:checked');
     var total = document.querySelectorAll('.cart-item-check').length;
-    document.getElementById('selectedCount').textContent = checked;
-    document.getElementById('selectAll').checked = (checked === total && total > 0);
+    document.getElementById('selectedCount').textContent = checked.length;
+    document.getElementById('selectAll').checked = (checked.length === total && total > 0);
+    
+    // Tính tổng tiền của các sản phẩm đã chọn
+    var selectedTotal = 0;
+    checked.forEach(function(cb) {
+        var itemId = cb.getAttribute('data-item-id');
+        var priceEl = document.getElementById('itemPrice_' + itemId);
+        var qtyInput = document.getElementById('qtyInput_' + itemId);
+        if (priceEl && qtyInput) {
+            var priceText = priceEl.textContent.replace(/[.\s]/g, '');
+            var price = parseInt(priceText) || 0;
+            var quantity = parseInt(qtyInput.value) || 1;
+            selectedTotal += price * quantity;
+        }
+    });
+    
+    // Cập nhật hiển thị tổng tiền
+    var formattedTotal = formatPrice(selectedTotal) + ' đ';
+    document.getElementById('summarySubtotal').textContent = formattedTotal;
+    document.getElementById('summaryTotal').textContent = formattedTotal;
 }
 
 /* ==================== Delete Selected ==================== */
@@ -657,24 +775,24 @@ function deleteSelected() {
         }
         return;
     }
-    if (!confirm('Bạn có chắc muốn xóa ' + checked.length + ' sản phẩm đã chọn?')) return;
-
-    var promises = [];
-    checked.forEach(function(cb) {
-        var itemId = cb.getAttribute('data-item-id');
-        promises.push(
-            fetch('/cart/remove/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': getCsrfToken()
-                },
-                body: 'item_id=' + itemId
-            })
-        );
-    });
-    Promise.all(promises).then(function() {
-        location.reload();
+    QHConfirm.show('Bạn có chắc muốn xóa ' + checked.length + ' sản phẩm đã chọn?', function() {
+        var promises = [];
+        checked.forEach(function(cb) {
+            var itemId = cb.getAttribute('data-item-id');
+            promises.push(
+                fetch('/cart/remove/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: 'item_id=' + itemId
+                })
+            );
+        });
+        Promise.all(promises).then(function() {
+            location.reload();
+        });
     });
 }
 
@@ -682,30 +800,30 @@ function deleteSelected() {
 function toggleColorDropdown(el) {
     var dropdown = el.closest('.qh-cart-color-dropdown');
     var itemId = dropdown.getAttribute('data-item-id');
-    var options = document.getElementById('colorOptions_' + itemId);
 
-    // Close all other dropdowns
+    // Close all other color dropdowns
     document.querySelectorAll('.qh-cart-color-dropdown.open').forEach(function(d) {
-        if (d !== dropdown) {
-            d.classList.remove('open');
-            var otherId = d.getAttribute('data-item-id');
-            var otherOpts = document.getElementById('colorOptions_' + otherId);
-            if (otherOpts) otherOpts.classList.remove('open');
-        }
+        if (d !== dropdown) d.classList.remove('open');
+    });
+
+    // Close all storage dropdowns
+    document.querySelectorAll('.qh-cart-storage-dropdown.open').forEach(function(d) {
+        d.classList.remove('open');
     });
 
     dropdown.classList.toggle('open');
-    if (options) options.classList.toggle('open');
 }
 
 // Close dropdown when clicking outside
 document.addEventListener('click', function(e) {
-    if (!e.target.closest('.qh-cart-color-dropdown') && !e.target.closest('.qh-cart-color-options')) {
+    if (!e.target.closest('.qh-cart-color-dropdown')) {
         document.querySelectorAll('.qh-cart-color-dropdown.open').forEach(function(d) {
             d.classList.remove('open');
-            var itemId = d.getAttribute('data-item-id');
-            var opts = document.getElementById('colorOptions_' + itemId);
-            if (opts) opts.classList.remove('open');
+        });
+    }
+    if (!e.target.closest('.qh-cart-storage-dropdown')) {
+        document.querySelectorAll('.qh-cart-storage-dropdown.open').forEach(function(d) {
+            d.classList.remove('open');
         });
     }
 });
@@ -735,6 +853,89 @@ function changeColor(btn, itemId, colorName) {
             if (dropdown) {
                 var label = dropdown.querySelector('.qh-cart-color-selected span');
                 if (label) label.textContent = 'Màu: ' + data.new_color;
+            }
+
+            // Update product image with the color thumbnail
+            if (data.new_thumbnail) {
+                var imgEl = document.getElementById('itemImg_' + itemId);
+                if (imgEl) imgEl.src = data.new_thumbnail;
+            }
+
+            // Update price
+            var priceEl = document.getElementById('itemPrice_' + itemId);
+            if (priceEl) priceEl.textContent = formatPrice(data.item_price) + 'đ';
+
+            var origPriceEl = document.getElementById('itemOrigPrice_' + itemId);
+            if (origPriceEl) {
+                if (data.original_price > 0) {
+                    origPriceEl.textContent = formatPrice(data.original_price) + 'đ';
+                    origPriceEl.style.display = 'block';
+                } else {
+                    origPriceEl.style.display = 'none';
+                }
+            }
+
+            // Update totals
+            updateSummaryPrices(data.total_price);
+            updateCartBadge(data.total_items);
+
+            if (window.QHToast) QHToast.show(data.message, 'success');
+
+            // Reload after short delay to get fresh data
+            setTimeout(function() { location.reload(); }, 800);
+        } else {
+            if (window.QHToast) QHToast.show(data.message, 'error');
+        }
+    })
+    .catch(function(err) {
+        console.error('Error:', err);
+        if (window.QHToast) QHToast.show('Có lỗi xảy ra', 'error');
+    });
+}
+
+/* ==================== Storage Dropdown ==================== */
+function toggleStorageDropdown(el) {
+    var dropdown = el.closest('.qh-cart-storage-dropdown');
+    var itemId = dropdown.getAttribute('data-item-id');
+
+    // Close all other storage dropdowns
+    document.querySelectorAll('.qh-cart-storage-dropdown.open').forEach(function(d) {
+        if (d !== dropdown) d.classList.remove('open');
+    });
+
+    // Close all color dropdowns
+    document.querySelectorAll('.qh-cart-color-dropdown.open').forEach(function(d) {
+        d.classList.remove('open');
+    });
+
+    dropdown.classList.toggle('open');
+}
+
+/* ==================== Change Storage ==================== */
+function changeStorage(btn, itemId, storage) {
+    // Visual feedback
+    var options = document.getElementById('storageOptions_' + itemId);
+    options.querySelectorAll('.qh-cart-storage-opt').forEach(function(o) {
+        o.classList.remove('selected');
+    });
+    btn.classList.add('selected');
+
+    fetch('/cart/change-storage/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: 'item_id=' + itemId + '&storage=' + encodeURIComponent(storage)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            // Update storage label
+            var dropdown = document.querySelector('.qh-cart-storage-dropdown[data-item-id="' + itemId + '"]');
+            if (dropdown) {
+                var label = dropdown.querySelector('.qh-cart-storage-selected span');
+                if (label) label.textContent = 'Dung lượng: ' + data.new_storage;
             }
 
             // Update price
@@ -771,6 +972,11 @@ function changeColor(btn, itemId, colorName) {
 
 /* ==================== Update Quantity ==================== */
 function updateCartQuantity(itemId, quantity) {
+    quantity = parseInt(quantity);
+    if (isNaN(quantity) || quantity < 1) {
+        if (window.QHToast) QHToast.show('Số lượng tối thiểu là 1', 'error');
+        return;
+    }
     fetch('/cart/update/', {
         method: 'POST',
         headers: {
@@ -782,24 +988,24 @@ function updateCartQuantity(itemId, quantity) {
     .then(function(r) { return r.json(); })
     .then(function(data) {
         if (data.success) {
-            if (data.item_removed) {
-                location.reload();
-            } else {
-                updateCartBadge(data.total_items);
+            updateCartBadge(data.total_items);
 
-                // Update quantity input
-                var qtyInput = document.getElementById('qtyInput_' + itemId);
-                if (qtyInput) qtyInput.value = data.item_quantity;
+            // Update quantity input
+            var qtyInput = document.getElementById('qtyInput_' + itemId);
+            if (qtyInput) qtyInput.value = data.item_quantity;
 
-                // Update summary
-                updateSummaryPrices(data.total_price);
+            // Enable/disable minus button
+            var minusBtn = document.querySelector('.qh-cart-qty-minus[data-item-id="' + itemId + '"]');
+            if (minusBtn) minusBtn.disabled = (data.item_quantity <= 1);
 
-                if (window.QHToast) QHToast.show(data.message, 'success');
-            }
+            // Cập nhật tổng tiền cho các sản phẩm đã chọn
+            updateSelectedCount();
+
+            if (window.QHToast) QHToast.show(data.message, 'success');
         } else if (data.require_login) {
-            if (confirm(data.message + '. Bạn có muốn đăng nhập không?')) {
+            QHConfirm.show(data.message + '. Bạn có muốn đăng nhập không?', function() {
                 window.location.href = '/login/';
-            }
+            });
         } else {
             if (window.QHToast) QHToast.show(data.message, 'error');
         }
@@ -812,16 +1018,15 @@ function updateCartQuantity(itemId, quantity) {
 
 /* ==================== Remove Item ==================== */
 function removeFromCart(itemId) {
-    if (!confirm('Bạn có chắc muốn xóa sản phẩm này khỏi giỏ hàng?')) return;
-
-    fetch('/cart/remove/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-CSRFToken': getCsrfToken()
-        },
-        body: 'item_id=' + itemId
-    })
+    QHConfirm.show('Bạn có chắc muốn xóa sản phẩm này khỏi giỏ hàng?', function() {
+        fetch('/cart/remove/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: 'item_id=' + itemId
+        })
     .then(function(r) { return r.json(); })
     .then(function(data) {
         if (data.success) {
@@ -829,9 +1034,9 @@ function removeFromCart(itemId) {
             if (window.QHToast) QHToast.show(data.message, 'success');
             setTimeout(function() { location.reload(); }, 500);
         } else if (data.require_login) {
-            if (confirm(data.message + '. Bạn có muốn đăng nhập không?')) {
+            QHConfirm.show(data.message + '. Bạn có muốn đăng nhập không?', function() {
                 window.location.href = '/login/';
-            }
+            });
         } else {
             if (window.QHToast) QHToast.show(data.message, 'error');
         }
@@ -840,6 +1045,7 @@ function removeFromCart(itemId) {
         console.error('Error:', err);
         if (window.QHToast) QHToast.show('Có lỗi xảy ra', 'error');
     });
+    }); // end QHConfirm callback
 }
 
 /* ==================== Summary Updates ==================== */

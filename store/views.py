@@ -328,6 +328,7 @@ def cart_detail(request):
             product = item.product
             item.color_options = []
             item.original_price = None
+            item.color_thumbnail = ''  # Ảnh màu hiện tại
 
             # Lấy variants để biết các màu có sẵn
             try:
@@ -364,12 +365,28 @@ def cart_detail(request):
                                 folder_images[img.sku] = img.image.url
 
                     for v in color_variants:
+                        thumb = folder_images.get(v.sku, '')
                         item.color_options.append({
                             'color_name': v.color_name,
                             'sku': v.sku or '',
-                            'thumbnail': folder_images.get(v.sku, ''),
+                            'thumbnail': thumb,
                             'is_selected': v.color_name == item.color_name,
                         })
+                        # Lưu thumbnail của màu hiện tại
+                        if v.color_name == item.color_name and thumb:
+                            item.color_thumbnail = thumb
+
+                # Lấy storage options cho màu hiện tại
+                item.storage_options = []
+                storage_variants = variants.filter(
+                    color_name=item.color_name
+                ).order_by('price')
+                for sv in storage_variants:
+                    item.storage_options.append({
+                        'storage': sv.storage,
+                        'price': int(sv.price),
+                        'is_selected': sv.storage == item.storage,
+                    })
             except ProductDetail.DoesNotExist:
                 pass
     else:
@@ -629,25 +646,10 @@ def cart_update_quantity(request):
         }, status=400)
 
     if quantity < 1:
-        # Xóa item nếu quantity < 1
-        try:
-            item = CartItem.objects.get(id=item_id, cart__user=request.user)
-            cart = item.cart
-            item.delete()
-            total_items = cart.get_total_items()
-            total_price = cart.get_total_price()
-            return JsonResponse({
-                'success': True,
-                'message': 'Đã xóa sản phẩm khỏi giỏ hàng',
-                'total_items': total_items,
-                'total_price': int(total_price),
-                'item_removed': True,
-            })
-        except CartItem.DoesNotExist:
-            return JsonResponse({
-                'success': False,
-                'message': 'Sản phẩm không tồn tại trong giỏ hàng',
-            }, status=404)
+        return JsonResponse({
+            'success': False,
+            'message': 'Số lượng không được nhỏ hơn 1',
+        }, status=400)
 
     try:
         item = CartItem.objects.get(id=item_id, cart__user=request.user)
@@ -750,6 +752,17 @@ def cart_change_color(request):
             item_total = item.get_total_price()
             total_items = cart.get_total_items()
 
+            # Lấy thumbnail của màu mới
+            new_thumbnail = ''
+            if new_variant.sku and item.product.brand_id:
+                from store.models import FolderColorImage
+                thumb_img = FolderColorImage.objects.filter(
+                    brand_id=item.product.brand_id,
+                    sku=new_variant.sku
+                ).order_by('order').first()
+                if thumb_img:
+                    new_thumbnail = thumb_img.image.url
+
             return JsonResponse({
                 'success': True,
                 'message': f'Đã đổi sang màu {new_color}',
@@ -760,6 +773,91 @@ def cart_change_color(request):
                 'original_price': int(new_variant.original_price) if new_variant.original_price > new_variant.price else 0,
                 'new_color': new_color,
                 'new_storage': new_variant.storage,
+                'new_thumbnail': new_thumbnail,
+            })
+
+    except ProductDetail.DoesNotExist:
+        pass
+
+    return JsonResponse({
+        'success': False,
+        'message': 'Không tìm thấy biến thể phù hợp',
+    }, status=400)
+
+
+@require_POST
+def cart_change_storage(request):
+    """
+    API đổi dung lượng sản phẩm trong giỏ hàng (AJAX)
+    Cập nhật storage và giá theo variant mới
+    """
+    from store.models import Cart, CartItem, ProductDetail, ProductVariant
+
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'message': 'Vui lòng đăng nhập',
+            'require_login': True,
+        }, status=401)
+
+    item_id = request.POST.get('item_id')
+    new_storage = request.POST.get('storage', '')
+
+    if not item_id or not new_storage:
+        return JsonResponse({
+            'success': False,
+            'message': 'Thiếu thông tin',
+        }, status=400)
+
+    try:
+        item = CartItem.objects.get(id=item_id, cart__user=request.user)
+    except CartItem.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'Sản phẩm không tồn tại trong giỏ hàng',
+        }, status=404)
+
+    # Tìm variant mới theo color hiện tại + storage mới
+    try:
+        detail = ProductDetail.objects.get(product=item.product)
+        new_variant = detail.variants.filter(
+            color_name=item.color_name,
+            storage=new_storage,
+            is_active=True
+        ).first()
+
+        if new_variant:
+            # Kiểm tra xem đã có item cùng product + color + storage chưa
+            existing = CartItem.objects.filter(
+                cart=item.cart,
+                product=item.product,
+                color_name=item.color_name,
+                storage=new_storage
+            ).exclude(id=item.id).first()
+
+            if existing:
+                # Gộp vào item đã có
+                existing.quantity += item.quantity
+                existing.save()
+                item.delete()
+                item = existing
+            else:
+                item.storage = new_storage
+                item.price_at_add = new_variant.price
+                item.save()
+
+            cart = item.cart
+            total_price = cart.get_total_price()
+            total_items = cart.get_total_items()
+
+            return JsonResponse({
+                'success': True,
+                'message': f'Đã đổi sang {new_storage}',
+                'total_items': total_items,
+                'total_price': int(total_price),
+                'item_price': int(new_variant.price),
+                'original_price': int(new_variant.original_price) if new_variant.original_price > new_variant.price else 0,
+                'new_storage': new_storage,
             })
 
     except ProductDetail.DoesNotExist:

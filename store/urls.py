@@ -19,6 +19,7 @@ urlpatterns = [
     path('cart/remove/', views.cart_remove, name='cart_remove'),
     path('cart/update/', views.cart_update_quantity, name='cart_update_quantity'),
     path('cart/change-color/', views.cart_change_color, name='cart_change_color'),
+    path('cart/change-storage/', views.cart_change_storage, name='cart_change_storage'),
     # Tra cứu đơn hàng
     path('order-tracking/', views.order_tracking, name='order_tracking'),
     # Yêu thích

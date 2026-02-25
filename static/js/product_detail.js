@@ -9,12 +9,12 @@ let currentSkusWithColor = [];
 /** Màu (SKU) đã chọn trong form Thêm biến thể - click ô không cần Ctrl */
 let variantSimpleSelectedColors = [];
 
-function toggleVariantColorOption(sku, label) {
+function toggleVariantColorOption(sku, label, colorName) {
     const idx = variantSimpleSelectedColors.findIndex(function (x) { return x.sku === sku; });
     if (idx >= 0) {
         variantSimpleSelectedColors.splice(idx, 1);
     } else {
-        variantSimpleSelectedColors.push({ sku: sku, label: label });
+        variantSimpleSelectedColors.push({ sku: sku, label: label, color_name: colorName || '' });
     }
     updateVariantSimpleSelectedLabels();
     // Update selected state on the box
@@ -185,7 +185,8 @@ function populateVariantSimpleColorSelectFromSkusWithColor(skusWithColor) {
         var labelEsc = label.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         var skuJs = rawSku.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         var labelJs = label.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-        html += '<div class="variant-color-option" data-sku="' + skuEsc + '" data-label="' + labelEsc + '" onclick="toggleVariantColorOption(\'' + skuJs + '\', \'' + labelJs + '\')">' + labelEsc + '</div>';
+        var colorJs = color.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        html += '<div class="variant-color-option" data-sku="' + skuEsc + '" data-label="' + labelEsc + '" onclick="toggleVariantColorOption(\'' + skuJs + '\', \'' + labelJs + '\', \'' + colorJs + '\')">' + labelEsc + '</div>';
     });
     container.innerHTML = html;
     updateVariantSimpleSelectedLabels();
@@ -265,7 +266,8 @@ function addVariantSimple() {
     // Gửi 1 request cho mỗi SKU được chọn (từ danh sách ô click)
     const requests = selectedOptions.map(function (opt) {
         const sku = opt.sku;
-        const colorName = opt.label || sku;
+        // Chỉ lấy tên màu thực tế, không bao gồm SKU
+        const colorName = opt.color_name || opt.label || sku;
         const formData = new FormData();
         if (currentDetailId) {
             formData.append('detail_id', currentDetailId);
