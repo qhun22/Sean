@@ -564,6 +564,33 @@ class Banner(models.Model):
         return f"Banner {self.banner_id}"
 
 
+class Address(models.Model):
+    """
+    Sổ địa chỉ giao hàng của người dùng
+    """
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='addresses', verbose_name='Người dùng')
+    full_name = models.CharField(max_length=255, verbose_name='Họ tên')
+    phone = models.CharField(max_length=20, verbose_name='Số điện thoại')
+    province_code = models.CharField(max_length=10, verbose_name='Mã tỉnh/thành')
+    province_name = models.CharField(max_length=100, verbose_name='Tỉnh/Thành phố')
+    district_code = models.CharField(max_length=10, verbose_name='Mã quận/huyện')
+    district_name = models.CharField(max_length=100, verbose_name='Quận/Huyện')
+    ward_code = models.CharField(max_length=10, verbose_name='Mã phường/xã')
+    ward_name = models.CharField(max_length=100, verbose_name='Phường/Xã')
+    detail = models.CharField(max_length=500, verbose_name='Địa chỉ chi tiết')
+    is_default = models.BooleanField(default=False, verbose_name='Địa chỉ mặc định')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Ngày cập nhật')
+
+    class Meta:
+        verbose_name = 'Địa chỉ'
+        verbose_name_plural = 'Địa chỉ'
+        ordering = ['-is_default', '-created_at']
+
+    def __str__(self):
+        return f"{self.full_name} - {self.detail}, {self.ward_name}, {self.district_name}, {self.province_name}"
+
+
 class PasswordHistory(models.Model):
     """
     Lưu lịch sử đổi mật khẩu của người dùng

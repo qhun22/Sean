@@ -265,12 +265,287 @@
     margin-bottom: 20px;
 }
 
+/* ---- Address Book ---- */
+.qh-pf-addr-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+}
+.qh-pf-addr-section {
+    display: flex;
+    flex-direction: column;
+}
+.qh-pf-addr-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--qh-text);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.qh-pf-addr-title i {
+    font-size: 20px;
+    color: var(--qh-primary);
+}
+.qh-pf-addr-form .qh-form-group {
+    margin-bottom: 16px;
+}
+.qh-pf-addr-form .qh-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+.qh-pf-addr-form select.qh-input {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+    cursor: pointer;
+}
+.qh-pf-addr-form .qh-addr-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+.qh-pf-addr-form .qh-addr-checkbox-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--qh-primary);
+    cursor: pointer;
+}
+.qh-pf-addr-form .qh-addr-checkbox-row label {
+    font-size: 14px;
+    color: var(--qh-text);
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Address List */
+.qh-pf-addr-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.qh-pf-addr-card {
+    border: 1.5px solid var(--qh-border);
+    border-radius: 10px;
+    padding: 16px;
+    position: relative;
+    transition: all 0.2s;
+}
+.qh-pf-addr-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+.qh-pf-addr-card.is-default {
+    border-color: var(--qh-primary);
+    background: rgba(169, 204, 240, 0.05);
+}
+.qh-pf-addr-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+.qh-pf-addr-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--qh-text);
+}
+.qh-pf-addr-phone {
+    font-size: 14px;
+    color: var(--qh-text-light);
+    margin-left: 8px;
+}
+.qh-pf-addr-default-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--qh-primary);
+    color: white;
+}
+.qh-pf-addr-detail {
+    font-size: 13px;
+    color: var(--qh-text-light);
+    line-height: 1.5;
+    margin-bottom: 10px;
+}
+.qh-pf-addr-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.qh-pf-addr-actions button {
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--qh-border);
+    background: white;
+    color: var(--qh-text);
+    font-family: 'Signika', sans-serif;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.qh-pf-addr-actions button:hover {
+    border-color: var(--qh-primary);
+    color: var(--qh-primary);
+}
+.qh-pf-addr-actions button.qh-addr-del:hover {
+    border-color: #ef4444;
+    color: #ef4444;
+    background: #fef2f2;
+}
+.qh-pf-addr-actions button.qh-addr-set-default {
+    border-color: var(--qh-primary);
+    color: var(--qh-primary);
+}
+.qh-pf-addr-actions button.qh-addr-set-default:hover {
+    background: var(--qh-primary);
+    color: white;
+}
+@media (max-width: 768px) {
+    .qh-pf-addr-grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+    .qh-pf-addr-form .qh-form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* ---- Change Password Form ---- */
+.qh-pf-pw-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+}
+.qh-pf-pw-section {
+    display: flex;
+    flex-direction: column;
+}
+.qh-pf-pw-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--qh-text);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.qh-pf-pw-title i {
+    font-size: 20px;
+    color: var(--qh-primary);
+}
 .qh-pf-form {
-    max-width: 480px;
+    max-width: 100%;
 }
 .qh-pf-form .qh-form-group {
     margin-bottom: 20px;
+}
+
+/* Password History */
+.qh-pf-pw-history {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+.qh-pf-pw-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--qh-border);
+}
+.qh-pf-pw-page-btn {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--qh-border);
+    border-radius: 6px;
+    background: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--qh-text);
+    font-family: 'Signika', sans-serif;
+    transition: all 0.2s;
+}
+.qh-pf-pw-page-btn:hover {
+    border-color: var(--qh-primary);
+    color: var(--qh-primary);
+}
+.qh-pf-pw-page-btn.active {
+    background: var(--qh-primary);
+    border-color: var(--qh-primary);
+    color: white;
+}
+.qh-pf-pw-page-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.qh-pf-pw-page-btn:disabled:hover {
+    border-color: var(--qh-border);
+    color: var(--qh-text);
+}
+.qh-pf-pw-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--qh-border);
+}
+.qh-pf-pw-item:last-child {
+    border-bottom: none;
+}
+.qh-pf-pw-item-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #d1fae5;
+    color: #059669;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 16px;
+}
+.qh-pf-pw-item-info {
+    flex: 1;
+    min-width: 0;
+}
+.qh-pf-pw-item-date {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--qh-text);
+}
+.qh-pf-pw-item-detail {
+    font-size: 12px;
+    color: var(--qh-text-light);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+@media (max-width: 768px) {
+    .qh-pf-pw-grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
 }
 
 /* ---- Order History (inside tab) ---- */
@@ -496,14 +771,104 @@
 
         <!-- Sổ địa chỉ -->
         <div class="qh-pf-tab-panel active" id="tab-address">
-            <div class="qh-pf-empty">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                </svg>
-                <h3>Chưa có địa chỉ nào</h3>
-                <p>Thêm địa chỉ giao hàng để đặt hàng nhanh hơn!</p>
-                <button class="qh-btn qh-btn-primary">Thêm địa chỉ mới</button>
+            <div class="qh-pf-addr-grid">
+                <!-- Left: Add new address -->
+                <div class="qh-pf-addr-section">
+                    <div class="qh-pf-addr-title">
+                        <i class="ri-add-circle-line"></i> Thêm địa chỉ mới
+                    </div>
+                    <form class="qh-pf-addr-form" id="addAddressForm" onsubmit="return submitAddress(event)">
+                        {% csrf_token %}
+                        <div class="qh-form-group qh-form-row">
+                            <div>
+                                <label class="qh-label">Họ tên</label>
+                                <input type="text" name="full_name" class="qh-input" placeholder="Nhập họ tên" required>
+                            </div>
+                            <div>
+                                <label class="qh-label">Số điện thoại</label>
+                                <input type="text" name="phone" class="qh-input" placeholder="Nhập số điện thoại" required>
+                            </div>
+                        </div>
+                        <div class="qh-form-group">
+                            <label class="qh-label">Tỉnh/Thành phố</label>
+                            <select name="province" class="qh-input" id="addrProvince" onchange="loadDistricts()" required>
+                                <option value="">-- Chọn Tỉnh/Thành phố --</option>
+                            </select>
+                        </div>
+                        <div class="qh-form-group qh-form-row">
+                            <div>
+                                <label class="qh-label">Quận/Huyện</label>
+                                <select name="district" class="qh-input" id="addrDistrict" onchange="loadWards()" required disabled>
+                                    <option value="">-- Chọn Quận/Huyện --</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="qh-label">Phường/Xã</label>
+                                <select name="ward" class="qh-input" id="addrWard" required disabled>
+                                    <option value="">-- Chọn Phường/Xã --</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="qh-form-group">
+                            <label class="qh-label">Địa chỉ chi tiết</label>
+                            <input type="text" name="detail" class="qh-input" placeholder="Số nhà, tên đường, tòa nhà..." required>
+                        </div>
+                        <div class="qh-addr-checkbox-row">
+                            <input type="checkbox" id="addrDefault" name="is_default">
+                            <label for="addrDefault">Đặt làm địa chỉ mặc định</label>
+                        </div>
+                        <button type="submit" class="qh-btn qh-btn-primary" id="addrSubmitBtn" style="width: 100%; font-size: 15px; font-weight: 600;">
+                            <i class="ri-add-line" style="margin-right: 4px;"></i> Thêm địa chỉ
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Right: Address list -->
+                <div class="qh-pf-addr-section">
+                    <div class="qh-pf-addr-title">
+                        <i class="ri-map-pin-line"></i> Danh sách địa chỉ của bạn
+                    </div>
+                    <div class="qh-pf-addr-list" id="addressList">
+                        {% if addresses %}
+                            {% for addr in addresses %}
+                            <div class="qh-pf-addr-card{% if addr.is_default %} is-default{% endif %}" id="addrCard_{{ addr.id }}" data-addr-index="{{ forloop.counter }}">
+                                <div class="qh-pf-addr-card-header">
+                                    <div>
+                                        <span class="qh-pf-addr-name">{{ addr.full_name }}</span>
+                                        <span class="qh-pf-addr-phone">{{ addr.phone }}</span>
+                                    </div>
+                                    {% if addr.is_default %}
+                                    <span class="qh-pf-addr-default-badge"><i class="ri-check-line"></i> Mặc định</span>
+                                    {% endif %}
+                                </div>
+                                <div class="qh-pf-addr-detail">
+                                    {{ addr.detail }}, {{ addr.ward_name }}, {{ addr.district_name }}, {{ addr.province_name }}
+                                </div>
+                                <div class="qh-pf-addr-actions">
+                                    {% if not addr.is_default %}
+                                    <button class="qh-addr-set-default" onclick="setDefaultAddress({{ addr.id }})">
+                                        <i class="ri-check-double-line"></i> Đặt mặc định
+                                    </button>
+                                    {% endif %}
+                                    <button class="qh-addr-del" onclick="deleteAddress({{ addr.id }})">
+                                        <i class="ri-delete-bin-line"></i> Xóa
+                                    </button>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="qh-pf-empty" id="addrEmptyState">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:60px;height:60px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                </svg>
+                                <h3 style="font-size:16px;">Chưa có địa chỉ nào</h3>
+                                <p style="font-size:13px;">Thêm địa chỉ giao hàng ở bên trái nhé!</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="qh-pf-pw-pagination" id="addrPagination"></div>
+                </div>
             </div>
         </div>
 
@@ -567,26 +932,63 @@
 
         <!-- Đổi mật khẩu -->
         <div class="qh-pf-tab-panel" id="tab-password">
-            <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 24px;">Đổi mật khẩu</h2>
-            <form class="qh-pf-form" method="POST" id="changePasswordForm">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="change_password">
-                <div class="qh-form-group">
-                    <label class="qh-label">Mật khẩu hiện tại</label>
-                    <input type="password" name="current_password" class="qh-input" placeholder="Nhập mật khẩu hiện tại" required>
+            <div class="qh-pf-pw-grid">
+                <!-- Left: Change password form -->
+                <div class="qh-pf-pw-section">
+                    <div class="qh-pf-pw-title">
+                        <i class="ri-lock-password-line"></i> Đổi mật khẩu
+                    </div>
+                    <form class="qh-pf-form" method="POST" id="changePasswordForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="change_password">
+                        <div class="qh-form-group">
+                            <label class="qh-label">Mật khẩu hiện tại</label>
+                            <input type="password" name="current_password" class="qh-input" placeholder="Nhập mật khẩu hiện tại" required>
+                        </div>
+                        <div class="qh-form-group">
+                            <label class="qh-label">Mật khẩu mới</label>
+                            <input type="password" name="new_password" class="qh-input" placeholder="Nhập mật khẩu mới" required>
+                        </div>
+                        <div class="qh-form-group">
+                            <label class="qh-label">Xác nhận mật khẩu mới</label>
+                            <input type="password" name="confirm_password" class="qh-input" placeholder="Nhập lại mật khẩu mới" required>
+                        </div>
+                        <button type="submit" class="qh-btn qh-btn-primary" style="width: 100%; font-size: 16px; font-weight: 600;">
+                            Cập nhật mật khẩu
+                        </button>
+                    </form>
                 </div>
-                <div class="qh-form-group">
-                    <label class="qh-label">Mật khẩu mới</label>
-                    <input type="password" name="new_password" class="qh-input" placeholder="Nhập mật khẩu mới" required>
+
+                <!-- Right: Password change history -->
+                <div class="qh-pf-pw-section">
+                    <div class="qh-pf-pw-title">
+                        <i class="ri-history-line"></i> Lịch sử đổi mật khẩu
+                    </div>
+                    {% if password_history %}
+                    <div class="qh-pf-pw-history" id="pwHistoryList">
+                        {% for record in password_history %}
+                        <div class="qh-pf-pw-item" data-pw-index="{{ forloop.counter }}">
+                            <div class="qh-pf-pw-item-icon">
+                                <i class="ri-check-line"></i>
+                            </div>
+                            <div class="qh-pf-pw-item-info">
+                                <div class="qh-pf-pw-item-date">{{ record.changed_at|date:"d/m/Y - H:i" }}</div>
+                                <div class="qh-pf-pw-item-detail">
+                                    IP: {{ record.ip_address|default:"Không xác định" }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="qh-pf-pw-pagination" id="pwPagination"></div>
+                    {% else %}
+                    <div style="text-align: center; padding: 40px 0; color: var(--qh-text-light);">
+                        <i class="ri-history-line" style="font-size: 48px; display: block; margin-bottom: 12px; color: #d1d5db;"></i>
+                        <p style="font-size: 14px;">Chưa có lịch sử đổi mật khẩu</p>
+                    </div>
+                    {% endif %}
                 </div>
-                <div class="qh-form-group">
-                    <label class="qh-label">Xác nhận mật khẩu mới</label>
-                    <input type="password" name="confirm_password" class="qh-input" placeholder="Nhập lại mật khẩu mới" required>
-                </div>
-                <button type="submit" class="qh-btn qh-btn-primary" style="width: 100%; font-size: 16px; font-weight: 600;">
-                    Cập nhật mật khẩu
-                </button>
-            </form>
+            </div>
         </div>
 
     </div>
@@ -598,21 +1000,299 @@ document.addEventListener('DOMContentLoaded', function() {
     const tabs = document.querySelectorAll('.qh-pf-tab[data-tab]');
     const panels = document.querySelectorAll('.qh-pf-tab-panel');
 
+    function activateTab(tabName) {
+        tabs.forEach(function(t) { t.classList.remove('active'); });
+        panels.forEach(function(p) { p.classList.remove('active'); });
+        var targetTab = document.querySelector('.qh-pf-tab[data-tab="' + tabName + '"]');
+        var targetPanel = document.getElementById('tab-' + tabName);
+        if (targetTab) targetTab.classList.add('active');
+        if (targetPanel) targetPanel.classList.add('active');
+    }
+
+    // Check URL param ?tab=xxx
+    var urlParams = new URLSearchParams(window.location.search);
+    var tabParam = urlParams.get('tab');
+    if (tabParam) {
+        activateTab(tabParam);
+    }
+
     tabs.forEach(function(tab) {
         tab.addEventListener('click', function(e) {
             e.preventDefault();
             const target = this.getAttribute('data-tab');
-
-            // Remove active from all tabs and panels
-            tabs.forEach(function(t) { t.classList.remove('active'); });
-            panels.forEach(function(p) { p.classList.remove('active'); });
-
-            // Activate clicked tab and matching panel
-            this.classList.add('active');
-            var panel = document.getElementById('tab-' + target);
-            if (panel) panel.classList.add('active');
+            activateTab(target);
         });
     });
+
+    // ---- Password History Pagination ----
+    var PW_PER_PAGE = 4;
+    var pwItems = document.querySelectorAll('.qh-pf-pw-item[data-pw-index]');
+    var pwPagination = document.getElementById('pwPagination');
+
+    if (pwItems.length > 0 && pwPagination) {
+        var totalPages = Math.ceil(pwItems.length / PW_PER_PAGE);
+
+        function showPwPage(page) {
+            var start = (page - 1) * PW_PER_PAGE;
+            var end = start + PW_PER_PAGE;
+            pwItems.forEach(function(item, i) {
+                item.style.display = (i >= start && i < end) ? '' : 'none';
+            });
+            renderPwPagination(page);
+        }
+
+        function renderPwPagination(current) {
+            if (totalPages <= 1) { pwPagination.style.display = 'none'; return; }
+            var html = '';
+            html += '<button class="qh-pf-pw-page-btn" data-pw-page="' + (current - 1) + '"' + (current === 1 ? ' disabled' : '') + '><i class="ri-arrow-left-s-line"></i></button>';
+            for (var p = 1; p <= totalPages; p++) {
+                html += '<button class="qh-pf-pw-page-btn' + (p === current ? ' active' : '') + '" data-pw-page="' + p + '">' + p + '</button>';
+            }
+            html += '<button class="qh-pf-pw-page-btn" data-pw-page="' + (current + 1) + '"' + (current === totalPages ? ' disabled' : '') + '><i class="ri-arrow-right-s-line"></i></button>';
+            pwPagination.innerHTML = html;
+
+            pwPagination.querySelectorAll('.qh-pf-pw-page-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    if (this.disabled) return;
+                    showPwPage(parseInt(this.getAttribute('data-pw-page')));
+                });
+            });
+        }
+
+        showPwPage(1);
+    }
+
+    // ---- Address Pagination ----
+    var ADDR_PER_PAGE = 3;
+    var addrItems = document.querySelectorAll('.qh-pf-addr-card[data-addr-index]');
+    var addrPagination = document.getElementById('addrPagination');
+
+    if (addrItems.length > 0 && addrPagination) {
+        var addrTotalPages = Math.ceil(addrItems.length / ADDR_PER_PAGE);
+
+        function showAddrPage(page) {
+            var start = (page - 1) * ADDR_PER_PAGE;
+            var end = start + ADDR_PER_PAGE;
+            addrItems.forEach(function(item, i) {
+                item.style.display = (i >= start && i < end) ? '' : 'none';
+            });
+            renderAddrPagination(page);
+        }
+
+        function renderAddrPagination(current) {
+            if (addrTotalPages <= 1) { addrPagination.style.display = 'none'; return; }
+            var html = '';
+            html += '<button class="qh-pf-pw-page-btn" data-addr-page="' + (current - 1) + '"' + (current === 1 ? ' disabled' : '') + '><i class="ri-arrow-left-s-line"></i></button>';
+            for (var p = 1; p <= addrTotalPages; p++) {
+                html += '<button class="qh-pf-pw-page-btn' + (p === current ? ' active' : '') + '" data-addr-page="' + p + '">' + p + '</button>';
+            }
+            html += '<button class="qh-pf-pw-page-btn" data-addr-page="' + (current + 1) + '"' + (current === addrTotalPages ? ' disabled' : '') + '><i class="ri-arrow-right-s-line"></i></button>';
+            addrPagination.innerHTML = html;
+
+            addrPagination.querySelectorAll('.qh-pf-pw-page-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    if (this.disabled) return;
+                    showAddrPage(parseInt(this.getAttribute('data-addr-page')));
+                });
+            });
+        }
+
+        showAddrPage(1);
+    }
+
+    // ---- Load Provinces ----
+    loadProvinces();
 });
+
+/* ==================== CSRF Token ==================== */
+function getAddrCsrf() {
+    var name = 'csrftoken';
+    var cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+/* ==================== Provinces API ==================== */
+var provincesData = [];
+var districtsData = [];
+var wardsData = [];
+
+function loadProvinces() {
+    fetch('https://provinces.open-api.vn/api/p/')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            provincesData = data;
+            var sel = document.getElementById('addrProvince');
+            if (!sel) return;
+            sel.innerHTML = '<option value="">-- Chọn Tỉnh/Thành phố --</option>';
+            data.forEach(function(p) {
+                sel.innerHTML += '<option value="' + p.code + '">' + p.name + '</option>';
+            });
+        })
+        .catch(function(err) { console.error('Load provinces error:', err); });
+}
+
+function loadDistricts() {
+    var sel = document.getElementById('addrProvince');
+    var distSel = document.getElementById('addrDistrict');
+    var wardSel = document.getElementById('addrWard');
+    distSel.innerHTML = '<option value="">-- Chọn Quận/Huyện --</option>';
+    distSel.disabled = true;
+    wardSel.innerHTML = '<option value="">-- Chọn Phường/Xã --</option>';
+    wardSel.disabled = true;
+
+    if (!sel.value) return;
+
+    fetch('https://provinces.open-api.vn/api/p/' + sel.value + '?depth=2')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            districtsData = data.districts || [];
+            distSel.disabled = false;
+            districtsData.forEach(function(d) {
+                distSel.innerHTML += '<option value="' + d.code + '">' + d.name + '</option>';
+            });
+        })
+        .catch(function(err) { console.error('Load districts error:', err); });
+}
+
+function loadWards() {
+    var distSel = document.getElementById('addrDistrict');
+    var wardSel = document.getElementById('addrWard');
+    wardSel.innerHTML = '<option value="">-- Chọn Phường/Xã --</option>';
+    wardSel.disabled = true;
+
+    if (!distSel.value) return;
+
+    fetch('https://provinces.open-api.vn/api/d/' + distSel.value + '?depth=2')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            wardsData = data.wards || [];
+            wardSel.disabled = false;
+            wardsData.forEach(function(w) {
+                wardSel.innerHTML += '<option value="' + w.code + '">' + w.name + '</option>';
+            });
+        })
+        .catch(function(err) { console.error('Load wards error:', err); });
+}
+
+/* ==================== Add Address ==================== */
+function submitAddress(e) {
+    e.preventDefault();
+    var form = document.getElementById('addAddressForm');
+    var btn = document.getElementById('addrSubmitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ri-loader-4-line" style="margin-right:4px;"></i> Đang thêm...';
+
+    var provinceSel = document.getElementById('addrProvince');
+    var districtSel = document.getElementById('addrDistrict');
+    var wardSel = document.getElementById('addrWard');
+
+    var body = 'full_name=' + encodeURIComponent(form.full_name.value)
+        + '&phone=' + encodeURIComponent(form.phone.value)
+        + '&province_code=' + provinceSel.value
+        + '&province_name=' + encodeURIComponent(provinceSel.options[provinceSel.selectedIndex].text)
+        + '&district_code=' + districtSel.value
+        + '&district_name=' + encodeURIComponent(districtSel.options[districtSel.selectedIndex].text)
+        + '&ward_code=' + wardSel.value
+        + '&ward_name=' + encodeURIComponent(wardSel.options[wardSel.selectedIndex].text)
+        + '&detail=' + encodeURIComponent(form.detail.value)
+        + '&is_default=' + (document.getElementById('addrDefault').checked ? 'true' : 'false');
+
+    fetch('/address/add/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': getAddrCsrf()
+        },
+        body: body
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            if (window.QHToast) QHToast.show(data.message, 'success');
+            setTimeout(function() { location.reload(); }, 600);
+        } else {
+            if (window.QHToast) QHToast.show(data.message, 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ri-add-line" style="margin-right:4px;"></i> Thêm địa chỉ';
+        }
+    })
+    .catch(function(err) {
+        console.error('Error:', err);
+        if (window.QHToast) QHToast.show('Có lỗi xảy ra', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ri-add-line" style="margin-right:4px;"></i> Thêm địa chỉ';
+    });
+
+    return false;
+}
+
+/* ==================== Delete Address ==================== */
+function deleteAddress(id) {
+    if (window.QHConfirm) {
+        QHConfirm.show('Bạn có chắc muốn xóa địa chỉ này?', function() {
+            doDeleteAddress(id);
+        });
+    } else {
+        doDeleteAddress(id);
+    }
+}
+function doDeleteAddress(id) {
+    fetch('/address/delete/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': getAddrCsrf()
+        },
+        body: 'address_id=' + id
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            if (window.QHToast) QHToast.show(data.message, 'success');
+            setTimeout(function() { location.reload(); }, 600);
+        } else {
+            if (window.QHToast) QHToast.show(data.message, 'error');
+        }
+    })
+    .catch(function(err) {
+        console.error('Error:', err);
+        if (window.QHToast) QHToast.show('Có lỗi xảy ra', 'error');
+    });
+}
+
+/* ==================== Set Default Address ==================== */
+function setDefaultAddress(id) {
+    fetch('/address/set-default/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': getAddrCsrf()
+        },
+        body: 'address_id=' + id
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            if (window.QHToast) QHToast.show(data.message, 'success');
+            setTimeout(function() { location.reload(); }, 600);
+        } else {
+            if (window.QHToast) QHToast.show(data.message, 'error');
+        }
+    })
+    .catch(function(err) {
+        console.error('Error:', err);
+        if (window.QHToast) QHToast.show('Có lỗi xảy ra', 'error');
+    });
+}
 </script>
 {% endblock %}

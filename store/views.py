@@ -938,6 +938,7 @@ def profile(request):
     """
     from store.models import Order
     from store.models import PasswordHistory
+    from store.models import Address
     from django.db.models import Sum
     
     context = {}
@@ -950,7 +951,10 @@ def profile(request):
         total_spent = '{:,.0f}'.format(total_spent_raw).replace(',', '.')
         
         # Password change history
-        password_history = PasswordHistory.objects.filter(user=request.user)[:10]
+        password_history = PasswordHistory.objects.filter(user=request.user)
+        
+        # Address book
+        addresses = Address.objects.filter(user=request.user)
         
         # Handle change password
         if request.method == 'POST' and request.POST.get('action') == 'change_password':
@@ -986,9 +990,122 @@ def profile(request):
             'total_orders': total_orders,
             'total_spent': total_spent,
             'total_spent_raw': total_spent_raw,
+            'password_history': password_history,
+            'addresses': addresses,
         })
     
     return render(request, 'store/profile.html', context)
+
+
+@login_required
+def address_add(request):
+    """
+    Thêm địa chỉ mới vào sổ địa chỉ
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request'}, status=405)
+    
+    from store.models import Address
+    
+    full_name = request.POST.get('full_name', '').strip()
+    phone = request.POST.get('phone', '').strip()
+    province_code = request.POST.get('province_code', '').strip()
+    province_name = request.POST.get('province_name', '').strip()
+    district_code = request.POST.get('district_code', '').strip()
+    district_name = request.POST.get('district_name', '').strip()
+    ward_code = request.POST.get('ward_code', '').strip()
+    ward_name = request.POST.get('ward_name', '').strip()
+    detail = request.POST.get('detail', '').strip()
+    is_default = request.POST.get('is_default') == 'true'
+    
+    if not all([full_name, phone, province_code, province_name, district_code, district_name, ward_code, ward_name, detail]):
+        return JsonResponse({'success': False, 'message': 'Vui lòng điền đầy đủ thông tin'})
+    
+    # Nếu đặt làm mặc định, bỏ mặc định các địa chỉ khác
+    if is_default:
+        Address.objects.filter(user=request.user, is_default=True).update(is_default=False)
+    
+    # Nếu chưa có địa chỉ nào, tự động đặt làm mặc định
+    if not Address.objects.filter(user=request.user).exists():
+        is_default = True
+    
+    addr = Address.objects.create(
+        user=request.user,
+        full_name=full_name,
+        phone=phone,
+        province_code=province_code,
+        province_name=province_name,
+        district_code=district_code,
+        district_name=district_name,
+        ward_code=ward_code,
+        ward_name=ward_name,
+        detail=detail,
+        is_default=is_default,
+    )
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Thêm địa chỉ thành công!',
+        'address': {
+            'id': addr.id,
+            'full_name': addr.full_name,
+            'phone': addr.phone,
+            'province_name': addr.province_name,
+            'district_name': addr.district_name,
+            'ward_name': addr.ward_name,
+            'detail': addr.detail,
+            'is_default': addr.is_default,
+        }
+    })
+
+
+@login_required
+def address_delete(request):
+    """
+    Xóa địa chỉ
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request'}, status=405)
+    
+    from store.models import Address
+    
+    address_id = request.POST.get('address_id')
+    try:
+        addr = Address.objects.get(id=address_id, user=request.user)
+        was_default = addr.is_default
+        addr.delete()
+        
+        # Nếu xóa địa chỉ mặc định, đặt địa chỉ đầu tiên làm mặc định
+        if was_default:
+            first = Address.objects.filter(user=request.user).first()
+            if first:
+                first.is_default = True
+                first.save()
+        
+        return JsonResponse({'success': True, 'message': 'Xóa địa chỉ thành công!'})
+    except Address.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Không tìm thấy địa chỉ'})
+
+
+@login_required
+def address_set_default(request):
+    """
+    Đặt địa chỉ mặc định
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request'}, status=405)
+    
+    from store.models import Address
+    
+    address_id = request.POST.get('address_id')
+    try:
+        addr = Address.objects.get(id=address_id, user=request.user)
+        Address.objects.filter(user=request.user, is_default=True).update(is_default=False)
+        addr.is_default = True
+        addr.save()
+        return JsonResponse({'success': True, 'message': 'Đã đặt làm địa chỉ mặc định!'})
+    except Address.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Không tìm thấy địa chỉ'})
 
 
 def register_view(request):

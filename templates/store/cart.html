@@ -1059,11 +1059,19 @@ function updateSummaryPrices(totalPrice) {
 
 /* ==================== Checkout ==================== */
 function checkout() {
-    if (window.QHToast) {
-        QHToast.show('Chức năng thanh toán đang được phát triển!', 'error');
-    } else {
-        alert('Chức năng thanh toán đang được phát triển!');
+    var checked = document.querySelectorAll('.cart-item-check:checked');
+    if (checked.length === 0) {
+        if (window.QHToast) {
+            QHToast.show('Vui lòng chọn sản phẩm để thanh toán', 'error');
+        }
+        return;
     }
+    // Collect selected item IDs
+    var ids = [];
+    checked.forEach(function(cb) {
+        ids.push(cb.getAttribute('data-item-id'));
+    });
+    window.location.href = '/checkout/?items=' + ids.join(',');
 }
 </script>
 {% endblock %}

@@ -20,6 +20,9 @@ urlpatterns = [
     path('cart/update/', views.cart_update_quantity, name='cart_update_quantity'),
     path('cart/change-color/', views.cart_change_color, name='cart_change_color'),
     path('cart/change-storage/', views.cart_change_storage, name='cart_change_storage'),
+
+    # Checkout
+    path('checkout/', views.checkout_view, name='checkout'),
     # Tra cứu đơn hàng
     path('order-tracking/', views.order_tracking, name='order_tracking'),
     # Yêu thích
@@ -84,4 +87,9 @@ urlpatterns = [
     path('send-otp-forgot-password/', views.send_otp_forgot_password_view, name='send_otp_forgot_password'),
     path('verify-otp-forgot-password/', views.verify_otp_forgot_password_view, name='verify_otp_forgot_password'),
     path('reset-password/', views.reset_password_view, name='reset_password'),
+
+    # Address Book
+    path('address/add/', views.address_add, name='address_add'),
+    path('address/delete/', views.address_delete, name='address_delete'),
+    path('address/set-default/', views.address_set_default, name='address_set_default'),
 ]
