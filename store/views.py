@@ -405,9 +405,16 @@ def cart_detail(request):
 
 def order_tracking(request):
     """
-    Tra cứu đơn hàng
+    Tra cứu đơn hàng - hiển thị đơn hàng của user đang đăng nhập
     """
-    return render(request, 'store/order_tracking.html')
+    from store.models import Order
+    
+    context = {}
+    if request.user.is_authenticated:
+        orders = Order.objects.filter(user=request.user).order_by('-created_at')
+        context['orders'] = orders
+    
+    return render(request, 'store/order_tracking.html', context)
 
 
 def wishlist(request):
@@ -929,7 +936,59 @@ def profile(request):
     """
     Trang thông tin tài khoản người dùng
     """
-    return render(request, 'store/profile.html')
+    from store.models import Order
+    from store.models import PasswordHistory
+    from django.db.models import Sum
+    
+    context = {}
+    if request.user.is_authenticated:
+        orders = Order.objects.filter(user=request.user).order_by('-created_at')
+        total_orders = orders.count()
+        total_spent_raw = orders.filter(status='delivered').aggregate(total=Sum('total_amount'))['total'] or 0
+        
+        # Format total_spent for display
+        total_spent = '{:,.0f}'.format(total_spent_raw).replace(',', '.')
+        
+        # Password change history
+        password_history = PasswordHistory.objects.filter(user=request.user)[:10]
+        
+        # Handle change password
+        if request.method == 'POST' and request.POST.get('action') == 'change_password':
+            current_password = request.POST.get('current_password')
+            new_password = request.POST.get('new_password')
+            confirm_password = request.POST.get('confirm_password')
+            
+            if not request.user.check_password(current_password):
+                messages.error(request, 'Mật khẩu hiện tại không đúng!')
+            elif new_password != confirm_password:
+                messages.error(request, 'Mật khẩu mới không khớp!')
+            elif len(new_password) < 6:
+                messages.error(request, 'Mật khẩu mới phải có ít nhất 6 ký tự!')
+            else:
+                request.user.set_password(new_password)
+                request.user.save()
+                # Save password change history
+                ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', ''))
+                if ip and ',' in ip:
+                    ip = ip.split(',')[0].strip()
+                PasswordHistory.objects.create(
+                    user=request.user,
+                    ip_address=ip or None,
+                    user_agent=request.META.get('HTTP_USER_AGENT', '')[:500],
+                )
+                from django.contrib.auth import update_session_auth_hash
+                update_session_auth_hash(request, request.user)
+                messages.success(request, 'Đổi mật khẩu thành công!')
+                return redirect('store:profile')
+        
+        context.update({
+            'orders': orders,
+            'total_orders': total_orders,
+            'total_spent': total_spent,
+            'total_spent_raw': total_spent_raw,
+        })
+    
+    return render(request, 'store/profile.html', context)
 
 
 def register_view(request):

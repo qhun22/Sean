@@ -1,64 +1,618 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 
 {% block title %}TÀI KHOẢN - QHUN22 Mobile{% endblock %}
 
 {% block content %}
+<style>
+/* ==================== PROFILE PAGE ==================== */
+.qh-profile-page {
+    /* Inherits from .qh-main */
+}
+
+/* ---- User Info Card (top) ---- */
+.qh-pf-info-card {
+    background: var(--qh-white);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    padding: 28px 32px;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 16px;
+}
+
+/* Avatar + Basic Info */
+.qh-pf-user {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    min-width: 260px;
+    padding-right: 28px;
+    border-right: 1px solid var(--qh-border);
+}
+.qh-pf-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    border: 1.5px solid var(--qh-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.qh-pf-avatar svg {
+    width: 24px;
+    height: 24px;
+    color: var(--qh-text-light);
+}
+.qh-pf-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--qh-text);
+    margin-bottom: 2px;
+}
+.qh-pf-detail {
+    font-size: 14px;
+    color: var(--qh-text-light);
+    line-height: 1.6;
+}
+
+/* Stats */
+.qh-pf-stats {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    gap: 0;
+}
+.qh-pf-stat {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 0 20px;
+    border-right: 1px solid var(--qh-border);
+}
+.qh-pf-stat:last-child {
+    border-right: none;
+}
+.qh-pf-stat-icon {
+    width: 48px;
+    height: 48px;
+    border: 1.5px solid var(--qh-border);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    line-height: 1;
+    color: var(--qh-text-light);
+    font-size: 24px;
+}
+.qh-pf-stat-icon i {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    line-height: 1;
+}
+.qh-pf-stat-content {
+    display: flex;
+    flex-direction: column;
+}
+.qh-pf-stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--qh-text);
+    line-height: 1.3;
+}
+.qh-pf-stat-label {
+    font-size: 13px;
+    color: var(--qh-text-light);
+    margin-top: 2px;
+    white-space: nowrap;
+}
+
+/* Rank Badge */
+.qh-pf-rank-icon {
+    width: 48px;
+    height: 48px;
+    border: 1.5px solid var(--qh-border);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    line-height: 1;
+    font-size: 24px;
+}
+.qh-pf-rank-icon i {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    line-height: 1;
+}
+.qh-pf-rank-icon.bronze { color: #b87333; }
+.qh-pf-rank-icon.silver { color: #9ca3af; }
+.qh-pf-rank-icon.gold   { color: #f59e0b; }
+.qh-pf-rank-icon.diamond { color: #3b82f6; }
+.qh-pf-rank-label {
+    font-size: 15px;
+    font-weight: 600;
+}
+.qh-pf-rank-label.bronze { color: #b87333; }
+.qh-pf-rank-label.silver { color: #9ca3af; }
+.qh-pf-rank-label.gold   { color: #f59e0b; }
+.qh-pf-rank-label.diamond { color: #3b82f6; }
+
+/* Logout Button in top card */
+.qh-pf-logout-section {
+    padding-left: 24px;
+    flex-shrink: 0;
+}
+.qh-pf-logout-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 20px;
+    background: transparent;
+    border: 1px solid var(--qh-border);
+    border-radius: 10px;
+    cursor: pointer;
+    color: var(--qh-text-light);
+    font-family: 'Signika', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+.qh-pf-logout-btn:hover {
+    border-color: #ef4444;
+    color: #ef4444;
+    background: #fef2f2;
+}
+.qh-pf-logout-btn svg {
+    width: 28px;
+    height: 28px;
+}
+
+/* ---- Tab Navigation ---- */
+.qh-pf-tabs {
+    background: var(--qh-white);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    overflow-x: auto;
+    margin-bottom: 24px;
+}
+.qh-pf-tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 18px 24px;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--qh-text-light);
+    text-decoration: none;
+    white-space: nowrap;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+.qh-pf-tab:hover {
+    color: var(--qh-text);
+    background: var(--qh-bg);
+}
+.qh-pf-tab.active {
+    color: var(--qh-primary-dark);
+    border-bottom-color: var(--qh-primary);
+    font-weight: 600;
+}
+.qh-pf-tab svg,
+.qh-pf-tab i {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    vertical-align: middle;
+}
+
+/* ---- Tab Content Area ---- */
+.qh-pf-content {
+    background: var(--qh-white);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    padding: 32px;
+    min-height: 200px;
+}
+.qh-pf-tab-panel {
+    display: none;
+}
+.qh-pf-tab-panel.active {
+    display: block;
+}
+
+/* Empty state inside tab */
+.qh-pf-empty {
+    text-align: center;
+    padding: 40px 0;
+}
+.qh-pf-empty svg {
+    width: 80px;
+    height: 80px;
+    color: #d1d5db;
+    margin-bottom: 16px;
+}
+.qh-pf-empty h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--qh-text);
+    margin-bottom: 8px;
+}
+.qh-pf-empty p {
+    font-size: 15px;
+    color: var(--qh-text-light);
+    margin-bottom: 20px;
+}
+
+/* ---- Change Password Form ---- */
+.qh-pf-form {
+    max-width: 480px;
+}
+.qh-pf-form .qh-form-group {
+    margin-bottom: 20px;
+}
+
+/* ---- Order History (inside tab) ---- */
+.qh-pf-order {
+    border: 1px solid var(--qh-border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: box-shadow 0.2s;
+}
+.qh-pf-order:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+.qh-pf-order:last-child {
+    margin-bottom: 0;
+}
+.qh-pf-order-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.qh-pf-order-id {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--qh-text);
+}
+.qh-pf-order-id span {
+    color: var(--qh-primary-dark);
+}
+.qh-pf-order-date {
+    font-size: 13px;
+    color: var(--qh-text-light);
+}
+.qh-pf-order-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.qh-pf-order-amount {
+    font-size: 17px;
+    font-weight: 700;
+    color: #dc2626;
+}
+
+/* Status badge (reuse order tracking) */
+.qh-pf-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.qh-pf-status.pending    { background: #fef3c7; color: #d97706; }
+.qh-pf-status.processing { background: #dbeafe; color: #2563eb; }
+.qh-pf-status.shipped    { background: #e0e7ff; color: #4f46e5; }
+.qh-pf-status.delivered  { background: #d1fae5; color: #059669; }
+.qh-pf-status.cancelled  { background: #fee2e2; color: #dc2626; }
+
+/* ---- Responsive ---- */
+@media (max-width: 1024px) {
+    .qh-pf-info-card {
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+    .qh-pf-user {
+        border-right: none;
+        padding-right: 0;
+        min-width: unset;
+        flex: 1 1 100%;
+    }
+    .qh-pf-stats {
+        flex: 1 1 100%;
+    }
+    .qh-pf-logout-section {
+        padding-left: 0;
+        flex: 1 1 100%;
+        display: flex;
+        justify-content: center;
+    }
+    .qh-pf-logout-btn {
+        flex-direction: row;
+        width: 100%;
+        justify-content: center;
+    }
+}
+@media (max-width: 768px) {
+    .qh-pf-info-card {
+        padding: 20px;
+    }
+    .qh-pf-stats {
+        flex-wrap: wrap;
+    }
+    .qh-pf-stat {
+        flex: 1 1 50%;
+        padding: 12px 8px;
+        border-right: none;
+        border-bottom: 1px solid var(--qh-border);
+    }
+    .qh-pf-tab {
+        padding: 14px 16px;
+        font-size: 14px;
+    }
+    .qh-pf-content {
+        padding: 20px;
+    }
+    .qh-pf-order {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    .qh-pf-order-right {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+</style>
+
 <div class="qh-profile-page">
-    <h1 class="qh-page-title">Thông tin tài khoản</h1>
-    
-    <div class="qh-card" style="padding: 32px;">
-        <!-- Link to Dashboard - Chỉ hiển thị cho admin -->
-        {% if user.is_superuser %}
-        <a href="{% url 'store:dashboard' %}" class="qh-btn qh-btn-secondary" style="justify-content: flex-start; margin-bottom: 24px;">
-            <svg style="width: 20px; height: 20px; margin-right: 8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
-            </svg>
-            Trang quản trị (Dashboard)
-        </a>
-        {% endif %}
-        
-        <div style="display: flex; align-items: center; gap: 24px; margin-bottom: 32px;">
-            <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, var(--qh-primary) 0%, var(--qh-secondary) 100%); display: flex; align-items: center; justify-content: center;">
-                <svg style="width: 40px; height: 40px; color: var(--qh-text);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+
+    <!-- ====== USER INFO CARD ====== -->
+    <div class="qh-pf-info-card">
+        <!-- Avatar + Info -->
+        <div class="qh-pf-user">
+            <div class="qh-pf-avatar">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                 </svg>
             </div>
             <div>
-                <h2 style="font-size: 24px; margin-bottom: 4px;">
-                    {% if user.last_name %}
-                        {{ user.last_name }}
-                    {% else %}
-                        {{ user.email }}
-                    {% endif %}
-                </h2>
-                <p style="color: var(--qh-text-light);">{{ user.email }}</p>
-                {% if user.phone %}
-                <p style="color: var(--qh-text-light);">{{ user.phone }}</p>
+                <div class="qh-pf-name">
+                    {% if user.last_name %}{{ user.last_name }}{% else %}{{ user.email }}{% endif %}
+                </div>
+                <div class="qh-pf-detail">
+                    {% if user.phone %}{{ user.phone }}<br>{% endif %}
+                    {{ user.email }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="qh-pf-stats">
+            <div class="qh-pf-stat">
+                <div class="qh-pf-stat-icon"><i class="ri-shopping-bag-3-line"></i></div>
+                <div class="qh-pf-stat-content">
+                    <div class="qh-pf-stat-value">{{ total_orders|default:"0" }}</div>
+                    <div class="qh-pf-stat-label">Tổng số đơn hàng đã mua</div>
+                </div>
+            </div>
+            <div class="qh-pf-stat">
+                <div class="qh-pf-stat-icon"><i class="ri-money-dollar-circle-line"></i></div>
+                <div class="qh-pf-stat-content">
+                    <div class="qh-pf-stat-value">{{ total_spent|default:"0" }}đ</div>
+                    <div class="qh-pf-stat-label">Tổng số tiền đã tiêu dùng</div>
+                </div>
+            </div>
+            <div class="qh-pf-stat">
+                {% if total_spent_raw >= 50000000 %}
+                <div class="qh-pf-rank-icon diamond"><i class="ri-vip-diamond-fill"></i></div>
+                <div class="qh-pf-stat-content"><div class="qh-pf-rank-label diamond">Hạng: Kim cương</div></div>
+                {% elif total_spent_raw >= 20000000 %}
+                <div class="qh-pf-rank-icon gold"><i class="ri-medal-fill"></i></div>
+                <div class="qh-pf-stat-content"><div class="qh-pf-rank-label gold">Hạng: Vàng</div></div>
+                {% elif total_spent_raw >= 5000000 %}
+                <div class="qh-pf-rank-icon silver"><i class="ri-shield-star-fill"></i></div>
+                <div class="qh-pf-stat-content"><div class="qh-pf-rank-label silver">Hạng: Bạc</div></div>
+                {% else %}
+                <div class="qh-pf-rank-icon bronze"><i class="ri-copper-coin-fill"></i></div>
+                <div class="qh-pf-stat-content"><div class="qh-pf-rank-label bronze">Hạng: Đồng</div></div>
                 {% endif %}
             </div>
         </div>
-        
-        <div style="display: grid; gap: 16px;">
-            <a href="#" class="qh-btn qh-btn-secondary" style="justify-content: flex-start;">
-                Chỉnh sửa thông tin cá nhân
-            </a>
-            <a href="#" class="qh-btn qh-btn-secondary" style="justify-content: flex-start;">
-                Lịch sử đơn hàng
-            </a>
-            <a href="#" class="qh-btn qh-btn-secondary" style="justify-content: flex-start;">
-                Địa chỉ giao hàng
-            </a>
-            <a href="#" class="qh-btn qh-btn-secondary" style="justify-content: flex-start;">
-                Đổi mật khẩu
-            </a>
-            <hr style="border: none; border-top: 1px solid var(--qh-border); margin: 8px 0;">
-            <a href="{% url 'account_logout' %}" class="qh-btn qh-btn-danger" style="justify-content: flex-start;">
-                <svg style="width: 20px; height: 20px; margin-right: 8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+
+        <!-- Logout -->
+        <div class="qh-pf-logout-section">
+            <a href="{% url 'account_logout' %}" class="qh-pf-logout-btn">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                 </svg>
                 Đăng xuất
             </a>
         </div>
     </div>
+
+    <!-- ====== TAB NAVIGATION ====== -->
+    <div class="qh-pf-tabs">
+        <!-- Admin Dashboard -->
+        {% if user.is_superuser %}
+        <a href="{% url 'store:dashboard' %}" class="qh-pf-tab">
+            <i class="ri-dashboard-line"></i>
+            Dashboard
+        </a>
+        {% endif %}
+
+        <a href="#" class="qh-pf-tab active" data-tab="address">
+            <i class="ri-map-pin-line"></i>
+            Sổ địa chỉ
+        </a>
+        <a href="#" class="qh-pf-tab" data-tab="coupon">
+            <i class="ri-coupon-3-line"></i>
+            Mã giảm giá
+        </a>
+        <a href="#" class="qh-pf-tab" data-tab="history">
+            <i class="ri-file-list-3-line"></i>
+            Lịch sử mua hàng
+        </a>
+        <a href="#" class="qh-pf-tab" data-tab="student">
+            <i class="ri-map-pin-user-line"></i>
+            Student - Teacher
+        </a>
+        <a href="#" class="qh-pf-tab" data-tab="password">
+            <i class="ri-lock-password-line"></i>
+            Đổi mật khẩu
+        </a>
+    </div>
+
+    <!-- ====== TAB CONTENT ====== -->
+    <div class="qh-pf-content">
+
+        <!-- Sổ địa chỉ -->
+        <div class="qh-pf-tab-panel active" id="tab-address">
+            <div class="qh-pf-empty">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                <h3>Chưa có địa chỉ nào</h3>
+                <p>Thêm địa chỉ giao hàng để đặt hàng nhanh hơn!</p>
+                <button class="qh-btn qh-btn-primary">Thêm địa chỉ mới</button>
+            </div>
+        </div>
+
+        <!-- Mã giảm giá -->
+        <div class="qh-pf-tab-panel" id="tab-coupon">
+            <div class="qh-pf-empty">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>
+                </svg>
+                <h3>Chưa có mã giảm giá</h3>
+                <p>Hãy theo dõi để nhận mã giảm giá hấp dẫn nhé!</p>
+            </div>
+        </div>
+
+        <!-- Lịch sử mua hàng -->
+        <div class="qh-pf-tab-panel" id="tab-history">
+            {% if orders %}
+                {% for order in orders %}
+                <div class="qh-pf-order">
+                    <div class="qh-pf-order-left">
+                        <div class="qh-pf-order-id">Đơn hàng <span>#{{ order.id }}</span></div>
+                        <div class="qh-pf-order-date">{{ order.created_at|date:"d/m/Y H:i" }}</div>
+                    </div>
+                    <div class="qh-pf-order-right">
+                        <span class="qh-pf-status {{ order.status }}">
+                            {% if order.status == 'pending' %}Chờ xử lý
+                            {% elif order.status == 'processing' %}Đang xử lý
+                            {% elif order.status == 'shipped' %}Đang giao
+                            {% elif order.status == 'delivered' %}Đã giao
+                            {% elif order.status == 'cancelled' %}Đã hủy
+                            {% endif %}
+                        </span>
+                        <div class="qh-pf-order-amount">{{ order.total_amount|floatformat:0 }}đ</div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="qh-pf-empty">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    </svg>
+                    <h3>Chưa có đơn hàng nào</h3>
+                    <p>Hãy mua sắm để xem lịch sử đơn hàng tại đây!</p>
+                    <a href="{% url 'store:home' %}" class="qh-btn qh-btn-primary">Tiếp tục mua sắm</a>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Student - Teacher -->
+        <div class="qh-pf-tab-panel" id="tab-student">
+            <div class="qh-pf-empty">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 14l9-5-9-5-9 5 9 5z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+                </svg>
+                <h3>Chương trình Student - Teacher</h3>
+                <p>Xác minh bạn là học sinh/sinh viên hoặc giáo viên để nhận ưu đãi đặc biệt!</p>
+                <button class="qh-btn qh-btn-primary">Xác minh ngay</button>
+            </div>
+        </div>
+
+        <!-- Đổi mật khẩu -->
+        <div class="qh-pf-tab-panel" id="tab-password">
+            <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 24px;">Đổi mật khẩu</h2>
+            <form class="qh-pf-form" method="POST" id="changePasswordForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="change_password">
+                <div class="qh-form-group">
+                    <label class="qh-label">Mật khẩu hiện tại</label>
+                    <input type="password" name="current_password" class="qh-input" placeholder="Nhập mật khẩu hiện tại" required>
+                </div>
+                <div class="qh-form-group">
+                    <label class="qh-label">Mật khẩu mới</label>
+                    <input type="password" name="new_password" class="qh-input" placeholder="Nhập mật khẩu mới" required>
+                </div>
+                <div class="qh-form-group">
+                    <label class="qh-label">Xác nhận mật khẩu mới</label>
+                    <input type="password" name="confirm_password" class="qh-input" placeholder="Nhập lại mật khẩu mới" required>
+                </div>
+                <button type="submit" class="qh-btn qh-btn-primary" style="width: 100%; font-size: 16px; font-weight: 600;">
+                    Cập nhật mật khẩu
+                </button>
+            </form>
+        </div>
+
+    </div>
 </div>
+
+<!-- Tab Switching Script -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tabs = document.querySelectorAll('.qh-pf-tab[data-tab]');
+    const panels = document.querySelectorAll('.qh-pf-tab-panel');
+
+    tabs.forEach(function(tab) {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            const target = this.getAttribute('data-tab');
+
+            // Remove active from all tabs and panels
+            tabs.forEach(function(t) { t.classList.remove('active'); });
+            panels.forEach(function(p) { p.classList.remove('active'); });
+
+            // Activate clicked tab and matching panel
+            this.classList.add('active');
+            var panel = document.getElementById('tab-' + target);
+            if (panel) panel.classList.add('active');
+        });
+    });
+});
+</script>
 {% endblock %}

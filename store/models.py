@@ -564,6 +564,24 @@ class Banner(models.Model):
         return f"Banner {self.banner_id}"
 
 
+class PasswordHistory(models.Model):
+    """
+    Lưu lịch sử đổi mật khẩu của người dùng
+    """
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='password_history', verbose_name='Người dùng')
+    changed_at = models.DateTimeField(auto_now_add=True, verbose_name='Thời gian đổi')
+    ip_address = models.GenericIPAddressField(blank=True, null=True, verbose_name='Địa chỉ IP')
+    user_agent = models.CharField(max_length=500, blank=True, verbose_name='Trình duyệt')
+
+    class Meta:
+        verbose_name = 'Lịch sử đổi mật khẩu'
+        verbose_name_plural = 'Lịch sử đổi mật khẩu'
+        ordering = ['-changed_at']
+
+    def __str__(self):
+        return f"{self.user.email} - {self.changed_at.strftime('%d/%m/%Y %H:%M')}"
+
+
 class ProductContent(models.Model):
     """
     Model lưu trữ nội dung sản phẩm theo hãng và sản phẩm

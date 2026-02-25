@@ -551,7 +551,57 @@ function formatPrice(value) {
 }
 
 function buyNow() {
-    alert('Chức năng mua hàng đang được phát triển!');
+    // Kiểm tra đã chọn variant chưa
+    if (!selectedColor || !selectedStorage) {
+        if (window.QHToast) {
+            QHToast.show('Vui lòng chọn màu sắc và dung lượng', 'error');
+        }
+        return;
+    }
+
+    // Tìm variant đã chọn
+    var variant = variantsData.find(function (v) {
+        return v.color_name === selectedColor && v.storage === selectedStorage;
+    });
+
+    if (!variant) {
+        if (window.QHToast) {
+            QHToast.show('Không tìm thấy sản phẩm', 'error');
+        }
+        return;
+    }
+
+    // Gọi API thêm vào giỏ hàng rồi chuyển trang
+    fetch('/cart/add/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: 'product_id=' + productId + '&quantity=1&color_name=' + encodeURIComponent(selectedColor) + '&color_code=' + encodeURIComponent(variant.color_code || '') + '&storage=' + encodeURIComponent(selectedStorage) + '&price=' + variant.price
+    })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+            if (data.success) {
+                window.location.href = '/cart/';
+            } else if (data.require_login) {
+                if (window.QHConfirm) {
+                    QHConfirm.show('Bạn cần đăng nhập để mua hàng. Chuyển đến trang đăng nhập?', function () {
+                        window.location.href = '/login/';
+                    });
+                }
+            } else {
+                if (window.QHToast) {
+                    QHToast.show(data.message || 'Có lỗi xảy ra', 'error');
+                }
+            }
+        })
+        .catch(function (error) {
+            console.error('Error:', error);
+            if (window.QHToast) {
+                QHToast.show('Có lỗi xảy ra. Vui lòng thử lại.', 'error');
+            }
+        });
 }
 
 function updateCartBadge(count) {
@@ -607,8 +657,10 @@ function addToCart() {
                     alert(data.message);
                 }
             } else if (data.require_login) {
-                if (confirm(data.message + '. Bạn có muốn đăng nhập không?')) {
-                    window.location.href = '/login/';
+                if (window.QHConfirm) {
+                    QHConfirm.show('Bạn cần đăng nhập để thêm sản phẩm vào giỏ hàng. Chuyển đến trang đăng nhập?', function () {
+                        window.location.href = '/login/';
+                    });
                 }
             } else {
                 if (window.QHToast) {
