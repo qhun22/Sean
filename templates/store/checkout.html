@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}Thanh toán - QHUN22 Mobile{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/checkout.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="qh-checkout-page">
+
+    <h1 class="qh-page-title">THANH TOÁN</h1>
+
+    <div class="qh-checkout-grid">
+        <!-- ==================== LEFT ==================== -->
+        <div class="qh-checkout-left">
+
+            <!-- Address Section -->
+            <div class="qh-checkout-section">
+                <div class="qh-checkout-section-title">
+                    <i class="ri-map-pin-line"></i> Địa chỉ giao hàng
+                </div>
+
+                {% if has_default_address %}
+                <div class="qh-checkout-addr">
+                    <div class="qh-checkout-addr-icon">
+                        <i class="ri-map-pin-2-fill"></i>
+                    </div>
+                    <div class="qh-checkout-addr-info">
+                        <div class="qh-checkout-addr-name">
+                            {{ default_address.full_name }}
+                            <span class="qh-checkout-addr-badge">Mặc định</span>
+                        </div>
+                        <div class="qh-checkout-addr-phone">{{ default_address.phone }}</div>
+                        <div class="qh-checkout-addr-detail">
+                            {{ default_address.detail }}, {{ default_address.ward_name }}, {{ default_address.district_name }}, {{ default_address.province_name }}
+                        </div>
+                    </div>
+                    <a href="{% url 'store:profile' %}?tab=address" class="qh-checkout-addr-change">Thay đổi</a>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Products Section -->
+            <div class="qh-checkout-section">
+                <div class="qh-checkout-section-title">
+                    <i class="ri-smartphone-line"></i> Sản phẩm đã chọn ({{ cart_items|length }})
+                </div>
+
+                <div class="qh-checkout-products">
+                    {% for item in cart_items %}
+                    <div class="qh-checkout-item">
+                        <div class="qh-checkout-item-img">
+                            {% if item.color_thumbnail %}
+                            <img src="{{ item.color_thumbnail }}" alt="{{ item.product.name }}">
+                            {% elif item.product.image %}
+                            <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}">
+                            {% else %}
+                            <div class="qh-checkout-no-img">
+                                <svg style="width:40px;height:40px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="qh-checkout-item-info">
+                            <div class="qh-checkout-item-name">{{ item.product.name }}</div>
+                            {% if item.color_name %}
+                            <div class="qh-checkout-item-variant">Màu: {{ item.color_name }}</div>
+                            {% endif %}
+                            {% if item.storage %}
+                            <div class="qh-checkout-item-variant">Dung lượng: {{ item.storage }}</div>
+                            {% endif %}
+                            <div class="qh-checkout-item-qty">Số lượng: {{ item.quantity }}</div>
+                        </div>
+                        <div class="qh-checkout-item-price">
+                            <div class="qh-checkout-item-current">{{ item.price_at_add|format_price_with_unit }}</div>
+                            {% if item.original_price %}
+                            <div class="qh-checkout-item-original">{{ item.original_price|format_price_with_unit }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Payment Method Section -->
+            <div class="qh-checkout-section">
+                <div class="qh-checkout-section-title">
+                    <i class="ri-bank-card-line"></i> Phương thức thanh toán
+                </div>
+
+                <div class="qh-checkout-payments">
+                    <!-- COD -->
+                    <div class="qh-checkout-pay-opt selected verified" data-pay-label="Thanh toán khi nhận hàng (COD)" data-pay-short="COD" data-pay-type="cod">
+                        <div class="qh-checkout-pay-icon">
+                            <i class="ri-hand-coin-line"></i>
+                        </div>
+                        <div class="qh-checkout-pay-label">
+                            Thanh toán khi nhận hàng
+                            <small>COD - Trả tiền mặt khi nhận</small>
+                        </div>
+                        <span class="qh-checkout-pay-check"><i class="ri-checkbox-circle-fill"></i></span>
+                    </div>
+
+                    <!-- VIETQR -->
+                    <div class="qh-checkout-pay-opt" data-pay-label="Chuyển khoản VIETQR" data-pay-short="VIETQR" data-pay-type="vietqr">
+                        <div class="qh-checkout-pay-icon">
+                            <i class="ri-qr-code-line"></i>
+                        </div>
+                        <div class="qh-checkout-pay-label">
+                            Chuyển khoản VIETQR
+                            <small>Quét mã QR để thanh toán</small>
+                        </div>
+                        <span class="qh-checkout-pay-check"><i class="ri-checkbox-circle-fill"></i></span>
+                    </div>
+
+                    <!-- VNPAY - Bảo trì -->
+                    <div class="qh-checkout-pay-opt disabled" data-pay-label="VNPAY" data-pay-short="VNPAY" data-pay-type="vnpay">
+                        <div class="qh-checkout-pay-icon">
+                            <i class="ri-secure-payment-line"></i>
+                        </div>
+                        <div class="qh-checkout-pay-label">
+                            VNPAY
+                            <small>Thanh toán qua cổng VNPAY</small>
+                        </div>
+                        <span class="qh-checkout-pay-badge">Bảo trì</span>
+                    </div>
+
+                    <!-- Trả góp - Bảo trì -->
+                    <div class="qh-checkout-pay-opt disabled" data-pay-label="Trả góp" data-pay-short="Trả góp" data-pay-type="installment">
+                        <div class="qh-checkout-pay-icon">
+                            <i class="ri-calendar-check-line"></i>
+                        </div>
+                        <div class="qh-checkout-pay-label">
+                            Trả góp 0%
+                            <small>Trả góp qua thẻ tín dụng</small>
+                        </div>
+                        <span class="qh-checkout-pay-badge">Bảo trì</span>
+                    </div>
+                </div>
+
+                <div class="qh-checkout-pay-selected-text" id="checkoutPayText">
+                    Bạn đang chọn hình thức thanh toán <strong>Thanh toán khi nhận hàng (COD)</strong>
+                </div>
+
+                <!-- VietQR Payment Box -->
+                <div class="qh-checkout-qr-box" id="vietqrBox" style="display:none;">
+                    <!-- QR Content -->
+                    <div id="vietqrContent">
+                        <div class="qh-checkout-qr-header">
+                            <i class="ri-qr-code-line"></i> Quét mã QR để thanh toán
+                        </div>
+                        <div class="qh-checkout-qr-body">
+                            <div class="qh-checkout-qr-img">
+                                <img id="vietqrImage" src="" alt="VietQR">
+                            </div>
+                            <div class="qh-checkout-qr-info">
+                                <div class="qh-checkout-qr-row">
+                                    <span>Ngân hàng</span>
+                                    <strong>Techcombank</strong>
+                                </div>
+                                <div class="qh-checkout-qr-row">
+                                    <span>Chủ tài khoản</span>
+                                    <strong>TRUONG QUANG HUY</strong>
+                                </div>
+                                <div class="qh-checkout-qr-row">
+                                    <span>Số tài khoản</span>
+                                    <strong>22100588888888</strong>
+                                </div>
+                                <div class="qh-checkout-qr-row">
+                                    <span>Số tiền</span>
+                                    <strong class="qh-qr-amount" id="vietqrAmount">0đ</strong>
+                                </div>
+                                <div class="qh-checkout-qr-row">
+                                    <span>Nội dung CK</span>
+                                    <strong id="vietqrCode">QH...</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="qh-checkout-qr-footer">
+                            <div class="qh-checkout-qr-timer">
+                                <i class="ri-time-line"></i> Thời gian còn lại: <span id="vietqrTimer">15:00</span>
+                            </div>
+                            <button class="qh-checkout-qr-confirm" id="vietqrConfirmBtn">
+                                <i class="ri-check-line"></i> Đã thanh toán
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Success State -->
+                    <div class="qh-checkout-qr-success" id="vietqrSuccess" style="display:none;">
+                        <div class="qh-checkout-qr-success-icon">
+                            <i class="ri-checkbox-circle-fill"></i>
+                        </div>
+                        <div class="qh-checkout-qr-success-title">Thanh toán thành công!</div>
+                        <div class="qh-checkout-qr-success-desc">Chuyển khoản VietQR đã được xác nhận</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ==================== RIGHT - SUMMARY ==================== -->
+        <div class="qh-checkout-right">
+            <div class="qh-checkout-summary">
+                <h2 class="qh-checkout-summary-title">Tóm tắt đơn hàng</h2>
+
+                <div class="qh-checkout-summary-row">
+                    <span>Voucher đang áp dụng</span>
+                    <span class="qh-checkout-summary-val">-</span>
+                </div>
+                <div class="qh-checkout-summary-row">
+                    <span>Số tiền đã chiết khấu</span>
+                    <span class="qh-checkout-summary-val">0 đ</span>
+                </div>
+                <div class="qh-checkout-summary-row">
+                    <span>Phương thức thanh toán</span>
+                    <span class="qh-checkout-summary-val" id="summaryPayMethod">COD</span>
+                </div>
+                <div class="qh-checkout-summary-row">
+                    <span>Phí vận chuyển</span>
+                    <span class="qh-checkout-summary-val" style="color: #10b981;">Miễn phí</span>
+                </div>
+                <div class="qh-checkout-summary-row total">
+                    <span>TỔNG TIỀN</span>
+                    <span class="qh-checkout-summary-val">{{ total|format_price_with_unit }}</span>
+                </div>
+
+                <button class="qh-checkout-submit-btn" id="checkoutSubmitBtn">ĐẶT HÀNG</button>
+                <a href="{% url 'store:cart_detail' %}" class="qh-checkout-back-link">
+                     Quay lại giỏ hàng
+                </a>
+            </div>
+        </div>
+    </div>
+
+</div><!-- .qh-checkout-page -->
+
+<!-- ==================== No Address Modal ==================== -->
+{% if not has_default_address %}
+<div class="qh-checkout-noaddr-overlay" id="noAddrModal">
+    <div class="qh-checkout-noaddr-box">
+        <div class="qh-checkout-noaddr-icon">
+            <i class="ri-map-pin-add-line"></i>
+        </div>
+        <div class="qh-checkout-noaddr-title">Chưa có địa chỉ giao hàng</div>
+        <div class="qh-checkout-noaddr-desc">
+            Bạn cần thêm ít nhất một địa chỉ giao hàng mặc định trước khi thanh toán.
+            Vui lòng di chuyển đến sổ địa chỉ để thêm địa chỉ mới.
+        </div>
+        <a href="{% url 'store:profile' %}?tab=address" class="qh-checkout-noaddr-btn">
+            <i class="ri-arrow-right-line"></i> Di chuyển
+        </a>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    var QH_CHECKOUT_TOTAL = {{ total }};
+</script>
+<script src="{% static 'js/checkout.js' %}"></script>
+{% endblock %}
