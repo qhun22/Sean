@@ -15,10 +15,15 @@ urlpatterns = [
     path('products/search/', views.product_search, name='product_search'),
     # Giỏ hàng
     path('cart/', views.cart_detail, name='cart_detail'),
+    path('cart/add/', views.cart_add, name='cart_add'),
+    path('cart/remove/', views.cart_remove, name='cart_remove'),
+    path('cart/update/', views.cart_update_quantity, name='cart_update_quantity'),
+    path('cart/change-color/', views.cart_change_color, name='cart_change_color'),
     # Tra cứu đơn hàng
     path('order-tracking/', views.order_tracking, name='order_tracking'),
     # Yêu thích
     path('wishlist/', views.wishlist, name='wishlist'),
+    path('wishlist/toggle/', views.wishlist_toggle, name='wishlist_toggle'),
     # Tài khoản
     path('login/', views.login_view, name='login'),
     path('register/', views.register_view, name='register'),

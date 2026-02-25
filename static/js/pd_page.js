@@ -554,8 +554,95 @@ function buyNow() {
     alert('Chức năng mua hàng đang được phát triển!');
 }
 
+function updateCartBadge(count) {
+    var badge = document.getElementById('qh-cart-count');
+    if (badge) {
+        badge.textContent = count;
+    }
+}
+
 function addToCart() {
-    alert('Đã thêm vào giỏ hàng!');
+    // Lấy thông tin sản phẩm đã chọn
+    if (!selectedColor || !selectedStorage) {
+        if (window.QHToast) {
+            QHToast.show('Vui lòng chọn màu sắc và dung lượng', 'error');
+        } else {
+            alert('Vui lòng chọn màu sắc và dung lượng');
+        }
+        return;
+    }
+
+    // Tìm variant đã chọn để lấy giá
+    var variant = variantsData.find(function (v) {
+        return v.color_name === selectedColor && v.storage === selectedStorage;
+    });
+
+    if (!variant) {
+        if (window.QHToast) {
+            QHToast.show('Không tìm thấy sản phẩm', 'error');
+        } else {
+            alert('Không tìm thấy sản phẩm');
+        }
+        return;
+    }
+
+    // Gọi API thêm vào giỏ hàng
+    fetch('/cart/add/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: 'product_id=' + productId + '&quantity=1&color_name=' + encodeURIComponent(selectedColor) + '&color_code=' + encodeURIComponent(variant.color_code || '') + '&storage=' + encodeURIComponent(selectedStorage) + '&price=' + variant.price
+    })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+            if (data.success) {
+                // Cập nhật badge
+                updateCartBadge(data.total_items);
+                // Hiển thị toast
+                if (window.QHToast) {
+                    QHToast.show(data.message, 'success');
+                } else {
+                    alert(data.message);
+                }
+            } else if (data.require_login) {
+                if (confirm(data.message + '. Bạn có muốn đăng nhập không?')) {
+                    window.location.href = '/login/';
+                }
+            } else {
+                if (window.QHToast) {
+                    QHToast.show(data.message, 'error');
+                } else {
+                    alert(data.message);
+                }
+            }
+        })
+        .catch(function (error) {
+            console.error('Error:', error);
+            if (window.QHToast) {
+                QHToast.show('Có lỗi xảy ra. Vui lòng thử lại.', 'error');
+            } else {
+                alert('Có lỗi xảy ra. Vui lòng thử lại.');
+            }
+        });
+}
+
+function getCsrfToken() {
+    // Lấy CSRF token từ cookie
+    var name = 'csrftoken';
+    var cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
 }
 
 // ========== Product Content Panel (slide from right, like Spec) ==========

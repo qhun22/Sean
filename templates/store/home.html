@@ -137,7 +137,11 @@
                 {% endif %}
                 
                 <!-- Wishlist Heart Button -->
-                <button class="wishlist-btn" onclick="this.classList.toggle('liked'); return false;">
+                {% if product.id in wishlist_product_ids %}
+                <button class="wishlist-btn liked" data-product-id="{{ product.id }}" onclick="toggleWishlist(this, {{ product.id }}); return false;">
+                {% else %}
+                <button class="wishlist-btn" data-product-id="{{ product.id }}" onclick="toggleWishlist(this, {{ product.id }}); return false;">
+                {% endif %}
                     <svg viewBox="0 0 24 24" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
                     </svg>
@@ -239,5 +243,69 @@
     </div>
     {% endif %}
 </div>
+
+<!-- Wishlist Toggle JavaScript -->
+<script>
+function updateWishlistBadge(count) {
+    const badge = document.getElementById('qh-wishlist-count');
+    if (badge) {
+        badge.textContent = count;
+    }
+}
+
+function toggleWishlist(button, productId) {
+    fetch('{% url "store:wishlist_toggle" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: 'product_id=' + productId
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Toggle class liked
+            if (data.is_liked) {
+                button.classList.add('liked');
+            } else {
+                button.classList.remove('liked');
+            }
+            // Cập nhật số lượng wishlist trên header
+            updateWishlistBadge(data.total_wishlist);
+            // Hiển thị toast thông báo
+            if (window.QHToast) {
+                QHToast.show(data.message, 'success');
+            }
+        } else if (data.require_login) {
+            // Chuyển hướng đến trang đăng nhập
+            if (confirm(data.message + '. Bạn có muốn đăng nhập không?')) {
+                window.location.href = '{% url "store:login" %}';
+            }
+        } else {
+            // Hiển thị lỗi
+            if (window.QHToast) {
+                QHToast.show(data.message, 'error');
+            } else {
+                alert(data.message);
+            }
+            // Revert trạng thái nếu có lỗi
+            if (data.is_liked) {
+                button.classList.remove('liked');
+            } else {
+                button.classList.add('liked');
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        if (window.QHToast) {
+            QHToast.show('Có lỗi xảy ra. Vui lòng thử lại.', 'error');
+        } else {
+            alert('Có lỗi xảy ra. Vui lòng thử lại.');
+        }
+    });
+}
+</script>
 
 {% endblock %}

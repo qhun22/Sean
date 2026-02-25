@@ -262,9 +262,18 @@ def home(request):
     except EmptyPage:
         # Nếu trang vượt quá, lấy trang cuối cùng
         products = paginator.page(paginator.num_pages)
-    
+
+    # Lấy danh sách sản phẩm yêu thích của user (nếu đã đăng nhập)
+    wishlist_product_ids = []
+    if request.user.is_authenticated:
+        from store.models import Wishlist
+        wishlist = Wishlist.get_or_create_for_user(request.user)
+        if wishlist:
+            wishlist_product_ids = list(wishlist.products.values_list('id', flat=True))
+
     context = {
         'products': products,
+        'wishlist_product_ids': wishlist_product_ids,
     }
     return render(request, 'store/home.html', context)
 
@@ -304,8 +313,73 @@ def product_list_json(request):
 def cart_detail(request):
     """
     Chi tiết giỏ hàng
+    Hiển thị các sản phẩm trong giỏ hàng
     """
-    return render(request, 'store/cart.html')
+    from store.models import Cart, FolderColorImage, ProductDetail, ProductVariant
+
+    cart = Cart.get_or_create_for_user(request.user)
+
+    if cart:
+        # Lấy các item trong giỏ hàng
+        cart_items = list(cart.items.select_related('product', 'product__brand').order_by('-created_at'))
+
+        # Lấy color options cho từng item (ảnh thumbnail + tên màu)
+        for item in cart_items:
+            product = item.product
+            item.color_options = []
+            item.original_price = None
+
+            # Lấy variants để biết các màu có sẵn
+            try:
+                detail = ProductDetail.objects.get(product=product)
+                variants = detail.variants.filter(is_active=True)
+
+                # Tìm original_price của variant hiện tại
+                current_variant = variants.filter(
+                    color_name=item.color_name,
+                    storage=item.storage
+                ).first()
+                if current_variant and current_variant.original_price > current_variant.price:
+                    item.original_price = current_variant.original_price
+
+                # Lấy unique colors với SKU
+                seen_colors = {}
+                color_variants = []
+                for v in variants.order_by('color_name'):
+                    if v.color_name not in seen_colors:
+                        seen_colors[v.color_name] = True
+                        color_variants.append(v)
+
+                # Lấy ảnh thumbnail cho từng màu từ FolderColorImage
+                if product.brand_id:
+                    sku_list = list(set(v.sku for v in color_variants if v.sku))
+                    folder_images = {}
+                    if sku_list:
+                        imgs = FolderColorImage.objects.filter(
+                            brand_id=product.brand_id,
+                            sku__in=sku_list
+                        ).order_by('sku', 'order')
+                        for img in imgs:
+                            if img.sku not in folder_images:
+                                folder_images[img.sku] = img.image.url
+
+                    for v in color_variants:
+                        item.color_options.append({
+                            'color_name': v.color_name,
+                            'sku': v.sku or '',
+                            'thumbnail': folder_images.get(v.sku, ''),
+                            'is_selected': v.color_name == item.color_name,
+                        })
+            except ProductDetail.DoesNotExist:
+                pass
+    else:
+        cart_items = []
+
+    context = {
+        'cart': cart,
+        'cart_items': cart_items,
+    }
+    return render(request, 'store/cart.html', context)
 
 
 def order_tracking(request):
@@ -318,8 +392,383 @@ def order_tracking(request):
 def wishlist(request):
     """
     Danh sách sản phẩm yêu thích
+    Hiển thị tối đa 15 sản phẩm mỗi trang
     """
-    return render(request, 'store/wishlist.html')
+    from store.models import Wishlist
+
+    # Lấy danh sách yêu thích của user
+    wishlist = Wishlist.get_or_create_for_user(request.user)
+
+    if wishlist:
+        # Lấy các sản phẩm yêu thích, sắp xếp theo thời gian thêm gần nhất
+        wishlist_products = wishlist.products.select_related('brand', 'detail').order_by('-wishlisted_by')
+    else:
+        wishlist_products = []
+
+    # Phân trang - 15 sản phẩm mỗi trang
+    paginator = Paginator(wishlist_products, 15)
+
+    # Lấy số trang từ URL
+    page = request.GET.get('page', 1)
+
+    try:
+        products = paginator.page(page)
+    except PageNotAnInteger:
+        products = paginator.page(1)
+    except EmptyPage:
+        products = paginator.page(paginator.num_pages)
+
+    context = {
+        'products': products,
+        'wishlist': wishlist,
+    }
+    return render(request, 'store/wishlist.html', context)
+
+
+@require_POST
+def wishlist_toggle(request):
+    """
+    API thêm/xóa sản phẩm khỏi danh sách yêu thích (AJAX)
+    """
+    from store.models import Wishlist, Product
+
+    # Kiểm tra user đã đăng nhập chưa
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'message': 'Vui lòng đăng nhập để thêm yêu thích',
+            'require_login': True,
+        }, status=401)
+
+    # Lấy product_id từ request
+    product_id = request.POST.get('product_id')
+    if not product_id:
+        return JsonResponse({
+            'success': False,
+            'message': 'Thiếu product_id',
+        }, status=400)
+
+    try:
+        product = Product.objects.get(id=product_id, is_active=True)
+    except Product.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'Sản phẩm không tồn tại',
+        }, status=404)
+
+    # Lấy hoặc tạo wishlist cho user
+    wishlist = Wishlist.get_or_create_for_user(request.user)
+
+    if wishlist.has_product(product):
+        # Nếu đã có thì xóa (unlike)
+        wishlist.remove_product(product)
+        is_liked = False
+        message = 'Đã xóa khỏi yêu thích'
+    else:
+        # Nếu chưa có thì thêm (like)
+        wishlist.add_product(product)
+        is_liked = True
+        message = 'Đã thêm vào yêu thích'
+
+    # Đếm tổng số sản phẩm yêu thích
+    total_wishlist = wishlist.products.count()
+
+    return JsonResponse({
+        'success': True,
+        'message': message,
+        'is_liked': is_liked,
+        'total_wishlist': total_wishlist,
+    })
+
+
+@require_POST
+def cart_add(request):
+    """
+    API thêm sản phẩm vào giỏ hàng (AJAX)
+    """
+    from store.models import Cart, CartItem, Product
+
+    # Kiểm tra user đã đăng nhập chưa
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'message': 'Vui lòng đăng nhập để thêm vào giỏ hàng',
+            'require_login': True,
+        }, status=401)
+
+    # Lấy thông tin từ request
+    product_id = request.POST.get('product_id')
+    quantity = int(request.POST.get('quantity', 1))
+    color_name = request.POST.get('color_name', '')
+    color_code = request.POST.get('color_code', '')
+    storage = request.POST.get('storage', '')
+    price = request.POST.get('price', 0)
+
+    if not product_id:
+        return JsonResponse({
+            'success': False,
+            'message': 'Thiếu product_id',
+        }, status=400)
+
+    try:
+        product = Product.objects.get(id=product_id, is_active=True)
+    except Product.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'Sản phẩm không tồn tại',
+        }, status=404)
+
+    # Lấy hoặc tạo giỏ hàng cho user
+    cart = Cart.get_or_create_for_user(request.user)
+
+    # Kiểm tra xem sản phẩm đã có trong giỏ chưa (cùng màu, cùng storage)
+    existing_item = CartItem.objects.filter(
+        cart=cart,
+        product=product,
+        color_name=color_name,
+        storage=storage
+    ).first()
+
+    if existing_item:
+        # Tăng số lượng
+        existing_item.quantity += quantity
+        existing_item.save()
+        item = existing_item
+        message = 'Đã cập nhật số lượng sản phẩm trong giỏ hàng'
+    else:
+        # Thêm mới
+        item = CartItem.objects.create(
+            cart=cart,
+            product=product,
+            quantity=quantity,
+            color_name=color_name,
+            color_code=color_code,
+            storage=storage,
+            price_at_add=price
+        )
+        message = 'Đã thêm sản phẩm vào giỏ hàng'
+
+    # Đếm tổng số sản phẩm trong giỏ
+    total_items = cart.get_total_items()
+
+    return JsonResponse({
+        'success': True,
+        'message': message,
+        'total_items': total_items,
+        'item_quantity': item.quantity,
+    })
+
+
+@require_POST
+def cart_remove(request):
+    """
+    API xóa sản phẩm khỏi giỏ hàng (AJAX)
+    """
+    from store.models import Cart, CartItem
+
+    # Kiểm tra user đã đăng nhập chưa
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'message': 'Vui lòng đăng nhập',
+            'require_login': True,
+        }, status=401)
+
+    # Lấy item_id từ request
+    item_id = request.POST.get('item_id')
+    if not item_id:
+        return JsonResponse({
+            'success': False,
+            'message': 'Thiếu item_id',
+        }, status=400)
+
+    try:
+        item = CartItem.objects.get(id=item_id, cart__user=request.user)
+    except CartItem.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'Sản phẩm không tồn tại trong giỏ hàng',
+        }, status=404)
+
+    cart = item.cart
+    item.delete()
+
+    # Đếm tổng số sản phẩm trong giỏ
+    total_items = cart.get_total_items()
+
+    return JsonResponse({
+        'success': True,
+        'message': 'Đã xóa sản phẩm khỏi giỏ hàng',
+        'total_items': total_items,
+    })
+
+
+@require_POST
+def cart_update_quantity(request):
+    """
+    API cập nhật số lượng sản phẩm trong giỏ hàng (AJAX)
+    """
+    from store.models import Cart, CartItem
+
+    # Kiểm tra user đã đăng nhập chưa
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'message': 'Vui lòng đăng nhập',
+            'require_login': True,
+        }, status=401)
+
+    # Lấy item_id và quantity từ request
+    item_id = request.POST.get('item_id')
+    quantity = int(request.POST.get('quantity', 1))
+
+    if not item_id:
+        return JsonResponse({
+            'success': False,
+            'message': 'Thiếu item_id',
+        }, status=400)
+
+    if quantity < 1:
+        # Xóa item nếu quantity < 1
+        try:
+            item = CartItem.objects.get(id=item_id, cart__user=request.user)
+            cart = item.cart
+            item.delete()
+            total_items = cart.get_total_items()
+            total_price = cart.get_total_price()
+            return JsonResponse({
+                'success': True,
+                'message': 'Đã xóa sản phẩm khỏi giỏ hàng',
+                'total_items': total_items,
+                'total_price': int(total_price),
+                'item_removed': True,
+            })
+        except CartItem.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'Sản phẩm không tồn tại trong giỏ hàng',
+            }, status=404)
+
+    try:
+        item = CartItem.objects.get(id=item_id, cart__user=request.user)
+    except CartItem.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'Sản phẩm không tồn tại trong giỏ hàng',
+        }, status=404)
+
+    cart = item.cart
+    item.quantity = quantity
+    item.save()
+
+    # Tính lại tổng tiền
+    total_price = cart.get_total_price()
+    item_total = item.get_total_price()
+    total_items = cart.get_total_items()
+
+    return JsonResponse({
+        'success': True,
+        'message': 'Đã cập nhật số lượng',
+        'total_items': total_items,
+        'total_price': int(total_price),
+        'item_total': int(item_total),
+        'item_quantity': item.quantity,
+    })
+
+
+@require_POST
+def cart_change_color(request):
+    """
+    API đổi màu sản phẩm trong giỏ hàng (AJAX)
+    Cập nhật color_name, color_code và giá theo variant mới
+    """
+    from store.models import Cart, CartItem, ProductDetail, ProductVariant
+
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'message': 'Vui lòng đăng nhập',
+            'require_login': True,
+        }, status=401)
+
+    item_id = request.POST.get('item_id')
+    new_color = request.POST.get('color_name', '')
+
+    if not item_id or not new_color:
+        return JsonResponse({
+            'success': False,
+            'message': 'Thiếu thông tin',
+        }, status=400)
+
+    try:
+        item = CartItem.objects.get(id=item_id, cart__user=request.user)
+    except CartItem.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'Sản phẩm không tồn tại trong giỏ hàng',
+        }, status=404)
+
+    # Tìm variant mới theo color + storage
+    try:
+        detail = ProductDetail.objects.get(product=item.product)
+        new_variant = detail.variants.filter(
+            color_name=new_color,
+            storage=item.storage,
+            is_active=True
+        ).first()
+
+        if not new_variant:
+            # Nếu không tìm thấy variant cùng storage, lấy variant đầu tiên của màu đó
+            new_variant = detail.variants.filter(
+                color_name=new_color,
+                is_active=True
+            ).first()
+
+        if new_variant:
+            # Kiểm tra xem đã có item cùng product + color + storage chưa
+            existing = CartItem.objects.filter(
+                cart=item.cart,
+                product=item.product,
+                color_name=new_color,
+                storage=new_variant.storage
+            ).exclude(id=item.id).first()
+
+            if existing:
+                # Gộp vào item đã có
+                existing.quantity += item.quantity
+                existing.save()
+                item.delete()
+                item = existing
+            else:
+                item.color_name = new_color
+                item.storage = new_variant.storage
+                item.price_at_add = new_variant.price
+                item.save()
+
+            cart = item.cart
+            total_price = cart.get_total_price()
+            item_total = item.get_total_price()
+            total_items = cart.get_total_items()
+
+            return JsonResponse({
+                'success': True,
+                'message': f'Đã đổi sang màu {new_color}',
+                'total_items': total_items,
+                'total_price': int(total_price),
+                'item_total': int(item_total),
+                'item_price': int(new_variant.price),
+                'original_price': int(new_variant.original_price) if new_variant.original_price > new_variant.price else 0,
+                'new_color': new_color,
+                'new_storage': new_variant.storage,
+            })
+
+    except ProductDetail.DoesNotExist:
+        pass
+
+    return JsonResponse({
+        'success': False,
+        'message': 'Không tìm thấy biến thể phù hợp',
+    }, status=400)
 
 
 def login_view(request):

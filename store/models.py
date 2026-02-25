@@ -386,6 +386,119 @@ class Product(models.Model):
         return 0
 
 
+class Wishlist(models.Model):
+    """
+    Danh sách yêu thích của người dùng
+    Lưu trữ các sản phẩm mà người dùng đã thích (trái tim đỏ)
+    """
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='wishlists', verbose_name='Người dùng')
+    products = models.ManyToManyField(Product, related_name='wishlisted_by', verbose_name='Sản phẩm yêu thích')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Ngày cập nhật')
+
+    class Meta:
+        db_table = 'store_wishlist'
+        verbose_name = 'Danh sách yêu thích'
+        verbose_name_plural = 'Danh sách yêu thích'
+
+    def __str__(self):
+        return f"Wishlist của {self.user.email}"
+
+    @classmethod
+    def get_or_create_for_user(cls, user):
+        """Lấy hoặc tạo wishlist cho user"""
+        if not user.is_authenticated:
+            return None
+        wishlist, created = cls.objects.get_or_create(user=user)
+        return wishlist
+
+    def add_product(self, product):
+        """Thêm sản phẩm vào wishlist"""
+        if not self.products.filter(id=product.id).exists():
+            self.products.add(product)
+            return True
+        return False
+
+    def remove_product(self, product):
+        """Xóa sản phẩm khỏi wishlist"""
+        if self.products.filter(id=product.id).exists():
+            self.products.remove(product)
+            return True
+        return False
+
+    def has_product(self, product):
+        """Kiểm tra sản phẩm có trong wishlist không"""
+        return self.products.filter(id=product.id).exists()
+
+
+class Cart(models.Model):
+    """
+    Giỏ hàng của người dùng
+    Lưu trữ các sản phẩm mà người dùng đã thêm vào giỏ hàng
+    """
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='carts', verbose_name='Người dùng')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Ngày cập nhật')
+
+    class Meta:
+        db_table = 'store_cart'
+        verbose_name = 'Giỏ hàng'
+        verbose_name_plural = 'Giỏ hàng'
+
+    def __str__(self):
+        return f"Giỏ hàng của {self.user.email}"
+
+    @classmethod
+    def get_or_create_for_user(cls, user):
+        """Lấy hoặc tạo giỏ hàng cho user"""
+        if not user.is_authenticated:
+            return None
+        cart, created = cls.objects.get_or_create(user=user)
+        return cart
+
+    def get_total_price(self):
+        """Tính tổng tiền giỏ hàng"""
+        total = 0
+        for item in self.items.all():
+            total += item.get_total_price()
+        return total
+
+    def get_total_items(self):
+        """Tính tổng số sản phẩm trong giỏ"""
+        total = 0
+        for item in self.items.all():
+            total += item.quantity
+        return total
+
+
+class CartItem(models.Model):
+    """
+    Item trong giỏ hàng - lưu sản phẩm, màu, số lượng và giá tại thời điểm thêm
+    """
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items', verbose_name='Giỏ hàng')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='cart_items', verbose_name='Sản phẩm')
+    quantity = models.PositiveIntegerField(default=1, verbose_name='Số lượng')
+    color_name = models.CharField(max_length=50, blank=True, verbose_name='Tên màu')
+    color_code = models.CharField(max_length=20, blank=True, verbose_name='Mã màu')
+    storage = models.CharField(max_length=20, blank=True, verbose_name='Dung lượng')
+    price_at_add = models.DecimalField(max_digits=15, decimal_places=0, default=0, verbose_name='Giá khi thêm')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày thêm')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Ngày cập nhật')
+
+    class Meta:
+        db_table = 'store_cartitem'
+        verbose_name = 'Item giỏ hàng'
+        verbose_name_plural = 'Items giỏ hàng'
+        unique_together = ['cart', 'product', 'color_name', 'storage']
+
+    def __str__(self):
+        return f"{self.product.name} x {self.quantity}"
+
+    def get_total_price(self):
+        """Tính thành tiền = giá x số lượng"""
+        return self.price_at_add * self.quantity
+
+
 class SiteVisit(models.Model):
     """
     Model theo dõi lượt truy cập website
