@@ -1,0 +1,701 @@
+/* ========================================
+   QHUN22 - Checkout Page Styles
+   Đồng bộ với cart, wishlist, order_tracking
+   ======================================== */
+
+/* ==================== Layout ==================== */
+.qh-checkout-page {
+    /* Inherits from .qh-main */
+}
+
+.qh-checkout-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 24px;
+    align-items: start;
+}
+
+.qh-checkout-left {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* ==================== Section Card ==================== */
+/* Đồng bộ: var(--qh-card-bg), border-radius: 12px, box-shadow giống cart/order_tracking */
+.qh-checkout-section {
+    background: var(--qh-card-bg);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.qh-checkout-section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--qh-text);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.qh-checkout-section-title i {
+    font-size: 18px;
+    color: var(--qh-primary);
+}
+
+/* ==================== Address Section ==================== */
+.qh-checkout-addr {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.qh-checkout-addr-icon {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--qh-border);
+    border-radius: 12px;
+    background: var(--qh-white);
+}
+
+.qh-checkout-addr-icon i {
+    font-size: 22px;
+    color: var(--qh-primary);
+}
+
+.qh-checkout-addr-info {
+    flex: 1;
+}
+
+.qh-checkout-addr-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--qh-text);
+    margin-bottom: 2px;
+}
+
+.qh-checkout-addr-phone {
+    font-size: 14px;
+    color: var(--qh-text-light);
+    margin-bottom: 6px;
+}
+
+.qh-checkout-addr-detail {
+    font-size: 14px;
+    color: var(--qh-text);
+    line-height: 1.5;
+}
+
+.qh-checkout-addr-badge {
+    display: inline-block;
+    background: var(--qh-primary);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 20px;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.qh-checkout-addr-change {
+    background: none;
+    border: 1px solid var(--qh-primary);
+    color: var(--qh-primary);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    font-family: 'Signika', sans-serif;
+}
+
+.qh-checkout-addr-change:hover {
+    background: var(--qh-primary);
+    color: #fff;
+}
+
+/* ==================== Products Section ==================== */
+.qh-checkout-products {
+    display: flex;
+    flex-direction: column;
+}
+
+.qh-checkout-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--qh-border);
+}
+
+.qh-checkout-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+/* Đồng bộ với .qh-cart-item-img */
+.qh-checkout-item-img {
+    width: 100px;
+    height: 100px;
+    min-width: 100px;
+    border-radius: 10px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: #f5f5f5;
+}
+
+.qh-checkout-item-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.qh-checkout-item-img .qh-checkout-no-img {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9ca3af;
+}
+
+.qh-checkout-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.qh-checkout-item-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--qh-text);
+    margin-bottom: 6px;
+    line-height: 1.4;
+}
+
+.qh-checkout-item-variant {
+    font-size: 14px;
+    color: var(--qh-text-light);
+    margin-bottom: 2px;
+}
+
+.qh-checkout-item-qty {
+    font-size: 14px;
+    color: var(--qh-text-light);
+}
+
+.qh-checkout-item-price {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.qh-checkout-item-current {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--qh-text);
+}
+
+.qh-checkout-item-original {
+    font-size: 13px;
+    color: var(--qh-text-light);
+    text-decoration: line-through;
+    margin-top: 2px;
+}
+
+/* ==================== Payment Methods ==================== */
+.qh-checkout-payments {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.qh-checkout-pay-opt {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 2px solid var(--qh-border);
+    border-radius: 8px;
+    background: var(--qh-white);
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.qh-checkout-pay-opt:hover:not(.disabled) {
+    border-color: var(--qh-primary);
+}
+
+.qh-checkout-pay-opt.selected {
+    border-color: var(--qh-primary);
+    background: rgba(169, 204, 240, 0.08);
+}
+
+.qh-checkout-pay-opt.disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.qh-checkout-pay-icon {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: var(--qh-card-bg);
+    border: 1px solid var(--qh-border);
+}
+
+.qh-checkout-pay-icon i {
+    font-size: 20px;
+    color: var(--qh-primary);
+}
+
+.qh-checkout-pay-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--qh-text);
+    line-height: 1.3;
+}
+
+.qh-checkout-pay-label small {
+    display: block;
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--qh-text-light);
+    margin-top: 2px;
+}
+
+.qh-checkout-pay-check {
+    margin-left: auto;
+    font-size: 22px;
+    color: #10b981;
+    display: none;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.qh-checkout-pay-opt.verified .qh-checkout-pay-check {
+    display: flex;
+}
+
+.qh-checkout-pay-badge {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.qh-checkout-pay-selected-text {
+    font-size: 14px;
+    color: var(--qh-text);
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: rgba(169, 204, 240, 0.1);
+    border: 1px dashed var(--qh-primary);
+}
+
+.qh-checkout-pay-selected-text strong {
+    color: var(--qh-primary);
+}
+
+/* ==================== VietQR Box ==================== */
+.qh-checkout-qr-box {
+    margin-top: 16px;
+    background: var(--qh-white);
+    border: 2px solid var(--qh-primary);
+    border-radius: 12px;
+    overflow: hidden;
+    animation: qhQrSlideIn 0.3s ease;
+}
+
+@keyframes qhQrSlideIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.qh-checkout-qr-header {
+    background: rgba(169, 204, 240, 0.12);
+    padding: 14px 20px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--qh-text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--qh-border);
+}
+
+.qh-checkout-qr-header i {
+    font-size: 20px;
+    color: var(--qh-primary);
+}
+
+.qh-checkout-qr-body {
+    display: flex;
+    padding: 20px;
+    gap: 24px;
+    align-items: flex-start;
+}
+
+.qh-checkout-qr-img {
+    width: 200px;
+    min-width: 200px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--qh-border);
+    background: #fff;
+}
+
+.qh-checkout-qr-img img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.qh-checkout-qr-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.qh-checkout-qr-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--qh-border);
+}
+
+.qh-checkout-qr-row:last-child {
+    border-bottom: none;
+}
+
+.qh-checkout-qr-row span {
+    color: var(--qh-text-light);
+}
+
+.qh-checkout-qr-row strong {
+    color: var(--qh-text);
+    font-weight: 600;
+    text-align: right;
+}
+
+.qh-checkout-qr-row strong.qh-qr-amount {
+    color: var(--qh-primary);
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.qh-checkout-qr-footer {
+    padding: 14px 20px;
+    border-top: 1px solid var(--qh-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(169, 204, 240, 0.06);
+}
+
+.qh-checkout-qr-timer {
+    font-size: 14px;
+    color: var(--qh-text-light);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.qh-checkout-qr-timer i {
+    font-size: 18px;
+}
+
+.qh-checkout-qr-timer span {
+    font-weight: 700;
+    color: #ef4444;
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+}
+
+.qh-checkout-qr-confirm {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #10b981;
+    color: #fff;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Signika', sans-serif;
+}
+
+.qh-checkout-qr-confirm:hover {
+    background: #059669;
+}
+
+.qh-checkout-qr-confirm i {
+    font-size: 16px;
+}
+
+/* QR Success State */
+.qh-checkout-qr-success {
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.qh-checkout-qr-success-icon {
+    font-size: 64px;
+    color: #10b981;
+    margin-bottom: 12px;
+    line-height: 1;
+}
+
+.qh-checkout-qr-success-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--qh-text);
+    margin-bottom: 6px;
+}
+
+.qh-checkout-qr-success-desc {
+    font-size: 14px;
+    color: var(--qh-text-light);
+}
+
+@media (max-width: 768px) {
+    .qh-checkout-qr-body {
+        flex-direction: column;
+        align-items: center;
+    }
+    .qh-checkout-qr-img {
+        width: 180px;
+        min-width: 180px;
+    }
+    .qh-checkout-qr-footer {
+        flex-direction: column;
+        gap: 12px;
+    }
+}
+
+/* ==================== Right Sidebar - Summary ==================== */
+/* Đồng bộ với .qh-cart-summary */
+.qh-checkout-summary {
+    background: var(--qh-card-bg);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    position: sticky;
+    top: 100px;
+}
+
+.qh-checkout-summary-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--qh-text);
+    margin-bottom: 20px;
+}
+
+.qh-checkout-summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    font-size: 14px;
+    color: var(--qh-text-light);
+}
+
+.qh-checkout-summary-row.total {
+    border-top: 2px solid var(--qh-border);
+    margin-top: 12px;
+    padding-top: 16px;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--qh-text);
+}
+
+.qh-checkout-summary-val {
+    color: var(--qh-text);
+    font-weight: 600;
+}
+
+.qh-checkout-summary-row.total .qh-checkout-summary-val {
+    color: var(--qh-primary);
+    font-size: 22px;
+}
+
+.qh-checkout-submit-btn {
+    width: 100%;
+    padding: 16px;
+    background: var(--qh-primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: all 0.3s;
+    font-family: 'Signika', sans-serif;
+}
+
+.qh-checkout-submit-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-2px);
+}
+
+.qh-checkout-back-link {
+    display: block;
+    text-align: center;
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--qh-text-light);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.qh-checkout-back-link:hover {
+    color: var(--qh-primary);
+}
+
+/* ==================== No Address Modal ==================== */
+.qh-checkout-noaddr-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+}
+
+.qh-checkout-noaddr-box {
+    background: var(--qh-white);
+    border-radius: 12px;
+    padding: 40px 36px;
+    max-width: 420px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: qhNoAddrFadeIn 0.3s ease;
+}
+
+@keyframes qhNoAddrFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.qh-checkout-noaddr-icon {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(169, 204, 240, 0.15);
+    border: 2px solid var(--qh-primary);
+}
+
+.qh-checkout-noaddr-icon i {
+    font-size: 32px;
+    color: var(--qh-primary);
+}
+
+.qh-checkout-noaddr-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--qh-text);
+    margin-bottom: 10px;
+}
+
+.qh-checkout-noaddr-desc {
+    font-size: 14px;
+    color: var(--qh-text-light);
+    line-height: 1.6;
+    margin-bottom: 24px;
+}
+
+.qh-checkout-noaddr-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--qh-primary);
+    color: #fff;
+    border: none;
+    padding: 12px 32px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Signika', sans-serif;
+    text-decoration: none;
+}
+
+.qh-checkout-noaddr-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-2px);
+}
+
+.qh-checkout-noaddr-btn i {
+    font-size: 18px;
+}
+
+/* ==================== Responsive ==================== */
+@media (max-width: 992px) {
+    .qh-checkout-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .qh-checkout-summary {
+        position: static;
+    }
+
+    .qh-checkout-payments {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .qh-checkout-item-img {
+        width: 80px;
+        height: 80px;
+        min-width: 80px;
+    }
+
+    .qh-checkout-noaddr-box {
+        padding: 28px 20px;
+    }
+}

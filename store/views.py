@@ -998,6 +998,89 @@ def profile(request):
 
 
 @login_required
+def checkout_view(request):
+    """
+    Trang thanh toán - hiển thị sản phẩm đã chọn, địa chỉ giao hàng,
+    phương thức thanh toán và tổng tiền
+    """
+    from store.models import Cart, Address, FolderColorImage, ProductDetail
+
+    # Lấy danh sách item_ids từ query param
+    items_param = request.GET.get('items', '')
+    if not items_param:
+        return redirect('store:cart_detail')
+
+    try:
+        item_ids = [int(x) for x in items_param.split(',') if x.strip()]
+    except (ValueError, TypeError):
+        return redirect('store:cart_detail')
+
+    if not item_ids:
+        return redirect('store:cart_detail')
+
+    # Lấy cart và items
+    cart = Cart.get_or_create_for_user(request.user)
+    if not cart:
+        return redirect('store:cart_detail')
+
+    cart_items = list(
+        cart.items.filter(id__in=item_ids)
+        .select_related('product', 'product__brand')
+        .order_by('-created_at')
+    )
+
+    if not cart_items:
+        return redirect('store:cart_detail')
+
+    # Lấy thumbnail cho từng item
+    for item in cart_items:
+        product = item.product
+        item.color_thumbnail = ''
+        item.original_price = None
+
+        try:
+            detail = ProductDetail.objects.get(product=product)
+            variants = detail.variants.filter(is_active=True)
+
+            # Tìm original_price
+            current_variant = variants.filter(
+                color_name=item.color_name,
+                storage=item.storage
+            ).first()
+            if current_variant and current_variant.original_price > current_variant.price:
+                item.original_price = current_variant.original_price
+
+            # Tìm thumbnail cho màu hiện tại
+            if product.brand_id:
+                current_sku_variant = variants.filter(color_name=item.color_name).first()
+                if current_sku_variant and current_sku_variant.sku:
+                    img = FolderColorImage.objects.filter(
+                        brand_id=product.brand_id,
+                        sku=current_sku_variant.sku
+                    ).order_by('order').first()
+                    if img:
+                        item.color_thumbnail = img.image.url
+        except ProductDetail.DoesNotExist:
+            pass
+
+    # Địa chỉ mặc định
+    default_address = Address.objects.filter(user=request.user, is_default=True).first()
+
+    # Tính tổng
+    subtotal = sum(item.price_at_add * item.quantity for item in cart_items)
+
+    context = {
+        'cart_items': cart_items,
+        'default_address': default_address,
+        'has_default_address': default_address is not None,
+        'subtotal': subtotal,
+        'total': subtotal,
+        'items_param': items_param,
+    }
+    return render(request, 'store/checkout.html', context)
+
+
+@login_required
 def address_add(request):
     """
     Thêm địa chỉ mới vào sổ địa chỉ
