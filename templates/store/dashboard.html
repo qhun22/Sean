@@ -1226,6 +1226,15 @@
                     <span id="specFileName" style="font-size: 12px; color: #64748b; font-family: 'Signika', sans-serif;"></span>
                 </div>
                 <div id="specStatusLabel" style="margin-top: 8px; font-size: 11px; color: #9ca3af;">Bạn chưa tải file JSON nào.</div>
+                <!-- YouTube Video ID -->
+                <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid #e2e8f0;">
+                    <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #334155;">Nhập ID YouTube</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="text" id="youtubeIdInput" placeholder="Ví dụ: dQw4w9WgXcQ" style="flex: 1; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; font-family: 'Signika', sans-serif; box-sizing: border-box;">
+                        <button type="button" onclick="saveYoutubeId()" style="padding: 8px 14px; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-family: 'Signika', sans-serif; font-weight: 500; transition: all 0.2s; white-space: nowrap;">Lưu YouTube</button>
+                    </div>
+                    <div id="youtubeStatusLabel" style="margin-top: 6px; font-size: 11px; color: #9ca3af;">Chưa có video YouTube.</div>
+                </div>
             </div>
             
             <!-- Dung lượng & màu: layout theo ảnh - hàng 1: Giá gốc | Giá sau giảm; hàng 2: Chọn màu | Dung lượng, % Giảm, Thêm -->

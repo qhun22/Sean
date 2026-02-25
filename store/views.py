@@ -197,6 +197,9 @@ def product_detail_view(request, product_id):
     except ProductContent.DoesNotExist:
         pass
     
+    # Lấy YouTube ID
+    youtube_id = product_detail.youtube_id if product_detail.youtube_id else ''
+    
     context = {
         'product': product,
         'product_detail': product_detail,
@@ -208,6 +211,7 @@ def product_detail_view(request, product_id):
         'spec_data_json': json.dumps(spec_data) if spec_data else 'null',
         'promo_banner': promo_banner,
         'product_content': product_content,
+        'youtube_id': youtube_id,
     }
     
     return render(request, 'store/product_detail.html', context)
@@ -2281,6 +2285,11 @@ def get_product_detail(request):
         except ProductSpecification.DoesNotExist:
             pass
     
+    # Lấy YouTube ID nếu có
+    youtube_id = ''
+    if detail and detail.youtube_id:
+        youtube_id = detail.youtube_id
+    
     return JsonResponse({
         'success': True,
         'product_name': product.name,
@@ -2290,9 +2299,42 @@ def get_product_detail(request):
         'variants': variants,
         'skus_with_color': skus_with_color,
         'spec_data': spec_data,
+        'youtube_id': youtube_id,
     })
 
-# ==================== SKU Management ====================
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def save_youtube_id(request):
+    """Lưu YouTube Video ID cho sản phẩm"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+    
+    from store.models import Product, ProductDetail
+    
+    product_id = request.POST.get('product_id')
+    youtube_id = request.POST.get('youtube_id', '').strip()
+    
+    if not product_id:
+        return JsonResponse({'success': False, 'message': 'Thiếu thông tin sản phẩm!'}, status=400)
+    
+    try:
+        product = Product.objects.get(id=product_id)
+    except Product.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Sản phẩm không tồn tại!'}, status=404)
+    
+    detail, created = ProductDetail.objects.get_or_create(product=product)
+    detail.youtube_id = youtube_id
+    detail.save(update_fields=['youtube_id'])
+    
+    if youtube_id:
+        return JsonResponse({'success': True, 'message': f'Đã lưu YouTube ID: {youtube_id}', 'youtube_id': youtube_id})
+    else:
+        return JsonResponse({'success': True, 'message': 'Đã xóa YouTube ID!', 'youtube_id': ''})
+
+
+# ==================== SKU Management ==
 @login_required
 @require_http_methods(["GET"])
 def sku_list(request):

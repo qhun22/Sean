@@ -204,6 +204,9 @@ class ProductDetail(models.Model):
     # SKU tổng
     sku = models.CharField(max_length=100, blank=True, verbose_name='SKU chung')
     
+    # YouTube Video ID
+    youtube_id = models.CharField(max_length=50, blank=True, default='', verbose_name='YouTube Video ID')
+    
     # Mô tả
     description = models.TextField(blank=True, verbose_name='Mô tả')
     

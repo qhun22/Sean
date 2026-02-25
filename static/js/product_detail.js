@@ -76,6 +76,12 @@ function openProductDetailModal(productId, productName) {
     if (specStatusLabel) { specStatusLabel.textContent = 'Bạn chưa tải file JSON nào.'; specStatusLabel.style.color = '#9ca3af'; }
     currentHasSpec = false;
 
+    // Reset YouTube ID input
+    const youtubeInput = document.getElementById('youtubeIdInput');
+    const youtubeStatusLabel = document.getElementById('youtubeStatusLabel');
+    if (youtubeInput) youtubeInput.value = '';
+    if (youtubeStatusLabel) { youtubeStatusLabel.textContent = 'Chưa có video YouTube.'; youtubeStatusLabel.style.color = '#9ca3af'; }
+
     // Ẩn danh sách đã thêm khi mở modal
     const variantsListBox = document.getElementById('variantsListBox');
     const toggleText = document.getElementById('toggleVariantsText');
@@ -135,6 +141,9 @@ function loadProductDetail(productId) {
 
                 // Load thông số kỹ thuật nếu có
                 loadSpecPreview(data.spec_data);
+
+                // Load YouTube ID nếu có
+                loadYoutubePreview(data.youtube_id || '');
             }
         })
         .catch(error => {
@@ -1001,4 +1010,57 @@ function openAddProductImageModal() {
 function loadProductImages(productId) {
     // Placeholder - will be implemented
     console.log('Loading images for product:', productId);
+}
+
+// ==================== YouTube ID Management ====================
+function saveYoutubeId() {
+    const input = document.getElementById('youtubeIdInput');
+    const youtubeId = input ? input.value.trim() : '';
+
+    if (!currentProductId) {
+        if (window.QHToast) window.QHToast.error('Không xác định được sản phẩm!');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('product_id', currentProductId);
+    formData.append('youtube_id', youtubeId);
+
+    fetch('/products/youtube/save/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': window.csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: formData
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (window.QHToast) window.QHToast.success(data.message || 'Đã lưu YouTube ID!');
+                loadYoutubePreview(data.youtube_id);
+            } else {
+                if (window.QHToast) window.QHToast.error(data.message || 'Lưu thất bại!');
+            }
+        })
+        .catch(error => {
+            console.error('YouTube save error:', error);
+            if (window.QHToast) window.QHToast.error('Có lỗi xảy ra!');
+        });
+}
+
+function loadYoutubePreview(youtubeId) {
+    const statusLabel = document.getElementById('youtubeStatusLabel');
+    const input = document.getElementById('youtubeIdInput');
+    if (!statusLabel) return;
+
+    if (youtubeId) {
+        statusLabel.innerHTML = 'Đã lưu: <a href="https://www.youtube.com/watch?v=' + youtubeId + '" target="_blank" style="color: #dc2626; text-decoration: underline;">' + youtubeId + '</a>';
+        statusLabel.style.color = '#16a34a';
+        if (input) input.value = youtubeId;
+    } else {
+        statusLabel.textContent = 'Chưa có video YouTube.';
+        statusLabel.style.color = '#9ca3af';
+        if (input) input.value = '';
+    }
 }
