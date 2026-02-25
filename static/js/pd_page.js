@@ -463,7 +463,12 @@ function renderSpecModalBody() {
         html += '<div class="pd-spec-group-title">' + group.name + '</div>';
         html += '<table>';
         group.specs.forEach(function (s) {
-            html += '<tr><td>' + s.name + '</td><td>' + s.value + '</td></tr>';
+            var val = s.value;
+            if (typeof val === 'string' && val.indexOf('\n') !== -1) {
+                var lines = val.split('\n').filter(function (l) { return l.trim() !== ''; });
+                val = '<ul class="pd-spec-list">' + lines.map(function (l) { return '<li>' + l.trim() + '</li>'; }).join('') + '</ul>';
+            }
+            html += '<tr><td>' + s.name + '</td><td>' + val + '</td></tr>';
         });
         html += '</table>';
         html += '</div>';

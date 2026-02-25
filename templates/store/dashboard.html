@@ -1,3 +1,4 @@
+
 {% extends 'base.html' %}
 {% load static %}
 {% load custom_filters %}
@@ -334,6 +335,12 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
                 </svg>
                 SKU
+            </li>
+            <li class="qh-sidebar-item" data-section="banner-images" onclick="window.location.href='?section=banner-images'">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+                Ảnh banner
             </li>
         </ul>
         <div class="qh-sidebar-pagination" id="qhSidebarPagination" style="display: none;"></div>
@@ -891,6 +898,62 @@
                         </tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- Banner Images Section -->
+        <div id="banner-images-section" style="display: none;">
+            <!-- Search & Filter -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <div style="position: relative;">
+                        <input type="text" id="bannerSearchInput" placeholder="Nhập ID banner..." onkeydown="if(event.key==='Enter')searchBanners()" style="width: 180px; padding: 10px 16px 10px 40px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; font-family: 'Signika', sans-serif; box-sizing: border-box;">
+                        <svg style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: #94a3b8;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </div>
+                    <button onclick="resetBannerSearch()" style="padding: 10px 16px; background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif;">Reset</button>
+                </div>
+                <button type="button" onclick="openAddBannerModal()" style="background: #3b82f6; color: white; border: none; border-radius: 8px; padding: 10px 16px; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; font-family: 'Signika', sans-serif;">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    Thêm ảnh banner
+                </button>
+            </div>
+
+            <!-- Banner Grid -->
+            <div id="bannerGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px;">
+                <!-- Banner items will be rendered by JS -->
+            </div>
+        </div>
+
+        <!-- Add Banner Modal -->
+        <div id="addBannerModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+            <div style="background: white; border-radius: 12px; width: 620px; max-width: 94%; max-height: 92vh; display: flex; flex-direction: column;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 22px; border-bottom: 1px solid #e2e8f0; flex-shrink: 0;">
+                    <h3 style="font-size: 18px; font-weight: 600; font-family: 'Signika', sans-serif; margin: 0;">Thêm ảnh banner</h3>
+                </div>
+                <div style="padding: 18px 22px 4px; overflow-y: auto; flex: 1; scrollbar-width: thin; scrollbar-color: #c1c1c1 #f8fafc;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 16px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Nhập ID *</label>
+                            <input type="text" id="bannerIdInput" placeholder="Nhập ID (ví dụ: 1, 2, 3...)" style="width: 100%; padding: 9px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 14px;">
+                        <label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Upload ảnh</label>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <input type="file" id="bannerFileInput" accept="image/*" style="display: none;" onchange="handleBannerFileChange(event)">
+                            <button type="button" onclick="document.getElementById('bannerFileInput').click()" style="padding: 9px 16px; background: #f1f5f9; color: #334155; border: 1px dashed #cbd5f5; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: 'Signika', sans-serif;">Chọn ảnh</button>
+                            <button type="button" onclick="uploadBanner()" style="padding: 9px 16px; background: #22c55e; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: 'Signika', sans-serif; font-weight: 500;">Tải ảnh lên</button>
+                            <span id="bannerFileName" style="font-size: 13px; color: #64748b; font-family: 'Signika', sans-serif;"></span>
+                        </div>
+                        <p style="margin-top: 6px; font-size: 12px; color: #94a3b8; font-family: 'Signika', sans-serif;">Mỗi lần bấm "Tải ảnh lên" sẽ upload 1 ảnh cho ID tương ứng, hiển thị dạng ô vuông nhỏ bên dưới.</p>
+                    </div>
+                    <div id="bannerPreviewGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; margin-top: 10px;">
+                        <!-- Thumbnail ảnh (JS render) -->
+                    </div>
+                </div>
+                <div style="padding: 14px 22px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px; flex-shrink: 0;">
+                    <button type="button" onclick="closeAddBannerModal()" style="padding: 10px 20px; background: #f1f5f9; color: #334155; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif;">Đóng</button>
+                </div>
             </div>
         </div>
 

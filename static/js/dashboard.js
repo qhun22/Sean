@@ -326,6 +326,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const productsSection = document.getElementById('products-section');
     const productImagesSection = document.getElementById('product-images-section');
     const skuSection = document.getElementById('sku-section');
+    const bannerImagesSection = document.getElementById('banner-images-section');
     
     if (statsSection) statsSection.style.display = (currentSection === 'stats') ? 'block' : 'none';
     if (usersSection) usersSection.style.display = (currentSection === 'users') ? 'block' : 'none';
@@ -334,6 +335,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (productImagesSection) productImagesSection.style.display = (currentSection === 'product-images') ? 'block' : 'none';
     if (skuSection) {
         skuSection.style.display = (currentSection === 'sku') ? 'block' : 'none';
+    }
+    if (bannerImagesSection) {
+        bannerImagesSection.style.display = (currentSection === 'banner-images') ? 'block' : 'none';
     }
     
     // Load SKU list if on SKU section (hoặc khi vào phần Ảnh sản phẩm để dùng dropdown SKU)
@@ -451,6 +455,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Init phần Ảnh sản phẩm
     if (sectionParam === 'product-images') {
         initProductImagesSection();
+    }
+    
+    // Init phần Ảnh banner
+    if (sectionParam === 'banner-images') {
+        initBannerImagesSection();
     }
 });
 
@@ -1203,3 +1212,412 @@ function loadAllProducts() {
 document.addEventListener('DOMContentLoaded', function() {
     loadAllProducts();
 });
+
+// ==================== Banner Images Management ====================
+let allBannerRows = [];
+let bannerPreviewImages = []; // ảnh đã upload trong modal
+
+function initBannerImagesSection() {
+    loadBannerRows();
+}
+
+function loadBannerRows() {
+    fetch('/banner-images/list/', {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            allBannerRows = data.banners || [];
+            renderBannerGrid(allBannerRows);
+        }
+    })
+    .catch(error => {
+        console.error('Error loading banners:', error);
+    });
+}
+
+function renderBannerGrid(banners) {
+    const grid = document.getElementById('bannerGrid');
+    if (!grid) return;
+
+    if (!banners || banners.length === 0) {
+        grid.innerHTML = `
+            <div style="grid-column: 1 / -1; padding: 60px 20px; text-align: center; color: #64748b; font-size: 15px; font-family: 'Signika', sans-serif;">
+                Chưa có banner nào.
+            </div>
+        `;
+        return;
+    }
+
+    // Sort banners by ID
+    const sortedBanners = [...banners].sort((a, b) => (a.banner_id || 0) - (b.banner_id || 0));
+
+    let html = '';
+    sortedBanners.forEach((banner) => {
+        html += `
+            <div style="position: relative; background: white; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; transition: all 0.3s ease;">
+                <div style="position: relative; aspect-ratio: 3/1; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); overflow: hidden;" class="banner-image-container">
+                    <img src="${banner.image_url}" alt="Banner ${banner.banner_id}" style="width: 100%; height: 100%; object-fit: contain; padding: 10px;">
+                    <div class="banner-hover-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; gap: 10px; opacity: 0; transition: opacity 0.3s;">
+                        <button type="button" onclick="openEditBannerModal(${banner.banner_id})" style="padding: 10px 20px; background: linear-gradient(135deg, #A9CCF0 0%, #8BB8E0 100%); color: #333333; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: 'Signika', sans-serif; font-weight: 600; box-shadow: 0 2px 8px rgba(169, 204, 240, 0.5);">Tải ảnh mới</button>
+                        <button type="button" onclick="deleteBannerItem(${banner.id})" style="padding: 10px 20px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: 'Signika', sans-serif; font-weight: 600; box-shadow: 0 2px 8px rgba(239,68,68,0.4);">Xóa</button>
+                    </div>
+                </div>
+                <div style="position: absolute; top: 10px; right: 10px; text-align: center; padding: 6px 14px; font-size: 14px; font-weight: 700; color: white; font-family: 'Signika', sans-serif; background: linear-gradient(135deg, #A9CCF0 0%, #8BB8E0 100%); border-radius: 8px; box-shadow: 0 2px 8px rgba(169, 204, 240, 0.5);">
+                    Banner ${banner.banner_id}
+                </div>
+            </div>
+        `;
+    });
+    grid.innerHTML = html;
+
+    // Add hover event listeners
+    document.querySelectorAll('.banner-image-container').forEach(container => {
+        container.addEventListener('mouseenter', function() {
+            this.querySelector('.banner-hover-overlay').style.display = 'flex';
+            this.querySelector('.banner-hover-overlay').style.opacity = '1';
+        });
+        container.addEventListener('mouseleave', function() {
+            this.querySelector('.banner-hover-overlay').style.display = 'none';
+            this.querySelector('.banner-hover-overlay').style.opacity = '0';
+        });
+    });
+}
+
+function searchBanners() {
+    const searchInput = document.getElementById('bannerSearchInput');
+    if (!searchInput) return;
+    const searchTerm = searchInput.value.trim();
+    
+    if (searchTerm) {
+        const filtered = allBannerRows.filter(b => String(b.banner_id).includes(searchTerm));
+        renderBannerGrid(filtered);
+    } else {
+        renderBannerGrid(allBannerRows);
+    }
+}
+
+function resetBannerSearch() {
+    const searchInput = document.getElementById('bannerSearchInput');
+    if (searchInput) searchInput.value = '';
+    renderBannerGrid(allBannerRows);
+}
+
+function openAddBannerModal() {
+    const modal = document.getElementById('addBannerModal');
+    if (!modal) return;
+    
+    // Reset inputs
+    document.getElementById('bannerIdInput').value = '';
+    document.getElementById('bannerFileInput').value = '';
+    document.getElementById('bannerFileName').textContent = '';
+    bannerPreviewImages = [];
+    renderBannerPreview();
+    
+    modal.style.display = 'flex';
+    modal.onclick = function(e) {
+        if (e.target === modal) {
+            closeAddBannerModal();
+        }
+    };
+}
+
+function closeAddBannerModal() {
+    const modal = document.getElementById('addBannerModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function handleBannerFileChange(event) {
+    const file = event.target.files && event.target.files[0];
+    const fileNameEl = document.getElementById('bannerFileName');
+    if (fileNameEl) {
+        fileNameEl.textContent = file ? file.name : '';
+    }
+}
+
+function renderBannerPreview() {
+    const previewGrid = document.getElementById('bannerPreviewGrid');
+    if (!previewGrid) return;
+
+    if (!bannerPreviewImages.length) {
+        previewGrid.innerHTML = '';
+        return;
+    }
+
+    let html = '';
+    bannerPreviewImages.forEach((img, index) => {
+        html += `
+            <div style="position: relative; width: 100%; padding-top: 100%; background: #f1f5f9; border-radius: 10px; overflow: hidden;">
+                <img src="${img.url}" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;">
+                <button type="button" onclick="deleteBannerPreview(${img.id}, ${index})" style="position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border-radius: 999px; border: none; background: rgba(15,23,42,0.8); color: #f9fafb; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;">×</button>
+                <div style="position: absolute; bottom: 4px; left: 4px; padding: 2px 6px; border-radius: 999px; background: rgba(15,23,42,0.75); color: #e5e7eb; font-size: 11px; font-family: 'Signika', sans-serif;">ID: ${img.banner_id}</div>
+            </div>
+        `;
+    });
+    previewGrid.innerHTML = html;
+}
+
+function uploadBanner() {
+    const idInput = document.getElementById('bannerIdInput');
+    const fileInput = document.getElementById('bannerFileInput');
+    
+    const bannerId = idInput ? idInput.value.trim() : '';
+    const file = fileInput ? fileInput.files[0] : null;
+    
+    if (!bannerId) {
+        window.QHToast && window.QHToast.show && window.QHToast.show('Vui lòng nhập ID!', 'error');
+        return;
+    }
+    
+    if (!file) {
+        window.QHToast && window.QHToast.show && window.QHToast.show('Vui lòng chọn ảnh!', 'error');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('banner_id', bannerId);
+    formData.append('image', file);
+    
+    fetch('/banner-images/add/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': window.csrfToken
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.banner) {
+            bannerPreviewImages.push({
+                id: data.banner.id,
+                banner_id: bannerId,
+                url: data.banner.image_url
+            });
+            renderBannerPreview();
+            
+            // Reset file input
+            document.getElementById('bannerFileInput').value = '';
+            document.getElementById('bannerFileName').textContent = '';
+            
+            const index = bannerPreviewImages.length;
+            window.QHToast && window.QHToast.show && window.QHToast.show(`Đã upload thành công ảnh thứ ${index}.`, 'success');
+            
+            // Reload grid
+            loadBannerRows();
+        } else {
+            window.QHToast && window.QHToast.show && window.QHToast.show(data.message || 'Không thể upload banner.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error uploading banner:', error);
+        window.QHToast && window.QHToast.show && window.QHToast.show('Có lỗi xảy ra!', 'error');
+    });
+}
+
+function deleteBannerPreview(imageId, indexInPreview) {
+    if (!imageId) return;
+    
+    if (window.QHConfirm && window.QHConfirm.show) {
+        window.QHConfirm.show(
+            'Bạn có chắc muốn xóa ảnh này?',
+            () => {
+                performDeleteBanner(imageId, indexInPreview);
+            }
+        );
+    } else {
+        if (confirm('Bạn có chắc muốn xóa ảnh này?')) {
+            performDeleteBanner(imageId, indexInPreview);
+        }
+    }
+}
+
+function openEditBannerModal(bannerId) {
+    // Load existing images for this banner ID first
+    const existingImages = allBannerRows.filter(b => b.banner_id == bannerId);
+    bannerPreviewImages = existingImages.map(b => ({
+        id: b.id,
+        banner_id: b.banner_id,
+        url: b.image_url
+    }));
+    
+    // Create a modal for editing/uploading new image
+    const modal = document.createElement('div');
+    modal.id = 'editBannerModal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1001;
+    `;
+    
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 12px; width: 620px; max-width: 94%; max-height: 92vh; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 22px; border-bottom: 1px solid #e2e8f0; flex-shrink: 0;">
+                <h3 style="font-size: 18px; font-weight: 600; font-family: 'Signika', sans-serif; margin: 0;">Tải ảnh lên - ID: ${bannerId}</h3>
+                <button type="button" onclick="this.closest('#editBannerModal').remove()" style="padding: 6px 12px; background: #f1f5f9; color: #334155; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-family: 'Signika', sans-serif;">Đóng</button>
+            </div>
+            <div style="padding: 18px 22px 4px; overflow-y: auto; flex: 1; scrollbar-width: thin; scrollbar-color: #c1c1c1 #f8fafc;">
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Upload ảnh mới</label>
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <input type="file" id="editBannerFileInput" accept="image/*" style="display: none;" onchange="handleEditBannerFileChange(event)">
+                        <button type="button" onclick="document.getElementById('editBannerFileInput').click()" style="padding: 9px 16px; background: #f1f5f9; color: #334155; border: 1px dashed #cbd5f5; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: 'Signika', sans-serif;">Chọn ảnh</button>
+                        <button type="button" onclick="uploadEditBanner(${bannerId})" style="padding: 9px 16px; background: #22c55e; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: 'Signika', sans-serif; font-weight: 500;">Tải ảnh lên</button>
+                        <span id="editBannerFileName" style="font-size: 13px; color: #64748b; font-family: 'Signika', sans-serif;"></span>
+                    </div>
+                </div>
+                <div id="editBannerPreviewGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; margin-top: 10px;">
+                    <!-- Thumbnails will be rendered here -->
+                </div>
+            </div>
+            <div style="padding: 14px 22px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px; flex-shrink: 0;">
+                <button type="button" onclick="this.closest('#editBannerModal').remove()" style="padding: 10px 20px; background: #f1f5f9; color: #334155; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif;">Đóng</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    modal.onclick = function(e) {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    };
+    
+    // Render existing images
+    renderEditBannerPreview();
+}
+
+function handleEditBannerFileChange(event) {
+    const file = event.target.files && event.target.files[0];
+    const fileNameEl = document.getElementById('editBannerFileName');
+    if (fileNameEl) {
+        fileNameEl.textContent = file ? file.name : '';
+    }
+}
+
+function renderEditBannerPreview() {
+    const previewGrid = document.getElementById('editBannerPreviewGrid');
+    if (!previewGrid) return;
+
+    if (!bannerPreviewImages.length) {
+        previewGrid.innerHTML = '';
+        return;
+    }
+
+    let html = '';
+    bannerPreviewImages.forEach((img, index) => {
+        html += `
+            <div style="position: relative; width: 100%; padding-top: 100%; background: #f1f5f9; border-radius: 10px; overflow: hidden;">
+                <img src="${img.url}" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;">
+                <button type="button" onclick="deleteBannerItem(${img.id})" style="position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border-radius: 999px; border: none; background: rgba(15,23,42,0.8); color: #f9fafb; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;">×</button>
+            </div>
+        `;
+    });
+    previewGrid.innerHTML = html;
+}
+
+function uploadEditBanner(bannerId) {
+    const fileInput = document.getElementById('editBannerFileInput');
+    const file = fileInput ? fileInput.files[0] : null;
+    
+    if (!file) {
+        window.QHToast && window.QHToast.show && window.QHToast.show('Vui lòng chọn ảnh!', 'error');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('banner_id', bannerId);
+    formData.append('image', file);
+    
+    fetch('/banner-images/add/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': window.csrfToken
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.banner) {
+            bannerPreviewImages.push({
+                id: data.banner.id,
+                banner_id: bannerId,
+                url: data.banner.image_url
+            });
+            renderEditBannerPreview();
+            
+            // Reset file input
+            document.getElementById('editBannerFileInput').value = '';
+            document.getElementById('editBannerFileName').textContent = '';
+            
+            window.QHToast && window.QHToast.show && window.QHToast.show('Đã upload thành công.', 'success');
+            
+            // Reload grid
+            loadBannerRows();
+        } else {
+            window.QHToast && window.QHToast.show && window.QHToast.show(data.message || 'Không thể upload banner.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error uploading banner:', error);
+        window.QHToast && window.QHToast.show && window.QHToast.show('Có lỗi xảy ra!', 'error');
+    });
+}
+
+function deleteBannerItem(id) {
+    if (!id) return;
+    
+    if (window.QHConfirm && window.QHConfirm.show) {
+        window.QHConfirm.show(
+            'Bạn có chắc muốn xóa banner này?',
+            () => {
+                performDeleteBanner(id);
+            }
+        );
+    } else {
+        if (confirm('Bạn có chắc muốn xóa banner này?')) {
+            performDeleteBanner(id);
+        }
+    }
+}
+
+function performDeleteBanner(id, indexInPreview = null) {
+    const formData = new FormData();
+    formData.append('banner_id', id);
+    
+    fetch('/banner-images/delete/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': window.csrfToken
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Remove from preview if exists
+            if (typeof indexInPreview === 'number') {
+                bannerPreviewImages.splice(indexInPreview, 1);
+                renderBannerPreview();
+            }
+            window.QHToast && window.QHToast.show && window.QHToast.show(data.message || 'Đã xóa banner.', 'success');
+            loadBannerRows();
+        } else {
+            window.QHToast && window.QHToast.show && window.QHToast.show(data.message || 'Không thể xóa banner.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting banner:', error);
+        window.QHToast && window.QHToast.show && window.QHToast.show('Có lỗi xảy ra!', 'error');
+    });
+}

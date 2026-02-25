@@ -154,6 +154,7 @@
     font-size: 13px;
     color: #059669;
     margin-bottom: 20px;
+    font-family: 'Signika', sans-serif;
 }
 
 /* ========== Variant Sections (Storage & Color) ========== */
@@ -401,6 +402,7 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     line-height: 1.2;
+    font-family: 'Signika', sans-serif;
 }
 
 /* ========== Gallery Lightbox ========== */
@@ -416,6 +418,7 @@
     align-items: center;
     justify-content: center;
     padding: 20px;
+    font-family: 'Signika', sans-serif;
 }
 
 .pd-gallery-overlay.show {
@@ -466,6 +469,7 @@
     border-bottom: 2.5px solid transparent;
     transition: color 0.2s, border-color 0.2s;
     white-space: nowrap;
+    font-family: 'Signika', sans-serif;
 }
 
 .pd-gallery-color-tab:hover {
@@ -624,6 +628,7 @@
     background: rgba(0, 0, 0, 0.45);
     z-index: 10000;
     display: none;
+    font-family: 'Signika', sans-serif;
 }
 
 .pd-spec-overlay.show {
@@ -663,6 +668,7 @@
     font-weight: 700;
     color: #1e293b;
     margin: 0;
+    font-family: 'Signika', sans-serif;
 }
 
 .pd-spec-panel-close {
@@ -698,6 +704,10 @@
     scrollbar-width: none;
     -ms-overflow-style: none;
     flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 10;
 }
 
 .pd-spec-tabs::-webkit-scrollbar {
@@ -749,6 +759,7 @@
     top: 0;
     background: #fff;
     z-index: 1;
+    font-family: 'Signika', sans-serif;
 }
 
 .pd-spec-group table {
@@ -757,24 +768,42 @@
 }
 
 .pd-spec-group tr {
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid #f1f1f1;
 }
 
 .pd-spec-group td {
-    padding: 11px 22px;
+    padding: 12px 22px;
     font-size: 14px;
-    color: #334155;
     vertical-align: top;
+    font-family: 'Signika', sans-serif;
 }
 
 .pd-spec-group td:first-child {
     width: 42%;
-    color: #64748b;
+    color: #6b7280;
+    font-weight: 400;
+}
+
+.pd-spec-group td:last-child {
+    color: #111827;
     font-weight: 500;
 }
 
 .pd-spec-group tr:last-child {
     border-bottom: 1px solid #e2e8f0;
+}
+
+/* Multi-line spec value as bullet list */
+.pd-spec-list {
+    margin: 0;
+    padding-left: 18px;
+    list-style: disc;
+    font-family: 'Signika', sans-serif;
+}
+
+.pd-spec-list li {
+    padding: 1px 0;
+    line-height: 1.5;
 }
 
 /* ========== Description Section ========== */

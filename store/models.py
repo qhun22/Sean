@@ -429,3 +429,20 @@ class Order(models.Model):
     
     def __str__(self):
         return f"Order #{self.id}"
+
+
+class Banner(models.Model):
+    """
+    Model lưu trữ ảnh banner với ID riêng
+    """
+    banner_id = models.CharField(max_length=50, verbose_name='ID Banner')
+    image = models.ImageField(upload_to='banner/%Y/%m/', verbose_name='Ảnh Banner')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
+    
+    class Meta:
+        verbose_name = 'Banner'
+        verbose_name_plural = 'Banner'
+        ordering = ['banner_id', '-created_at']
+    
+    def __str__(self):
+        return f"Banner {self.banner_id}"

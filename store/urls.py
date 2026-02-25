@@ -53,6 +53,10 @@ urlpatterns = [
     path('product-images/color/list/', views.folder_color_image_list, name='folder_color_image_list'),
     path('product-images/color/upload/', views.folder_color_image_upload, name='folder_color_image_upload'),
     path('product-images/color/delete/', views.folder_color_image_delete, name='folder_color_image_delete'),
+    # Banner Images Management
+    path('banner-images/list/', views.banner_list, name='banner_list'),
+    path('banner-images/add/', views.banner_add, name='banner_add'),
+    path('banner-images/delete/', views.banner_delete, name='banner_delete'),
     # Product List JSON
     path('products/list/json/', views.product_list_json, name='product_list_json'),
     # SKU Management

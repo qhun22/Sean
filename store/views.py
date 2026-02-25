@@ -1961,3 +1961,104 @@ def product_specification_delete(request):
     except Exception as e:
         return JsonResponse({'success': False, 'message': f'Lỗi: {str(e)}'}, status=500)
 
+
+# ==================== Banner Images API ====================
+def banner_list(request):
+    """Lấy danh sách tất cả banner"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+    
+    from store.models import Banner
+    
+    try:
+        banners = Banner.objects.all().order_by('banner_id', '-created_at')
+        banner_data = []
+        for banner in banners:
+            banner_data.append({
+                'id': banner.id,
+                'banner_id': banner.banner_id,
+                'image_url': banner.image.url,
+                'created_at': banner.created_at.strftime('%Y-%m-%d %H:%M:%S')
+            })
+        return JsonResponse({'success': True, 'banners': banner_data})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Lỗi: {str(e)}'}, status=500)
+
+
+def banner_add(request):
+    """Thêm banner mới"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+    
+    from store.models import Banner
+    
+    try:
+        banner_id = request.POST.get('banner_id')
+        image = request.FILES.get('image')
+        
+        if not banner_id:
+            return JsonResponse({'success': False, 'message': 'Vui lòng nhập ID!'}, status=400)
+        
+        if not image:
+            return JsonResponse({'success': False, 'message': 'Vui lòng chọn ảnh!'}, status=400)
+        
+        # Tạo banner mới
+        banner = Banner.objects.create(
+            banner_id=banner_id,
+            image=image
+        )
+        
+        return JsonResponse({
+            'success': True, 
+            'message': f'Đã thêm banner ID {banner_id}!',
+            'banner': {
+                'id': banner.id,
+                'banner_id': banner.banner_id,
+                'image_url': banner.image.url
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Lỗi: {str(e)}'}, status=500)
+
+
+def banner_delete(request):
+    """Xóa banner"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+    
+    from store.models import Banner
+    import os
+    
+    try:
+        banner_id = request.POST.get('banner_id')
+        if not banner_id:
+            return JsonResponse({'success': False, 'message': 'Thiếu thông tin!'}, status=400)
+        
+        # Chuyển đổi sang số nếu là số
+        try:
+            banner_id = int(banner_id)
+            banner = Banner.objects.get(id=banner_id)
+        except (ValueError, Banner.DoesNotExist):
+            # Thử tìm theo banner_id string
+            try:
+                banner = Banner.objects.get(banner_id=str(banner_id))
+            except Banner.DoesNotExist:
+                return JsonResponse({'success': False, 'message': 'Banner không tồn tại!'}, status=404)
+        
+        banner_id_display = banner.banner_id
+        
+        # Xóa file ảnh khỏi server
+        if banner.image:
+            image_path = banner.image.path
+            if os.path.exists(image_path):
+                try:
+                    os.remove(image_path)
+                except Exception as e:
+                    print(f"Lỗi khi xóa file ảnh: {e}")
+        
+        banner.delete()
+        
+        return JsonResponse({'success': True, 'message': f'Đã xóa banner ID {banner_id_display}!'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Lỗi: {str(e)}'}, status=500)
+
