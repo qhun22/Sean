@@ -93,6 +93,19 @@
                     Mua ngay
                 </button>
             </div>
+
+            <!-- Promo Banner -->
+            {% if promo_banner %}
+            <div class="pd-promo-banner">
+                <div class="pd-promo-banner-img">
+                    <img src="{{ promo_banner.image.url }}" alt="Ưu đãi học sinh sinh viên">
+                </div>
+                <a href="#" class="pd-promo-banner-btn">
+                    Xác thực ngay
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -100,6 +113,25 @@
     <div class="pd-spec-section" id="pdDescSection" style="display: none;">
         <h2 class="pd-spec-title">Thông tin sản phẩm</h2>
         <div id="pdDescContent" style="font-size: 14px; color: #334155; line-height: 1.7; white-space: pre-line;"></div>
+    </div>
+</div>
+
+<!-- Product Content Panel (slide from right, y hệt Thông số kỹ thuật) -->
+<div class="pd-spec-overlay" id="pdContentOverlay" onclick="closeContentModal(event)">
+    <div class="pd-spec-panel" id="pdContentPanel" onclick="event.stopPropagation()">
+        <div class="pd-spec-panel-header">
+            <h2 class="pd-spec-panel-title">Thông tin sản phẩm</h2>
+            <button class="pd-spec-panel-close" onclick="closeContentModalBtn()">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="pd-spec-panel-body pd-content-body" id="pdContentModalBody">
+            {% if product_content and product_content.content_text %}
+                {{ product_content.content_text|safe }}
+            {% else %}
+                <p style="padding: 24px; color: #94a3b8; text-align: center; font-family: 'Signika', sans-serif;">Chưa có thông tin sản phẩm.</p>
+            {% endif %}
+        </div>
     </div>
 </div>
 
@@ -139,6 +171,7 @@ const variantsData = {{ variants_json|safe }};
 const colorImagesData = {{ color_images_json|safe }};
 const specData = {{ spec_data_json|safe }};
 const productDescription = '{{ product.description|escapejs }}';
+const hasProductContent = {% if product_content and product_content.content_text %}true{% else %}false{% endif %};
 </script>
 <script src="{% static 'js/pd_page.js' %}"></script>
 {% endblock %}

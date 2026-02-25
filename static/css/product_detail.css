@@ -349,12 +349,12 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 6px;
     cursor: pointer;
-    padding: 8px 6px;
+    padding: 10px 6px;
     border-radius: 10px;
     transition: all 0.2s;
-    height: 82px;
+    min-height: 78px;
     border: 1.5px solid transparent;
     box-sizing: border-box;
     background: #f8fafc;
@@ -371,8 +371,8 @@
 }
 
 .pd-bottom-tab-icon {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border-radius: 6px;
     overflow: hidden;
     display: flex;
@@ -388,8 +388,8 @@
 }
 
 .pd-bottom-tab-icon svg {
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
     color: #64748b;
 }
 
@@ -806,6 +806,56 @@
     line-height: 1.5;
 }
 
+/* ========== Promo Banner ========== */
+.pd-promo-banner {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-top: 16px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    height: 82px;
+}
+
+.pd-promo-banner-img {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    line-height: 0;
+}
+
+.pd-promo-banner-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.pd-promo-banner-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    white-space: nowrap;
+    text-decoration: none;
+    font-family: 'Signika', sans-serif;
+    flex-shrink: 0;
+    transition: color 0.2s;
+}
+
+.pd-promo-banner-btn:hover {
+    color: #dc2626;
+}
+
+.pd-promo-banner-btn svg {
+    flex-shrink: 0;
+}
+
 /* ========== Description Section ========== */
 .pd-spec-section {
     margin-top: 32px;
@@ -855,4 +905,91 @@
     .pd-buy-section {
         grid-template-columns: 1fr;
     }
+}
+
+/* ========== Product Content Panel Body (rich HTML from CKEditor) ========== */
+.pd-content-body {
+    padding: 20px 22px;
+    font-family: 'Signika', sans-serif;
+    font-size: 15px;
+    color: #1e293b;
+    line-height: 1.8;
+}
+
+.pd-content-body h1,
+.pd-content-body h2,
+.pd-content-body h3,
+.pd-content-body h4 {
+    color: #0f172a;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    font-family: 'Signika', sans-serif;
+    line-height: 1.4;
+}
+
+.pd-content-body h1 { font-size: 22px; font-weight: 700; }
+.pd-content-body h2 { font-size: 19px; font-weight: 700; }
+.pd-content-body h3 { font-size: 17px; font-weight: 600; }
+.pd-content-body h4 { font-size: 15px; font-weight: 600; }
+
+.pd-content-body p {
+    margin-bottom: 12px;
+}
+
+.pd-content-body img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 12px 0;
+    display: block;
+}
+
+.pd-content-body ul,
+.pd-content-body ol {
+    padding-left: 24px;
+    margin-bottom: 12px;
+}
+
+.pd-content-body li {
+    margin-bottom: 4px;
+}
+
+.pd-content-body blockquote {
+    border-left: 4px solid #3b82f6;
+    padding: 10px 16px;
+    margin: 12px 0;
+    background: #f8fafc;
+    color: #475569;
+    border-radius: 0 8px 8px 0;
+    font-style: italic;
+}
+
+.pd-content-body table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+}
+
+.pd-content-body table td,
+.pd-content-body table th {
+    border: 1px solid #e2e8f0;
+    padding: 10px 14px;
+    font-size: 14px;
+}
+
+.pd-content-body table th {
+    background: #f1f5f9;
+    font-weight: 600;
+    color: #334155;
+}
+
+.pd-content-body a {
+    color: #2563eb;
+    text-decoration: underline;
+}
+
+.pd-content-body strong,
+.pd-content-body b {
+    font-weight: 700;
+    color: #0f172a;
 }

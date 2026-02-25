@@ -327,6 +327,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const productImagesSection = document.getElementById('product-images-section');
     const skuSection = document.getElementById('sku-section');
     const bannerImagesSection = document.getElementById('banner-images-section');
+    const productContentSection = document.getElementById('product-content-section');
     
     if (statsSection) statsSection.style.display = (currentSection === 'stats') ? 'block' : 'none';
     if (usersSection) usersSection.style.display = (currentSection === 'users') ? 'block' : 'none';
@@ -338,6 +339,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     if (bannerImagesSection) {
         bannerImagesSection.style.display = (currentSection === 'banner-images') ? 'block' : 'none';
+    }
+    if (productContentSection) {
+        productContentSection.style.display = (currentSection === 'product-content') ? 'block' : 'none';
     }
     
     // Load SKU list if on SKU section (hoặc khi vào phần Ảnh sản phẩm để dùng dropdown SKU)
@@ -460,6 +464,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Init phần Ảnh banner
     if (sectionParam === 'banner-images') {
         initBannerImagesSection();
+    }
+    
+    // Init phần Nội dung sản phẩm
+    if (sectionParam === 'product-content') {
+        initProductContentSection();
     }
 });
 
@@ -1263,7 +1272,7 @@ function renderBannerGrid(banners) {
                 <div style="position: relative; aspect-ratio: 3/1; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); overflow: hidden;" class="banner-image-container">
                     <img src="${banner.image_url}" alt="Banner ${banner.banner_id}" style="width: 100%; height: 100%; object-fit: contain; padding: 10px;">
                     <div class="banner-hover-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; gap: 10px; opacity: 0; transition: opacity 0.3s;">
-                        <button type="button" onclick="openEditBannerModal(${banner.banner_id})" style="padding: 10px 20px; background: linear-gradient(135deg, #A9CCF0 0%, #8BB8E0 100%); color: #333333; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: 'Signika', sans-serif; font-weight: 600; box-shadow: 0 2px 8px rgba(169, 204, 240, 0.5);">Tải ảnh mới</button>
+                        <button type="button" onclick="quickReplaceBanner(${banner.banner_id})" style="padding: 10px 20px; background: linear-gradient(135deg, #A9CCF0 0%, #8BB8E0 100%); color: #333333; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: 'Signika', sans-serif; font-weight: 600; box-shadow: 0 2px 8px rgba(169, 204, 240, 0.5);">Tải ảnh mới</button>
                         <button type="button" onclick="deleteBannerItem(${banner.id})" style="padding: 10px 20px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: 'Signika', sans-serif; font-weight: 600; box-shadow: 0 2px 8px rgba(239,68,68,0.4);">Xóa</button>
                     </div>
                 </div>
@@ -1434,6 +1443,53 @@ function deleteBannerPreview(imageId, indexInPreview) {
             performDeleteBanner(imageId, indexInPreview);
         }
     }
+}
+
+function quickReplaceBanner(bannerId) {
+    // Create a temporary hidden file input and open file picker directly
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+
+    input.addEventListener('change', function () {
+        var file = input.files && input.files[0];
+        if (!file) {
+            input.remove();
+            return;
+        }
+
+        var formData = new FormData();
+        formData.append('banner_id', bannerId);
+        formData.append('image', file);
+
+        fetch('/banner-images/replace/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': window.csrfToken
+            }
+        })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+            if (data.success) {
+                window.QHToast && window.QHToast.show && window.QHToast.show('Tải ảnh banner thành công!', 'success');
+                loadBannerRows();
+            } else {
+                window.QHToast && window.QHToast.show && window.QHToast.show(data.message || 'Không thể upload banner.', 'error');
+            }
+        })
+        .catch(function () {
+            window.QHToast && window.QHToast.show && window.QHToast.show('Lỗi kết nối server.', 'error');
+        })
+        .finally(function () {
+            input.remove();
+        });
+    });
+
+    input.click();
 }
 
 function openEditBannerModal(bannerId) {
@@ -1618,6 +1674,813 @@ function performDeleteBanner(id, indexInPreview = null) {
     })
     .catch(error => {
         console.error('Error deleting banner:', error);
+        window.QHToast && window.QHToast.show && window.QHToast.show('Có lỗi xảy ra!', 'error');
+    });
+}
+
+// ==================== Product Content Management ====================
+let allProductContentRows = [];
+let productContentPreviewImages = []; // ảnh đã upload trong modal
+let productContentEditorInstance = null; // CKEditor instance
+let productContentEditorPromise = null; // Promise for initializing editor
+
+// Custom CKEditor Upload Adapter (for CDN Classic build which doesn't include SimpleUploadAdapter)
+class CustomUploadAdapter {
+    constructor(loader) {
+        this.loader = loader;
+    }
+    upload() {
+        return this.loader.file.then(file => {
+            return new Promise((resolve, reject) => {
+                const formData = new FormData();
+                formData.append('image', file);
+                fetch('/upload-temp-image/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': window.csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.url) {
+                        resolve({ default: data.url });
+                    } else {
+                        reject(data.message || 'Upload thất bại!');
+                    }
+                })
+                .catch(err => {
+                    reject('Upload ảnh thất bại: ' + err.message);
+                });
+            });
+        });
+    }
+    abort() {}
+}
+
+function CustomUploadAdapterPlugin(editor) {
+    editor.plugins.get('FileRepository').createUploadAdapter = (loader) => {
+        return new CustomUploadAdapter(loader);
+    };
+}
+
+function initProductContentSection() {
+    loadProductContentRows();
+}
+
+function loadProductContentRows() {
+    fetch('/product-content/list/', {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        allProductContentRows = data.contents || [];
+        renderProductContentTable(allProductContentRows);
+    })
+    .catch(error => {
+        console.error('Error loading product content:', error);
+    });
+}
+
+function renderProductContentTable(contents) {
+    const container = document.getElementById('productContentTableContainer');
+    const grid = document.getElementById('productContentGrid');
+    if (container) container.style.display = 'block';
+    if (grid) grid.style.display = 'none';
+    
+    const tbody = document.getElementById('productContentTableBody');
+    if (!tbody) return;
+    
+    if (!contents || contents.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" style="padding: 40px; text-align: center; color: #64748b; font-size: 14px; font-family: 'Signika', sans-serif;">
+                    Chưa có nội dung sản phẩm nào.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    // Sort contents by brand and product name
+    const sortedContents = [...contents].sort((a, b) => {
+        const brandCompare = (a.brand_name || '').localeCompare(b.brand_name || '');
+        if (brandCompare !== 0) return brandCompare;
+        return (a.product_name || '').localeCompare(b.product_name || '');
+    });
+    
+    let html = '';
+    sortedContents.forEach((content, index) => {
+        // Format ngày từ created_at
+        let dateStr = '-';
+        if (content.created_at) {
+            const date = new Date(content.created_at);
+            dateStr = date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+        
+        html += `
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 12px 16px; font-size: 14px; font-family: 'Signika', sans-serif;">${index + 1}</td>
+                <td style="padding: 12px 16px; font-size: 14px; font-family: 'Signika', sans-serif; font-weight: 500;">${content.brand_name || '-'}</td>
+                <td style="padding: 12px 16px; font-size: 14px; font-family: 'Signika', sans-serif;">${content.product_name || '-'}</td>
+                <td style="padding: 12px 16px; font-size: 14px; font-family: 'Signika', sans-serif; color: #64748b;">${dateStr}</td>
+                <td style="padding: 12px 16px;">
+                    <div style="display: flex; gap: 6px;">
+                        <button type="button" onclick="openEditProductContentModal(${content.id})" style="background: #fef3c7; color: #b45309; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: 'Signika', sans-serif;">Sửa</button>
+                        <button type="button" onclick="quickReplaceProductContent(${content.id})" style="background: #dbeafe; color: #1e40af; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: 'Signika', sans-serif;">Ảnh</button>
+                        <button type="button" onclick="deleteProductContentItem(${content.id})" style="background: #fee2e2; color: #dc2626; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: 'Signika', sans-serif;">Xóa</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+    tbody.innerHTML = html;
+}
+
+function searchProductContent() {
+    const searchInput = document.getElementById('productContentSearchInput');
+    if (!searchInput) return;
+    
+    const searchTerm = searchInput.value.trim().toLowerCase();
+    if (searchTerm) {
+        const filtered = allProductContentRows.filter(c => 
+            (c.brand_name && c.brand_name.toLowerCase().includes(searchTerm)) || 
+            (c.product_name && c.product_name.toLowerCase().includes(searchTerm)) ||
+            (c.content_text && c.content_text.toLowerCase().includes(searchTerm))
+        );
+        renderProductContentTable(filtered);
+    } else {
+        renderProductContentTable(allProductContentRows);
+    }
+}
+
+function resetProductContentSearch() {
+    const searchInput = document.getElementById('productContentSearchInput');
+    if (searchInput) searchInput.value = '';
+    renderProductContentTable(allProductContentRows);
+}
+
+function openAddProductContentModal() {
+    const modal = document.getElementById('addProductContentModal');
+    if (!modal) return;
+    
+    modal.style.display = 'flex';
+    
+    // Close modal when clicking outside
+    modal.onclick = function(e) {
+        if (e.target === modal) {
+            closeAddProductContentModal();
+        }
+    };
+    
+    // Reset form
+    document.getElementById('productContentBrandSelect').value = '';
+    document.getElementById('productContentProductSelect').innerHTML = '<option value="">-- Chọn hãng trước --</option>';
+    productContentPreviewImages = [];
+    renderProductContentPreview();
+    
+    // Initialize CKEditor 5 if not already initialized
+    if (!productContentEditorInstance) {
+        productContentEditorPromise = ClassicEditor.create(document.querySelector('#productContentEditor'), {
+            extraPlugins: [CustomUploadAdapterPlugin],
+            language: 'vi',
+            toolbar: {
+                items: [
+                    'undo', 'redo',
+                    '|',
+                    'heading',
+                    '|',
+                    'bold', 'italic',
+                    '|',
+                    'bulletedList', 'numberedList',
+                    '|',
+                    'outdent', 'indent',
+                    '|',
+                    'link', 'imageUpload', 'blockQuote', 'insertTable',
+                ],
+                shouldNotGroupWhenFull: true
+            },
+            image: {
+                toolbar: [
+                    'imageTextAlternative',
+                    'imageStyle:full',
+                    'imageStyle:side'
+                ]
+            },
+            table: {
+                contentToolbar: [
+                    'tableColumn',
+                    'tableRow',
+                    'mergeTableCells'
+                ]
+            },
+            heading: {
+                options: [
+                    { model: 'paragraph', title: 'Đoạn văn', class: 'ck-heading_paragraph' },
+                    { model: 'heading1', view: 'h1', title: 'Tiêu đề 1' },
+                    { model: 'heading2', view: 'h2', title: 'Tiêu đề 2' },
+                    { model: 'heading3', view: 'h3', title: 'Tiêu đề 3' }
+                ]
+            }
+        }).then(editor => {
+            productContentEditorInstance = editor;
+            return editor;
+        }).catch(error => {
+            console.error('CKEditor initialization error:', error);
+            return null;
+        });
+    } else if (productContentEditorInstance) {
+        // Reset editor content
+        productContentEditorInstance.setData('');
+    } else if (productContentEditorPromise) {
+        // Wait for promise to resolve
+        productContentEditorPromise.then(editor => {
+            editor.setData('');
+        });
+    }
+}
+
+function closeAddProductContentModal() {
+    const modal = document.getElementById('addProductContentModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    
+    // Reset editing state
+    editingProductContentId = null;
+    
+    // Reset title
+    const titleEl = modal.querySelector('h3');
+    if (titleEl) titleEl.textContent = 'Thêm nội dung sản phẩm';
+    
+    // Reset save button to original function
+    const saveBtn = modal.querySelector('button[onclick="saveProductContent()"]');
+    if (saveBtn) {
+        saveBtn.onclick = function() {
+            saveProductContent();
+        };
+    }
+}
+
+// Load products by brand cho Product Content (returns Promise)
+function loadProductsByBrand(prefix) {
+    return new Promise((resolve, reject) => {
+        const brandSelect = document.getElementById(prefix + 'BrandSelect');
+        const productSelect = document.getElementById(prefix + 'ProductSelect');
+        
+        if (!brandSelect || !productSelect) {
+            resolve();
+            return;
+        }
+        
+        const brandId = brandSelect.value;
+        
+        if (!brandId) {
+            productSelect.innerHTML = '<option value="">-- Chọn hãng trước --</option>';
+            resolve();
+            return;
+        }
+        
+        // Load products from API
+        fetch('/products/list/json/?brand_id=' + brandId, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            const products = data.products || [];
+            if (products.length === 0) {
+                productSelect.innerHTML = '<option value="">-- Không có sản phẩm --</option>';
+            } else {
+                let options = '<option value="">-- Chọn sản phẩm --</option>';
+                products.forEach(product => {
+                    options += `<option value="${product.id}">${product.name}</option>`;
+                });
+                productSelect.innerHTML = options;
+            }
+            resolve();
+        })
+        .catch(error => {
+            console.error('Error loading products:', error);
+            productSelect.innerHTML = '<option value="">-- Lỗi tải sản phẩm --</option>';
+            resolve();
+        });
+    });
+}
+
+// Insert content tag (bold, italic, etc.)
+function insertContentTag(tag) {
+    const textarea = document.getElementById('productContentTextInput');
+    if (!textarea) return;
+    
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const selectedText = text.substring(start, end);
+    
+    let newText = '';
+    let cursorOffset = 0;
+    
+    switch(tag) {
+        case 'b':
+            newText = '<b>' + selectedText + '</b>';
+            cursorOffset = 3;
+            break;
+        case 'i':
+            newText = '<i>' + selectedText + '</i>';
+            cursorOffset = 3;
+            break;
+        case 'u':
+            newText = '<u>' + selectedText + '</u>';
+            cursorOffset = 3;
+            break;
+        case 'h2':
+            newText = '\n<h2>' + selectedText + '</h2>\n';
+            cursorOffset = 5;
+            break;
+        case 'h3':
+            newText = '\n<h3>' + selectedText + '</h3>\n';
+            cursorOffset = 5;
+            break;
+        case 'ul':
+            newText = '\n<ul>\n<li>' + selectedText + '</li>\n</ul>\n';
+            cursorOffset = 9;
+            break;
+        case 'ol':
+            newText = '\n<ol>\n<li>' + selectedText + '</li>\n</ol>\n';
+            cursorOffset = 9;
+            break;
+        default:
+            newText = selectedText;
+    }
+    
+    textarea.value = text.substring(0, start) + newText + text.substring(end);
+    
+    // Restore focus and selection
+    textarea.focus();
+    textarea.setSelectionRange(start + cursorOffset, start + cursorOffset + selectedText.length);
+}
+
+// Insert image into content
+function insertContentImage() {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.onchange = function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        // Upload image first
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        fetch('/upload-temp-image/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': window.csrfToken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.url) {
+                const textarea = document.getElementById('productContentTextInput');
+                if (textarea) {
+                    const start = textarea.selectionStart;
+                    const text = textarea.value;
+                    const imgTag = '\n<img src="' + data.url + '" alt="" style="max-width: 100%; height: auto;">\n';
+                    textarea.value = text.substring(0, start) + imgTag + text.substring(start);
+                    textarea.focus();
+                }
+            } else {
+                window.QHToast && window.QHToast.show && window.QHToast.show(data.message || 'Không thể upload ảnh.', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error uploading image:', error);
+            window.QHToast && window.QHToast.show && window.QHToast.show('Có lỗi xảy ra!', 'error');
+        });
+    };
+    fileInput.click();
+}
+
+function handleProductContentFileChange(event) {
+    const file = event.target.files[0];
+    const fileNameEl = document.getElementById('productContentFileName');
+    if (file) {
+        fileNameEl.textContent = file.name;
+    }
+}
+
+function renderProductContentPreview() {
+    const previewGrid = document.getElementById('productContentPreviewGrid');
+    if (!previewGrid) return;
+    
+    if (!productContentPreviewImages.length) {
+        previewGrid.innerHTML = '';
+        return;
+    }
+    
+    previewGrid.innerHTML = productContentPreviewImages.map((img, index) => `
+        <div style="position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; border: 2px solid #e2e8f0;">
+            <img src="${img.url}" style="width: 100%; height: 100%; object-fit: cover;">
+            <button type="button" onclick="deleteProductContentPreview(${img.id}, ${index})" style="position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border-radius: 999px; border: none; background: rgba(15,23,42,0.8); color: #f9fafb; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;">×</button>
+            <div style="position: absolute; bottom: 4px; left: 4px; padding: 2px 6px; border-radius: 999px; background: rgba(15,23,42,0.75); color: #e5e7eb; font-size: 11px; font-family: 'Signika', sans-serif;">ID: ${img.content_id}</div>
+        </div>
+    `).join('');
+}
+
+function saveProductContent() {
+    const brandSelect = document.getElementById('productContentBrandSelect');
+    const productSelect = document.getElementById('productContentProductSelect');
+    
+    const brandId = brandSelect ? brandSelect.value : '';
+    const productId = productSelect ? productSelect.value : '';
+    
+    // Validate brand and product first
+    if (!brandId) {
+        window.QHToast && window.QHToast.show && window.QHToast.show('Vui lòng chọn hãng!', 'error');
+        return;
+    }
+    
+    if (!productId) {
+        window.QHToast && window.QHToast.show && window.QHToast.show('Vui lòng chọn sản phẩm!', 'error');
+        return;
+    }
+    
+    // Get content from CKEditor
+    if (productContentEditorInstance) {
+        // Editor is ready, get data directly
+        try {
+            const contentText = productContentEditorInstance.getData();
+            saveProductContentData(brandId, productId, contentText);
+        } catch (e) {
+            console.error('Error getting editor data:', e);
+            // Fallback: try getting innerHTML from CKEditor editable area
+            const editable = document.querySelector('.ck-editor__editable');
+            const contentText = editable ? editable.innerHTML : '';
+            saveProductContentData(brandId, productId, contentText);
+        }
+    } else if (productContentEditorPromise) {
+        // Wait for editor to be ready
+        productContentEditorPromise.then(editor => {
+            if (editor) {
+                const contentText = editor.getData();
+                saveProductContentData(brandId, productId, contentText);
+            } else {
+                // Editor failed to init, try fallback
+                const editable = document.querySelector('.ck-editor__editable');
+                const contentText = editable ? editable.innerHTML : '';
+                saveProductContentData(brandId, productId, contentText);
+            }
+        }).catch(error => {
+            console.error('Error getting editor data:', error);
+            window.QHToast && window.QHToast.show && window.QHToast.show('Không thể lấy nội dung từ editor!', 'error');
+        });
+    } else {
+        // Fallback if editor not initialized - try to find editable area
+        const editable = document.querySelector('.ck-editor__editable');
+        if (editable) {
+            const contentText = editable.innerHTML;
+            saveProductContentData(brandId, productId, contentText);
+        } else {
+            window.QHToast && window.QHToast.show && window.QHToast.show('Editor chưa sẵn sàng!', 'error');
+        }
+    }
+}
+
+function saveProductContentData(brandId, productId, contentText) {
+    if (!brandId) {
+        window.QHToast && window.QHToast.show && window.QHToast.show('Vui lòng chọn hãng!', 'error');
+        return;
+    }
+    
+    if (!productId) {
+        window.QHToast && window.QHToast.show && window.QHToast.show('Vui lòng chọn sản phẩm!', 'error');
+        return;
+    }
+    
+    // Allow empty content (user might just want to save the product without content)
+    // But we need at least some validation - check if it's just empty HTML tags
+    const strippedContent = contentText.replace(/<[^>]*>/g, '').trim();
+    if (!strippedContent) {
+        // Content is empty or just HTML tags - this is allowed
+    }
+    
+    const formData = new FormData();
+    formData.append('brand_id', brandId);
+    formData.append('product_id', productId);
+    formData.append('content_text', contentText);
+    
+    fetch('/product-content/add/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': window.csrfToken
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.text().then(text => {
+                console.error('Server error:', response.status, text);
+                throw new Error('Server trả về lỗi ' + response.status);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            window.QHToast && window.QHToast.show && window.QHToast.show('Lưu nội dung thành công!', 'success');
+            closeAddProductContentModal();
+            loadProductContentRows();
+        } else {
+            window.QHToast && window.QHToast.show && window.QHToast.show(data.message || 'Không thể lưu nội dung.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving product content:', error);
+        window.QHToast && window.QHToast.show && window.QHToast.show(error.message || 'Có lỗi xảy ra!', 'error');
+    });
+}
+
+function deleteProductContentPreview(imageId, indexInPreview) {
+    if (typeof imageId === 'number') {
+        if (window.QHConfirm && window.QHConfirm.show) {
+            window.QHConfirm.show(
+                'Bạn có chắc muốn xóa?',
+                () => {
+                    performDeleteProductContent(imageId, indexInPreview);
+                }
+            );
+        } else {
+            if (confirm('Bạn có chắc muốn xóa?')) {
+                performDeleteProductContent(imageId, indexInPreview);
+            }
+        }
+    } else {
+        productContentPreviewImages.splice(indexInPreview, 1);
+        renderProductContentPreview();
+    }
+}
+
+function quickReplaceProductContent(contentId) {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.onchange = function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const formData = new FormData();
+        formData.append('content_id', contentId);
+        formData.append('image', file);
+        
+        fetch('/product-content/replace/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': window.csrfToken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.QHToast && window.QHToast.show && window.QHToast.show('Tải ảnh thành công!', 'success');
+                loadProductContentRows();
+            } else {
+                window.QHToast && window.QHToast.show && window.QHToast.show(data.message || 'Không thể upload ảnh.', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error replacing product content image:', error);
+            window.QHToast && window.QHToast.show && window.QHToast.show('Có lỗi xảy ra!', 'error');
+        });
+    };
+    fileInput.click();
+}
+
+let editingProductContentId = null;
+
+function openEditProductContentModal(contentId) {
+    const modal = document.getElementById('addProductContentModal');
+    if (!modal) return;
+    
+    // Close modal when clicking outside
+    modal.onclick = function(e) {
+        if (e.target === modal) {
+            closeAddProductContentModal();
+        }
+    };
+    
+    // Find the content data
+    const content = allProductContentRows.find(c => c.id === contentId);
+    if (!content) {
+        window.QHToast && window.QHToast.show && window.QHToast.show('Không tìm thấy nội dung!', 'error');
+        return;
+    }
+    
+    editingProductContentId = contentId;
+    
+    modal.style.display = 'flex';
+    
+    // Set title
+    const titleEl = modal.querySelector('h3');
+    if (titleEl) titleEl.textContent = 'Sửa nội dung sản phẩm';
+    
+    // Set brand and product
+    document.getElementById('productContentBrandSelect').value = content.brand_id;
+    
+    // Load products for selected brand
+    loadProductsByBrand('productContent').then(() => {
+        document.getElementById('productContentProductSelect').value = content.product_id;
+    });
+    
+    // Set content text in CKEditor
+    if (productContentEditorInstance) {
+        // Editor already initialized — set data directly
+        productContentEditorInstance.setData(content.content_text || '');
+    } else if (productContentEditorPromise) {
+        // Editor is still initializing — wait for it
+        productContentEditorPromise.then(editor => {
+            if (editor) {
+                editor.setData(content.content_text || '');
+            }
+        });
+    } else {
+        // Editor not initialized yet — create it, then set data
+        productContentEditorPromise = ClassicEditor.create(document.querySelector('#productContentEditor'), {
+            extraPlugins: [CustomUploadAdapterPlugin],
+            language: 'vi',
+            toolbar: {
+                items: [
+                    'undo', 'redo',
+                    '|',
+                    'heading',
+                    '|',
+                    'bold', 'italic',
+                    '|',
+                    'bulletedList', 'numberedList',
+                    '|',
+                    'outdent', 'indent',
+                    '|',
+                    'link', 'imageUpload', 'blockQuote', 'insertTable',
+                ],
+                shouldNotGroupWhenFull: true
+            },
+            image: {
+                toolbar: [
+                    'imageTextAlternative',
+                    'imageStyle:full',
+                    'imageStyle:side'
+                ]
+            },
+            table: {
+                contentToolbar: [
+                    'tableColumn',
+                    'tableRow',
+                    'mergeTableCells'
+                ]
+            },
+            heading: {
+                options: [
+                    { model: 'paragraph', title: 'Đoạn văn', class: 'ck-heading_paragraph' },
+                    { model: 'heading1', view: 'h1', title: 'Tiêu đề 1' },
+                    { model: 'heading2', view: 'h2', title: 'Tiêu đề 2' },
+                    { model: 'heading3', view: 'h3', title: 'Tiêu đề 3' }
+                ]
+            }
+        }).then(editor => {
+            productContentEditorInstance = editor;
+            editor.setData(content.content_text || '');
+            return editor;
+        }).catch(error => {
+            console.error('CKEditor initialization error:', error);
+            return null;
+        });
+    }
+    
+    // Show preview image if exists
+    if (content.image_url) {
+        productContentPreviewImages = [{ url: content.image_url }];
+        renderProductContentPreview();
+    } else {
+        productContentPreviewImages = [];
+        renderProductContentPreview();
+    }
+    
+    // Update save button to call edit function
+    const saveBtn = modal.querySelector('button[onclick="saveProductContent()"]');
+    if (saveBtn) {
+        saveBtn.onclick = function() {
+            editProductContent(contentId);
+        };
+    }
+}
+
+function editProductContent(contentId) {
+    const brandId = document.getElementById('productContentBrandSelect').value;
+    const productId = document.getElementById('productContentProductSelect').value;
+    const contentText = productContentEditorInstance ? productContentEditorInstance.getData() : '';
+    
+    if (!brandId) {
+        window.QHToast && window.QHToast.show && window.QHToast.show('Vui lòng chọn hãng!', 'error');
+        return;
+    }
+    
+    if (!productId) {
+        window.QHToast && window.QHToast.show && window.QHToast.show('Vui lòng chọn sản phẩm!', 'error');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('brand_id', brandId);
+    formData.append('product_id', productId);
+    formData.append('content_text', contentText);
+    
+    // Add image if selected
+    const fileInput = document.getElementById('productContentImageInput');
+    if (fileInput && fileInput.files.length > 0) {
+        formData.append('image', fileInput.files[0]);
+    }
+    
+    fetch('/product-content/add/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': window.csrfToken
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.QHToast && window.QHToast.show && window.QHToast.show('Cập nhật nội dung thành công!', 'success');
+            closeAddProductContentModal();
+            loadProductContentRows();
+        } else {
+            window.QHToast && window.QHToast.show && window.QHToast.show(data.message || 'Không thể lưu nội dung.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving product content:', error);
+        window.QHToast && window.QHToast.show && window.QHToast.show('Có lỗi xảy ra!', 'error');
+    });
+}
+
+function deleteProductContentItem(id) {
+    if (!id) return;
+    
+    if (window.QHConfirm && window.QHConfirm.show) {
+        window.QHConfirm.show(
+            'Bạn có chắc muốn xóa nội dung này?',
+            () => {
+                performDeleteProductContent(id);
+            }
+        );
+    } else {
+        if (confirm('Bạn có chắc muốn xóa nội dung này?')) {
+            performDeleteProductContent(id);
+        }
+    }
+}
+
+function performDeleteProductContent(id, indexInPreview = null) {
+    const formData = new FormData();
+    formData.append('content_id', id);
+    
+    fetch('/product-content/delete/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': window.csrfToken
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Remove from preview if exists
+            if (typeof indexInPreview === 'number') {
+                productContentPreviewImages.splice(indexInPreview, 1);
+                renderProductContentPreview();
+            }
+            window.QHToast && window.QHToast.show && window.QHToast.show(data.message || 'Đã xóa nội dung.', 'success');
+            loadProductContentRows();
+        } else {
+            window.QHToast && window.QHToast.show && window.QHToast.show(data.message || 'Không thể xóa nội dung.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting product content:', error);
         window.QHToast && window.QHToast.show && window.QHToast.show('Có lỗi xảy ra!', 'error');
     });
 }

@@ -13,7 +13,7 @@ from django.conf import settings
 from django.http import JsonResponse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 from django.db import models
 from django.db.models import Q, Count, Sum, Max
 from django.utils import timezone
@@ -104,7 +104,7 @@ def send_otp_view(request):
 
 def product_detail_view(request, product_id):
     """Trang chi tiết sản phẩm"""
-    from store.models import Product, ProductDetail, ProductVariant, FolderColorImage, ProductSpecification
+    from store.models import Product, ProductDetail, ProductVariant, FolderColorImage, ProductSpecification, ProductContent
     from django.shortcuts import get_object_or_404
     import json
     
@@ -182,6 +182,21 @@ def product_detail_view(request, product_id):
     except ProductSpecification.DoesNotExist:
         pass
     
+    # Get promo banner (id=72535)
+    from store.models import Banner
+    promo_banner = None
+    try:
+        promo_banner = Banner.objects.get(banner_id='72535')
+    except Banner.DoesNotExist:
+        pass
+    
+    # Get product content (nội dung SP từ admin)
+    product_content = None
+    try:
+        product_content = ProductContent.objects.get(product=product)
+    except ProductContent.DoesNotExist:
+        pass
+    
     context = {
         'product': product,
         'product_detail': product_detail,
@@ -191,6 +206,8 @@ def product_detail_view(request, product_id):
         'variants_json': json.dumps(variants_list),
         'color_images_json': json.dumps(color_images),
         'spec_data_json': json.dumps(spec_data) if spec_data else 'null',
+        'promo_banner': promo_banner,
+        'product_content': product_content,
     }
     
     return render(request, 'store/product_detail.html', context)
@@ -2021,6 +2038,58 @@ def banner_add(request):
         return JsonResponse({'success': False, 'message': f'Lỗi: {str(e)}'}, status=500)
 
 
+@require_POST
+def banner_replace(request):
+    """Thay thế ảnh banner có cùng banner_id (đè ảnh cũ)"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+    
+    from store.models import Banner
+    import os
+    
+    try:
+        banner_id = request.POST.get('banner_id')
+        image = request.FILES.get('image')
+        
+        if not banner_id:
+            return JsonResponse({'success': False, 'message': 'Vui lòng nhập ID!'}, status=400)
+        
+        if not image:
+            return JsonResponse({'success': False, 'message': 'Vui lòng chọn ảnh!'}, status=400)
+        
+        # Tìm banner hiện có theo banner_id
+        existing = Banner.objects.filter(banner_id=banner_id).first()
+        
+        if existing:
+            # Xóa file ảnh cũ
+            if existing.image:
+                old_path = existing.image.path
+                if os.path.exists(old_path):
+                    try:
+                        os.remove(old_path)
+                    except Exception:
+                        pass
+            # Gán ảnh mới và lưu
+            existing.image = image
+            existing.save()
+            banner = existing
+        else:
+            # Nếu chưa có thì tạo mới
+            banner = Banner.objects.create(banner_id=banner_id, image=image)
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Đã thay ảnh banner ID {banner_id}!',
+            'banner': {
+                'id': banner.id,
+                'banner_id': banner.banner_id,
+                'image_url': banner.image.url
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Lỗi: {str(e)}'}, status=500)
+
+
 def banner_delete(request):
     """Xóa banner"""
     if not request.user.is_superuser:
@@ -2062,3 +2131,228 @@ def banner_delete(request):
     except Exception as e:
         return JsonResponse({'success': False, 'message': f'Lỗi: {str(e)}'}, status=500)
 
+
+# ==================== Product Content API ====================
+@csrf_exempt
+@login_required
+def product_content_list(request):
+    """Lấy danh sách tất cả nội dung sản phẩm"""
+    from store.models import ProductContent
+    
+    contents = ProductContent.objects.select_related('brand', 'product').all().order_by('-created_at')
+    content_data = []
+    for content in contents:
+        content_data.append({
+            'id': content.id,
+            'brand_id': content.brand.id,
+            'brand_name': content.brand.name,
+            'product_id': content.product.id,
+            'product_name': content.product.name,
+            'content_text': content.content_text,
+            'image_url': content.image.url if content.image else None,
+            'created_at': content.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        })
+    
+    return JsonResponse({'success': True, 'contents': content_data})
+
+
+@csrf_exempt
+@login_required
+def product_content_add(request):
+    """Thêm nội dung sản phẩm mới"""
+    import os
+    from store.models import ProductContent, Brand, Product
+    
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Phương thức không hợp lệ!'}, status=400)
+    
+    try:
+        brand_id = request.POST.get('brand_id')
+        product_id = request.POST.get('product_id')
+        content_text = request.POST.get('content_text', '')
+        image = request.FILES.get('image')
+        
+        if not brand_id:
+            return JsonResponse({'success': False, 'message': 'Vui lòng chọn hãng!'}, status=400)
+        
+        if not product_id:
+            return JsonResponse({'success': False, 'message': 'Vui lòng chọn sản phẩm!'}, status=400)
+        
+        # Lấy brand và product
+        try:
+            brand = Brand.objects.get(id=brand_id)
+        except Brand.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Hãng không tồn tại!'}, status=400)
+        
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Sản phẩm không tồn tại!'}, status=400)
+        
+        # Kiểm tra đã tồn tại chưa
+        existing = ProductContent.objects.filter(brand=brand, product=product).first()
+        
+        if existing:
+            # Cập nhật nội dung
+            existing.content_text = content_text
+            if image:
+                # Xóa ảnh cũ nếu có
+                if existing.image:
+                    old_image_path = existing.image.path
+                    if os.path.exists(old_image_path):
+                        os.remove(old_image_path)
+                existing.image = image
+            existing.save()
+            content = existing
+            message = f'Đã cập nhật nội dung cho {product.name}!'
+        else:
+            # Tạo mới
+            content = ProductContent.objects.create(
+                brand=brand,
+                product=product,
+                content_text=content_text,
+                image=image
+            )
+            message = f'Đã thêm nội dung cho {product.name}!'
+        
+        return JsonResponse({
+            'success': True,
+            'message': message,
+            'content': {
+                'id': content.id,
+                'brand_id': content.brand.id,
+                'brand_name': content.brand.name,
+                'product_id': content.product.id,
+                'product_name': content.product.name,
+                'content_text': content.content_text,
+                'image_url': content.image.url if content.image else None
+            }
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'message': f'Lỗi server: {str(e)}'}, status=500)
+
+
+@csrf_exempt
+@login_required
+def product_content_replace(request):
+    """Thay thế ảnh nội dung sản phẩm"""
+    import os
+    
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Phương thức không hợp lệ!'}, status=400)
+    
+    from store.models import ProductContent
+    
+    content_id = request.POST.get('content_id')
+    image = request.FILES.get('image')
+    
+    if not content_id:
+        return JsonResponse({'success': False, 'message': 'Vui lòng cung cấp ID!'}, status=400)
+    
+    if not image:
+        return JsonResponse({'success': False, 'message': 'Vui lòng chọn ảnh!'}, status=400)
+    
+    try:
+        content_id = int(content_id)
+        content = ProductContent.objects.get(id=content_id)
+    except (ValueError, ProductContent.DoesNotExist):
+        return JsonResponse({'success': False, 'message': 'Nội dung không tồn tại!'}, status=404)
+    
+    # Xóa ảnh cũ nếu có
+    if content.image:
+        old_image_path = content.image.path
+        if os.path.exists(old_image_path):
+            os.remove(old_image_path)
+    
+    # Cập nhật ảnh mới
+    content.image = image
+    content.save()
+    
+    return JsonResponse({
+        'success': True,
+        'message': f'Đã thay ảnh cho {content.product.name}!',
+        'content': {
+            'id': content.id,
+            'content_text': content.content_text,
+            'image_url': content.image.url
+        }
+    })
+
+
+@csrf_exempt
+@login_required
+def product_content_delete(request):
+    """Xóa nội dung sản phẩm"""
+    import os
+    
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Phương thức không hợp lệ!'}, status=400)
+    
+    from store.models import ProductContent
+    
+    content_id = request.POST.get('content_id')
+    
+    if not content_id:
+        return JsonResponse({'success': False, 'message': 'Vui lòng cung cấp ID!'}, status=400)
+    
+    try:
+        content_id = int(content_id)
+        content = ProductContent.objects.get(id=content_id)
+    except (ValueError, ProductContent.DoesNotExist):
+        return JsonResponse({'success': False, 'message': 'Nội dung không tồn tại!'}, status=404)
+    
+    product_name = content.product.name
+    
+    # Xóa ảnh nếu có
+    if content.image:
+        image_path = content.image.path
+        if os.path.exists(image_path):
+            os.remove(image_path)
+    
+    content.delete()
+    
+    return JsonResponse({'success': True, 'message': f'Đã xóa nội dung của {product_name}!'})
+
+
+# ==================== Temp Image Upload ====================
+@login_required
+def upload_temp_image(request):
+    """Upload ảnh tạm để chèn vào nội dung"""
+    import os
+    from django.conf import settings
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': {'message': 'Phương thức không hợp lệ!'}}, status=400)
+    
+    image = request.FILES.get('image') or request.FILES.get('upload')
+    
+    if not image:
+        return JsonResponse({'error': {'message': 'Vui lòng chọn ảnh!'}}, status=400)
+    
+    # Validate image
+    if not image.content_type.startswith('image/'):
+        return JsonResponse({'error': {'message': 'File phải là ảnh!'}}, status=400)
+    
+    # Create temp directory if not exists
+    temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp')
+    os.makedirs(temp_dir, exist_ok=True)
+    
+    # Save temp file
+    from django.utils import timezone
+    import uuid
+    ext = os.path.splitext(image.name)[1]
+    filename = f"{timezone.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}{ext}"
+    filepath = os.path.join(temp_dir, filename)
+    
+    with open(filepath, 'wb+') as destination:
+        for chunk in image.chunks():
+            destination.write(chunk)
+    
+    # Return URL 
+    temp_url = f"/media/temp/{filename}"
+    
+    return JsonResponse({
+        'url': temp_url
+    })

@@ -252,6 +252,12 @@ function scrollToSpec() {
 }
 
 function scrollToDescription() {
+    // If product content panel exists, open it (slide from right like spec)
+    if (typeof hasProductContent !== 'undefined' && hasProductContent) {
+        openContentModal();
+        return;
+    }
+    // Fallback: show inline description
     var el = document.getElementById('pdDescSection');
     if (el) {
         el.style.display = 'block';
@@ -551,3 +557,31 @@ function buyNow() {
 function addToCart() {
     alert('Đã thêm vào giỏ hàng!');
 }
+
+// ========== Product Content Panel (slide from right, like Spec) ==========
+function openContentModal() {
+    var overlay = document.getElementById('pdContentOverlay');
+    if (!overlay) return;
+    overlay.classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeContentModal(e) {
+    if (e.target === document.getElementById('pdContentOverlay')) closeContentModalBtn();
+}
+
+function closeContentModalBtn() {
+    var overlay = document.getElementById('pdContentOverlay');
+    if (overlay) {
+        overlay.classList.remove('show');
+        document.body.style.overflow = '';
+    }
+}
+
+// Close content modal with Escape
+document.addEventListener('keydown', function (e) {
+    var overlay = document.getElementById('pdContentOverlay');
+    if (overlay && overlay.classList.contains('show') && e.key === 'Escape') {
+        closeContentModalBtn();
+    }
+});

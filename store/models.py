@@ -446,3 +446,23 @@ class Banner(models.Model):
     
     def __str__(self):
         return f"Banner {self.banner_id}"
+
+
+class ProductContent(models.Model):
+    """
+    Model lưu trữ nội dung sản phẩm theo hãng và sản phẩm
+    """
+    brand = models.ForeignKey('store.Brand', on_delete=models.CASCADE, related_name='product_contents', verbose_name='Hãng')
+    product = models.ForeignKey('store.Product', on_delete=models.CASCADE, related_name='product_contents', verbose_name='Sản phẩm')
+    content_text = models.TextField(blank=True, verbose_name='Nội dung text')
+    image = models.ImageField(upload_to='product_content/%Y/%m/', blank=True, verbose_name='Ảnh minh họa')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
+    
+    class Meta:
+        verbose_name = 'Nội dung sản phẩm'
+        verbose_name_plural = 'Nội dung sản phẩm'
+        ordering = ['-created_at']
+        unique_together = ['brand', 'product']
+    
+    def __str__(self):
+        return f"Nội dung - {self.product.name}"
