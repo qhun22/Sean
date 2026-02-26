@@ -124,17 +124,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     transfer_code: transferCode
                 })
             })
-            .then(function (res) { return res.json(); })
-            .then(function (data) {
-                console.log('[QR Create]', data);
-                if (data.success) {
-                    // Bắt đầu polling trạng thái
-                    startPolling();
-                }
-            })
-            .catch(function (err) {
-                console.error('[QR Create Error]', err);
-            });
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    console.log('[QR Create]', data);
+                    if (data.success) {
+                        // Bắt đầu polling trạng thái
+                        startPolling();
+                    }
+                })
+                .catch(function (err) {
+                    console.error('[QR Create Error]', err);
+                });
         }
     }
 
@@ -161,7 +161,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         onQrExpired();
                     }
                 })
-                .catch(function () {});
+                .catch(function () { });
         }, 3000); // mỗi 3 giây
     }
 
@@ -269,6 +269,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 }
             }
+            // VNPAY → hide QR, restore total
+            else if (payType === 'vnpay') {
+                hideQrBox();
+                if (summaryTotalEl) {
+                    summaryTotalEl.textContent = formatPrice(totalAmount);
+                }
+            }
 
             updatePaySelection(this);
         });
@@ -278,6 +285,53 @@ document.addEventListener('DOMContentLoaded', function () {
     var defaultSelected = document.querySelector('.qh-checkout-pay-opt.selected');
     if (defaultSelected) {
         updatePaySelection(defaultSelected);
+    }
+
+    /* ==================== VNPay Payment ==================== */
+    function initiateVNPayPayment() {
+        var submitBtn = document.getElementById('checkoutSubmitBtn');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Đang chuyển hướng đến VNPay...';
+        }
+
+        var formData = new FormData();
+        formData.append('amount', totalAmount);
+        formData.append('order_description', 'Thanh toan QHUN22 - ' + totalAmount + ' VND');
+        formData.append('items_param', window.QH_CHECKOUT_ITEMS_PARAM || '');
+
+        fetch(window.QH_VNPAY_CREATE_URL, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': QH_CSRF_TOKEN
+            },
+            body: formData
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (data.success && data.payment_url) {
+                // Redirect sang VNPay sandbox
+                window.location.href = data.payment_url;
+            } else {
+                if (window.QHToast) {
+                    QHToast.show(data.message || 'Lỗi tạo thanh toán VNPay', 'error');
+                }
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'ĐẶT HÀNG';
+                }
+            }
+        })
+        .catch(function(err) {
+            console.error('[VNPay Create Error]', err);
+            if (window.QHToast) {
+                QHToast.show('Lỗi kết nối đến VNPay. Vui lòng thử lại.', 'error');
+            }
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'ĐẶT HÀNG';
+            }
+        });
     }
 
     /* ==================== Place Order ==================== */
@@ -298,6 +352,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (window.QHToast) {
                     QHToast.show('Vui lòng chờ admin xác nhận thanh toán chuyển khoản', 'error');
                 }
+                return;
+            }
+
+            // VNPAY → chuyển hướng sang cổng thanh toán VNPay
+            if (payType === 'vnpay') {
+                initiateVNPayPayment();
                 return;
             }
 

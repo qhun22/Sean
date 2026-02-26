@@ -100,4 +100,10 @@ urlpatterns = [
     path('qr-payment/approve/', views.qr_payment_approve, name='qr_payment_approve'),
     path('qr-payment/status/', views.qr_payment_status, name='qr_payment_status'),
     path('qr-payment/cancel/', views.qr_payment_cancel, name='qr_payment_cancel'),
+
+    # VNPay Payment
+    path('vnpay/create/', views.vnpay_create, name='vnpay_create'),
+
+    # Order Success
+    path('order/success/<str:order_code>/', views.order_success, name='order_success'),
 ]

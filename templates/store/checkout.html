@@ -117,8 +117,8 @@
                         <span class="qh-checkout-pay-check"><i class="ri-checkbox-circle-fill"></i></span>
                     </div>
 
-                    <!-- VNPAY - Bảo trì -->
-                    <div class="qh-checkout-pay-opt disabled" data-pay-label="VNPAY" data-pay-short="VNPAY" data-pay-type="vnpay">
+                    <!-- VNPAY -->
+                    <div class="qh-checkout-pay-opt" data-pay-label="VNPAY" data-pay-short="VNPAY" data-pay-type="vnpay">
                         <div class="qh-checkout-pay-icon">
                             <i class="ri-secure-payment-line"></i>
                         </div>
@@ -126,7 +126,7 @@
                             VNPAY
                             <small>Thanh toán qua cổng VNPAY</small>
                         </div>
-                        <span class="qh-checkout-pay-badge">Bảo trì</span>
+                        <span class="qh-checkout-pay-check"><i class="ri-checkbox-circle-fill"></i></span>
                     </div>
 
                     <!-- Trả góp - Bảo trì -->
@@ -265,6 +265,8 @@
     var QH_CSRF_TOKEN = '{{ csrf_token }}';
     var QH_QR_CREATE_URL = '{% url "store:qr_payment_create" %}';
     var QH_QR_STATUS_URL = '{% url "store:qr_payment_status" %}';
+    var QH_VNPAY_CREATE_URL = '{% url "store:vnpay_create" %}';
+    var QH_CHECKOUT_ITEMS_PARAM = '{{ items_param }}';
 </script>
 <script src="{% static 'js/checkout.js' %}"></script>
 {% endblock %}

@@ -532,8 +532,17 @@ class Order(models.Model):
         ('cancelled', 'Đã hủy'),
     ]
     
+    PAYMENT_METHOD_CHOICES = [
+        ('cod', 'COD'),
+        ('vietqr', 'VietQR'),
+        ('vnpay', 'VNPay'),
+    ]
+    
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='orders', verbose_name='Khách hàng')
+    order_code = models.CharField(max_length=20, unique=True, verbose_name='Mã đơn hàng')
     total_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0, verbose_name='Tổng tiền')
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='cod', verbose_name='Phương thức TT')
+    vnpay_order_code = models.CharField(max_length=50, blank=True, null=True, verbose_name='Mã VNPay')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='Trạng thái')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Ngày cập nhật')
@@ -544,7 +553,7 @@ class Order(models.Model):
         ordering = ['-created_at']
     
     def __str__(self):
-        return f"Order #{self.id}"
+        return f"Order {self.order_code}"
 
 
 class Banner(models.Model):
@@ -663,6 +672,39 @@ class PendingQRPayment(models.Model):
             f'&addInfo={urllib.parse.quote(self.transfer_code)}'
             f'&accountName={urllib.parse.quote(account_name)}'
         )
+
+
+class VNPayPayment(models.Model):
+    """
+    Model lưu trữ thông tin thanh toán VNPay
+    """
+    STATUS_CHOICES = [
+        ('pending', 'Chờ thanh toán'),
+        ('paid', 'Đã thanh toán'),
+        ('failed', 'Thất bại'),
+        ('cancelled', 'Đã hủy'),
+    ]
+
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='vnpay_payments', verbose_name='Khách hàng')
+    amount = models.DecimalField(max_digits=15, decimal_places=0, verbose_name='Số tiền')
+    order_code = models.CharField(max_length=50, unique=True, verbose_name='Mã đơn hàng VNPay')
+    transaction_no = models.CharField(max_length=50, blank=True, null=True, verbose_name='Mã giao dịch VNPay')
+    transaction_status = models.CharField(max_length=20, blank=True, null=True, verbose_name='Mã trạng thái VNPay')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='Trạng thái')
+    response_code = models.CharField(max_length=10, blank=True, null=True, verbose_name='Response code VNPay')
+    response_message = models.CharField(max_length=255, blank=True, null=True, verbose_name='Response message VNPay')
+    pay_method = models.CharField(max_length=50, blank=True, null=True, verbose_name='Phương thức thanh toán')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Thời gian tạo')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Ngày cập nhật')
+    paid_at = models.DateTimeField(blank=True, null=True, verbose_name='Thời gian thanh toán')
+
+    class Meta:
+        verbose_name = 'Thanh toán VNPay'
+        verbose_name_plural = 'Thanh toán VNPay'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"VNPay {self.order_code} - {self.amount}đ - {self.status}"
 
 
 class ProductContent(models.Model):

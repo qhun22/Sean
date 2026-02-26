@@ -5,6 +5,7 @@ import os
 import random
 import time
 import requests
+from decimal import Decimal
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
@@ -17,6 +18,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 from django.db import models
 from django.db.models import Q, Count, Sum, Max
 from django.utils import timezone
+from django.urls import reverse
 import datetime
 
 
@@ -3375,3 +3377,232 @@ def qr_payment_status(request):
         return JsonResponse({'success': True, 'status': 'expired'})
 
     return JsonResponse({'success': True, 'status': qr.status})
+
+
+# ==================== VNPAY PAYMENT ====================
+@login_required
+@require_POST
+@csrf_exempt
+def vnpay_create(request):
+    """
+    Tạo yêu cầu thanh toán VNPay
+    POST: amount, order_description, items_param
+    """
+    from store.models import VNPayPayment
+    from store.vnpay_utils import VNPayUtil
+    
+    try:
+        amount = float(request.POST.get('amount', 0))
+        order_description = request.POST.get('order_description', 'Thanh toán mua hàng QHUN22')
+        items_param = request.POST.get('items_param', '')
+        
+        if amount <= 0:
+            return JsonResponse({'success': False, 'message': 'Số tiền không hợp lệ'}, status=400)
+        
+        # Tạo order code
+        order_code = VNPayUtil.generate_order_code()
+        
+        # Lấy IP address
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip_address = x_forwarded_for.split(',')[0]
+        else:
+            ip_address = request.META.get('REMOTE_ADDR', '127.0.0.1')
+        
+        # Tạo bản ghi VNPay Payment
+        vnpay_payment = VNPayPayment.objects.create(
+            user=request.user,
+            amount=Decimal(amount),
+            order_code=order_code,
+            status='pending'
+        )
+        
+        # Lưu items_param vào session (để lấy lại khi VNPay redirect về)
+        request.session['vnpay_items_param'] = items_param
+        request.session['vnpay_order_code'] = order_code
+        
+        # Xây dựng URL thanh toán (return URL sạch, không chứa query params)
+        return_url = request.build_absolute_uri('/vnpay/return/')
+        
+        # Order description chỉ dùng ASCII (tránh lỗi encoding)
+        safe_description = f'Thanh toan QHUN22 - {int(amount)} VND'
+        
+        payment_url = VNPayUtil.build_payment_url(
+            amount=amount,
+            order_code=order_code,
+            order_description=safe_description,
+            ip_address=ip_address,
+            return_url=return_url
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'payment_url': payment_url,
+            'order_code': order_code
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+
+@login_required
+def vnpay_return(request):
+    """
+    Xử lý return từ VNPay sau khi thanh toán
+    VNPay sẽ redirect về URL này với các tham số response
+    """
+    from store.models import VNPayPayment, Order, Cart
+    from store.vnpay_utils import VNPayUtil
+    
+    try:
+        # Lấy tất cả tham số từ request (VNPay append vào return URL)
+        response_data = request.GET.dict()
+        order_code = response_data.get('vnp_TxnRef', '')
+        
+        # Lấy items_param từ session
+        items_param = request.session.pop('vnpay_items_param', '')
+        session_order_code = request.session.pop('vnpay_order_code', '')
+        
+        if not order_code:
+            messages.error(request, 'Không tìm thấy mã giao dịch VNPay')
+            return redirect('store:checkout')
+        
+        # Lấy bản ghi VNPay Payment
+        try:
+            vnpay_payment = VNPayPayment.objects.get(order_code=order_code)
+        except VNPayPayment.DoesNotExist:
+            messages.error(request, 'Không tìm thấy đơn hàng VNPay')
+            return redirect('store:checkout')
+        
+        # Chỉ verify các tham số vnp_ (loại bỏ params không phải của VNPay)
+        vnp_data = {k: v for k, v in response_data.items() if k.startswith('vnp_')}
+        
+        # Xác minh response từ VNPay
+        is_valid, message = VNPayUtil.verify_payment_response(vnp_data)
+        
+        response_code = vnp_data.get('vnp_ResponseCode', '')
+        transaction_no = vnp_data.get('vnp_TransactionNo', '')
+        
+        # Cập nhật thông tin thanh toán
+        vnpay_payment.response_code = response_code
+        vnpay_payment.response_message = message
+        vnpay_payment.transaction_no = transaction_no
+        
+        if is_valid and response_code == '00':
+            vnpay_payment.status = 'paid'
+            vnpay_payment.paid_at = timezone.now()
+            vnpay_payment.save()
+            
+            # Tạo mã đơn hàng QHUN + 5 số random
+            import random as _rand
+            tracking_code = 'QHUN' + str(_rand.randint(10000, 99999))
+            
+            # Tạo Order
+            order = Order.objects.create(
+                user=request.user,
+                order_code=tracking_code,
+                total_amount=vnpay_payment.amount,
+                payment_method='vnpay',
+                vnpay_order_code=order_code,
+                status='pending'
+            )
+            
+            # Xóa các items khỏi giỏ hàng nếu có
+            if items_param:
+                try:
+                    item_ids = [int(x) for x in items_param.split(',') if x.strip()]
+                    cart = Cart.get_or_create_for_user(request.user)
+                    if cart:
+                        cart.items.filter(id__in=item_ids).delete()
+                except (ValueError, TypeError):
+                    pass
+            
+            # Redirect sang trang thành công
+            return redirect('store:order_success', order_code=tracking_code)
+        else:
+            vnpay_payment.status = 'failed'
+            vnpay_payment.save()
+            messages.error(request, f'Thanh toán VNPay thất bại: {message}')
+            
+            if items_param:
+                return redirect(f'{reverse("store:checkout")}?items={items_param}')
+            return redirect('store:checkout')
+            
+    except Exception as e:
+        messages.error(request, f'Lỗi xử lý thanh toán: {str(e)}')
+        return redirect('store:checkout')
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def vnpay_ipn(request):
+    """
+    Xử lý IPN (Instant Payment Notification) từ VNPay
+    VNPay sẽ gửi POST request đến URL này để xác nhận thanh toán
+    """
+    from store.models import VNPayPayment, Order, Cart
+    from store.vnpay_utils import VNPayUtil
+    import json
+    
+    try:
+        # Lấy tất cả tham số từ request
+        response_data = request.POST.dict()
+        order_code = response_data.get('vnp_TxnRef', '')
+        
+        if not order_code:
+            return JsonResponse({'RspCode': '01', 'Message': 'Invalid order code'})
+        
+        # Lấy bản ghi VNPay Payment
+        try:
+            vnpay_payment = VNPayPayment.objects.get(order_code=order_code)
+        except VNPayPayment.DoesNotExist:
+            return JsonResponse({'RspCode': '01', 'Message': 'Order not found'})
+        
+        # Xác minh response từ VNPay
+        is_valid, message = VNPayUtil.verify_payment_response(response_data)
+        
+        response_code = response_data.get('vnp_ResponseCode', '')
+        transaction_no = response_data.get('vnp_TransactionNo', '')
+        
+        if not is_valid:
+            return JsonResponse({'RspCode': '02', 'Message': message})
+        
+        # Cập nhật thông tin thanh toán
+        vnpay_payment.transaction_no = transaction_no
+        vnpay_payment.response_code = response_code
+        vnpay_payment.response_message = message
+        
+        if response_code == '00':
+            vnpay_payment.status = 'paid'
+            vnpay_payment.paid_at = timezone.now()
+            vnpay_payment.save()
+            
+            # Ghi log hoặc xử lý thêm tại đây
+            # Ví dụ: Tạo Order, gửi email, v.v.
+            
+            return JsonResponse({'RspCode': '00', 'Message': 'Confirmed'})
+        else:
+            vnpay_payment.status = 'failed'
+            vnpay_payment.save()
+            return JsonResponse({'RspCode': '02', 'Message': f'Payment failed: {message}'})
+            
+    except Exception as e:
+        return JsonResponse({'RspCode': '99', 'Message': str(e)})
+
+
+@login_required
+def order_success(request, order_code):
+    """
+    Trang thông báo đặt hàng thành công
+    """
+    from store.models import Order
+    
+    try:
+        order = Order.objects.get(order_code=order_code, user=request.user)
+    except Order.DoesNotExist:
+        messages.error(request, 'Không tìm thấy đơn hàng')
+        return redirect('store:home')
+    
+    return render(request, 'store/order_success.html', {
+        'order': order,
+    })
