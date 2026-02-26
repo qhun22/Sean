@@ -995,8 +995,6 @@
             </div>
         </div>
 
-    </div>
-</div>
         <!-- Hoàn tiền -->
         <div class="qh-pf-tab-panel" id="tab-refund">
             <!-- Box bọc chia đôi -->
@@ -1031,6 +1029,8 @@
                 </div>
             </div>
         </div>
+    </div>
+</div>
 
 <!-- Tab Switching Script -->
 <script>
@@ -1385,12 +1385,13 @@ function qhLoadRefundData() {
         if (data.orders && data.orders.length > 0) {
             var html = '';
             data.orders.forEach(function(o) {
-                html += '<div style="padding:12px;background:#f8fafc;border-radius:8px;margin-bottom:8px;">';
+                var productName = o.items.length > 0 ? o.items[0].product_name : '—';
+                html += '<div style="padding:12px;background:#f8fafc;border-radius:8px;margin-bottom:8px;cursor:pointer;" onclick="qhShowRefundDetail(\'' + o.order_code + '\')">';
                 html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
                 html += '<span style="color:#3b82f6;font-weight:600;font-size:13px;">' + o.order_code + '</span>';
                 html += '<span style="color:#10b981;font-weight:600;font-size:14px;">Đã hoàn ' + qhFmtVND(o.total_amount) + '</span>';
                 html += '</div>';
-                html += '<div style="color:#64748b;font-size:12px;margin-top:4px;">' + o.items.length + ' sản phẩm</div>';
+                html += '<div style="color:#64748b;font-size:12px;margin-top:4px;">' + productName + '</div>';
                 html += '</div>';
             });
             listEl.innerHTML = html;

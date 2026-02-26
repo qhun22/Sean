@@ -2605,11 +2605,11 @@ function _renderAdminOrdersTable() {
     var filtered = _adminOrdersData;
     if (_adminOrdersFilter !== 'all') {
         if (_adminOrdersFilter === 'refund') {
-            // Filter: đơn cần hoàn tiền (đã hủy + VNPay/VietQR + chưa có STK)
+            // Filter: đơn cần hoàn tiền (đã hủy + VNPay/VietQR + chờ hoàn tiền)
             filtered = _adminOrdersData.filter(function (o) { 
                 return o.status === 'cancelled' && 
                        (o.payment_method === 'vietqr' || o.payment_method === 'vnpay') &&
-                       (!o.refund_account || o.refund_account === '');
+                       o.refund_status === 'pending';
             });
         } else {
             filtered = _adminOrdersData.filter(function (o) { return o.status === _adminOrdersFilter; });
@@ -2623,14 +2623,14 @@ function _renderAdminOrdersTable() {
 
     var html = '';
     filtered.forEach(function (o, idx) {
-        var statusBadge = _getStatusBadge(o.status, o.status_display);
+        var statusBadge = _getStatusBadge(o.status, o.status_display, o.refund_status);
         html += '<tr style="border-bottom: 1px solid #f1f5f9;">'
             + '<td style="padding: 12px 14px; text-align: center; font-size: 14px; color: #64748b;">' + (idx + 1) + '</td>'
             + '<td style="padding: 12px 14px; font-size: 14px; color: #1e293b; font-weight: 500;">' + _escHtml(o.product_name) + '</td>'
             + '<td style="padding: 12px 14px; text-align: center; font-size: 14px; color: #64748b;">' + o.quantity + '</td>'
             + '<td style="padding: 12px 14px; text-align: center; font-size: 14px; color: #64748b;">' + _escHtml(o.color_name) + '</td>'
             + '<td style="padding: 12px 14px; text-align: center; font-size: 14px; color: #64748b;">' + _escHtml(o.storage) + '</td>'
-            + '<td style="padding: 12px 14px; text-align: right; font-size: 14px; color: #1e293b; font-weight: 600;">' + _formatVND(o.price) + '</td>'
+            + '<td style="padding: 12px 14px; text-align: right; font-size: 14px; color: #1e293b; font-weight: 600;">' + _formatVND(o.total_amount) + '</td>'
             + '<td style="padding: 12px 14px; font-size: 13px; color: #64748b;">' + _escHtml(o.created_at) + '</td>'
             + '<td style="padding: 12px 14px; font-size: 13px; color: #3b82f6; font-weight: 600; font-family: monospace;">' + _escHtml(o.order_code) + '</td>'
             + '<td style="padding: 12px 14px; text-align: center;">' + statusBadge + '</td>'
@@ -2723,7 +2723,43 @@ function openAdminOrderDetail(id) {
             html += _infoRow('Ngày đặt', _escHtml(o.created_at));
             html += _infoRow('Voucher', o.voucher ? _escHtml(o.voucher) : '<span style="color:#94a3b8;">Không có</span>');
             html += _infoRow('Giảm giá', _formatVND(o.discount_amount));
-            html += '</div>';
+            
+            // Hiển thị thông tin hoàn tiền nếu là đơn hủy
+            if (o.status === 'cancelled' && (o.refund_account || o.refund_bank)) {
+                html += '</div>'; // close grid
+                html += '<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0;">';
+                html += '<h4 style="font-size: 14px; font-weight: 600; color: #334155; margin: 0 0 8px;">Thông tin hoàn tiền</h4>';
+                html += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px;">';
+                html += _infoRow('Số tài khoản', o.refund_account ? '<span style="font-weight:600; color:#1e293b;">' + _escHtml(o.refund_account) + '</span>' : '<span style="color:#94a3b8;">—</span>');
+                html += _infoRow('Ngân hàng', o.refund_bank ? '<span style="font-weight:600; color:#1e293b;">' + _escHtml(o.refund_bank) + '</span>' : '<span style="color:#94a3b8;">—</span>');
+                
+                // Hiển thị trạng thái hoàn tiền
+                var refundStatusText = '';
+                var refundStatusColor = '';
+                if (o.refund_status === 'completed') {
+                    refundStatusText = 'Đã tất toán';
+                    refundStatusColor = '#10b981';
+                } else if (o.refund_status === 'pending') {
+                    refundStatusText = 'Chờ hoàn tiền';
+                    refundStatusColor = '#f59e0b';
+                } else {
+                    refundStatusText = 'Chưa yêu cầu';
+                    refundStatusColor = '#94a3b8';
+                }
+                html += _infoRow('Trạng thái', '<span style="font-weight:600; color:' + refundStatusColor + ';">' + refundStatusText + '</span>');
+                html += '</div>';
+                
+                // Button cập nhật trạng thái hoàn tiền
+                if (o.refund_status !== 'completed') {
+                    html += '<div style="margin-top: 12px;">';
+                    html += '<button type="button" onclick="updateRefundStatus(' + o.id + ', \'completed\')" style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; font-family: \'Signika\', sans-serif;">Đánh dấu đã tất toán</button>';
+                    html += '</div>';
+                }
+                html += '</div>';
+                html += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px;">';
+            } else {
+                html += '</div>';
+            }
             html += '<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">';
             html += '<span style="font-size: 14px; font-weight: 600; color: #334155;">Tổng cộng</span>';
             html += '<span style="font-size: 18px; font-weight: 700; color: #ef4444;">' + _formatVND(o.total_amount) + '</span>';
@@ -2767,6 +2803,28 @@ function updateOrderStatus(id, status) {
         });
 }
 
+function updateRefundStatus(id, refundStatus) {
+    fetch(window.adminOrderUpdateStatusUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': window.csrfToken },
+        body: JSON.stringify({ id: id, refund_status: refundStatus })
+    })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.success) {
+                window.QHToast && window.QHToast.show(data.message, 'success');
+                loadAdminOrders();
+                // Re-open detail to refresh status
+                openAdminOrderDetail(id);
+            } else {
+                window.QHToast && window.QHToast.show(data.message || 'Lỗi', 'error');
+            }
+        })
+        .catch(function () {
+            window.QHToast && window.QHToast.show('Lỗi kết nối', 'error');
+        });
+}
+
 // ---- HELPERS ----
 
 function _escHtml(str) {
@@ -2789,7 +2847,15 @@ function _infoRow(label, value) {
         + '</div>';
 }
 
-function _getStatusBadge(status, display) {
+function _getStatusBadge(status, display, refundStatus) {
+    // Nếu đơn hủy có yêu cầu hoàn tiền đang chờ → hiển thị "Hoàn tiền"
+    if (status === 'cancelled' && refundStatus === 'pending') {
+        return '<span style="display:inline-block; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:600; background:#fef3c7; color:#92400e;">Hoàn tiền</span>';
+    }
+    // Nếu đơn hủy đã hoàn tiền xong → hiển thị "Đã tất toán"
+    if (status === 'cancelled' && refundStatus === 'completed') {
+        return '<span style="display:inline-block; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:600; background:#d1fae5; color:#065f46;">Đã tất toán</span>';
+    }
     var colors = {
         'pending': { bg: '#fef3c7', text: '#92400e' },  // Đã đặt hàng
         'processing': { bg: '#dbeafe', text: '#1e40af' },  // Đang xử lý

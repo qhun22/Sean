@@ -407,13 +407,17 @@ def cart_detail(request):
 
 def order_tracking(request):
     """
-    Tra cứu đơn hàng - hiển thị đơn hàng của user đang đăng nhập
+    Tra cứu đơn hàng - hiển thị tất cả đơn hàng của user đang đăng nhập
+    (bao gồm cả đơn đã tất toán)
     """
     from store.models import Order
     
     context = {}
     if request.user.is_authenticated:
-        orders = Order.objects.filter(user=request.user).prefetch_related('items').order_by('-created_at')
+        # Lấy tất cả đơn hàng (bao gồm cả đã tất toán)
+        orders = Order.objects.filter(
+            user=request.user
+        ).prefetch_related('items').order_by('-created_at')
         context['orders'] = orders
     
     return render(request, 'store/order_tracking.html', context)
@@ -445,6 +449,9 @@ def cancel_order(request):
                 order.refund_account = refund_account
             if refund_bank:
                 order.refund_bank = refund_bank
+            # Set refund status to pending when user requests refund
+            if refund_account or refund_bank:
+                order.refund_status = 'pending'
         
         order.status = 'cancelled'
         order.save()
@@ -459,7 +466,7 @@ def cancel_order(request):
 
 def refund_pending(request):
     """
-    API lấy danh sách đơn cần hoàn tiền (đã hủy + thanh toán VNPay/VietQR)
+    API lấy danh sách đơn cần hoàn tiền (đã hủy + thanh toán VNPay/VietQR + chờ hoàn tiền)
     """
     from store.models import Order
     
@@ -469,7 +476,8 @@ def refund_pending(request):
     orders = Order.objects.filter(
         user=request.user,
         status='cancelled',
-        payment_method__in=['vietqr', 'vnpay']
+        payment_method__in=['vietqr', 'vnpay'],
+        refund_status='pending'
     ).prefetch_related('items')
     
     orders_data = []
@@ -498,7 +506,7 @@ def refund_pending(request):
 
 def refund_history(request):
     """
-    API lấy lịch sử hoàn tiền (đã hủy + có thông tin hoàn tiền)
+    API lấy lịch sử hoàn tiền (đã hoàn tiền)
     """
     from store.models import Order
     
@@ -508,8 +516,8 @@ def refund_history(request):
     orders = Order.objects.filter(
         user=request.user,
         status='cancelled',
-        payment_method__in=['vietqr', 'vnpay']
-    ).exclude(refund_account__isnull=True).exclude(refund_account='').prefetch_related('items')
+        refund_status='completed'
+    ).prefetch_related('items')
     
     orders_data = []
     for order in orders:
@@ -562,6 +570,7 @@ def refund_detail(request, order_code):
             'payment_method': order.payment_method,
             'refund_account': order.refund_account,
             'refund_bank': order.refund_bank,
+            'refund_status': order.refund_status,
             'created_at': order.created_at.strftime('%d/%m/%Y %H:%M'),
             'items': items_data
         }
@@ -1095,8 +1104,12 @@ def profile(request):
     context = {}
     if request.user.is_authenticated:
         orders = Order.objects.filter(user=request.user).order_by('-created_at')
-        total_orders = orders.count()
+        # Chỉ đếm đơn đã giao thành công (không tính hủy, chờ xử lý, đang giao)
+        total_orders = orders.filter(status='delivered').count()
         total_spent_raw = orders.filter(status='delivered').aggregate(total=Sum('total_amount'))['total'] or 0
+        
+        # Đơn đã hoàn tiền (refund history)
+        refunded_orders = orders.filter(status='cancelled', refund_status='completed')
         
         # Format total_spent for display
         total_spent = '{:,.0f}'.format(total_spent_raw).replace(',', '.')
@@ -1143,6 +1156,7 @@ def profile(request):
             'total_spent_raw': total_spent_raw,
             'password_history': password_history,
             'addresses': addresses,
+            'refunded_orders': refunded_orders,
         })
     
     return render(request, 'store/profile.html', context)
@@ -3423,11 +3437,13 @@ def admin_order_list(request):
                 'color_name': '—',
                 'storage': '—',
                 'price': str(order.total_amount),
+                'total_amount': str(order.total_amount),
                 'status': order.status,
                 'status_display': order.get_status_display(),
                 'payment_method': order.payment_method,
                 'refund_account': order.refund_account or '',
                 'refund_bank': order.refund_bank or '',
+                'refund_status': order.refund_status or '',
                 'created_at': order.created_at.strftime('%d/%m/%Y %H:%M'),
             })
         else:
@@ -3442,11 +3458,13 @@ def admin_order_list(request):
                     'color_name': item.color_name or '—',
                     'storage': item.storage or '—',
                     'price': str(item.price),
+                    'total_amount': str(order.total_amount),
                     'status': order.status,
                     'status_display': order.get_status_display(),
                     'payment_method': order.payment_method,
                     'refund_account': order.refund_account or '',
                     'refund_bank': order.refund_bank or '',
+                    'refund_status': order.refund_status or '',
                     'created_at': order.created_at.strftime('%d/%m/%Y %H:%M'),
                 })
     
@@ -3500,6 +3518,7 @@ def admin_order_detail(request):
         })
     
     data = {
+        'id': order.id,
         'order_code': order.order_code,
         'status': order.status,
         'status_display': order.get_status_display(),
@@ -3512,6 +3531,9 @@ def admin_order_detail(request):
         'items': items,
         'voucher': None,  # TODO: voucher khi có
         'discount_amount': '0',  # TODO: khi có voucher
+        'refund_account': order.refund_account or '',
+        'refund_bank': order.refund_bank or '',
+        'refund_status': order.refund_status or '',
     }
     
     return JsonResponse({'success': True, 'order': data})
@@ -3521,7 +3543,7 @@ def admin_order_detail(request):
 @require_POST
 def admin_order_update_status(request):
     """
-    Admin: cập nhật trạng thái đơn hàng
+    Admin: cập nhật trạng thái đơn hàng hoặc trạng thái hoàn tiền
     """
     if not request.user.is_superuser:
         return JsonResponse({'success': False, 'message': 'Không có quyền'}, status=403)
@@ -3533,16 +3555,27 @@ def admin_order_update_status(request):
         data = json.loads(request.body)
         order_id = data.get('id')
         new_status = data.get('status')
-        
-        valid_statuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled']
-        if new_status not in valid_statuses:
-            return JsonResponse({'success': False, 'message': 'Trạng thái không hợp lệ'})
+        refund_status = data.get('refund_status')
         
         order = Order.objects.get(id=order_id)
-        order.status = new_status
+        
+        # Cập nhật trạng thái đơn hàng
+        if new_status:
+            valid_statuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled']
+            if new_status not in valid_statuses:
+                return JsonResponse({'success': False, 'message': 'Trạng thái không hợp lệ'})
+            order.status = new_status
+        
+        # Cập nhật trạng thái hoàn tiền
+        if refund_status is not None:
+            valid_refund_statuses = ['', 'pending', 'completed']
+            if refund_status not in valid_refund_statuses:
+                return JsonResponse({'success': False, 'message': 'Trạng thái hoàn tiền không hợp lệ'})
+            order.refund_status = refund_status
+        
         order.save()
         
-        return JsonResponse({'success': True, 'message': f'Đã cập nhật trạng thái đơn {order.order_code}'})
+        return JsonResponse({'success': True, 'message': f'Đã cập nhật đơn {order.order_code}'})
     
     except Order.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Không tìm thấy đơn hàng'})

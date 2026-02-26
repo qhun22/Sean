@@ -70,6 +70,7 @@
 .qh-ot-badge.shipped    { background: #e0e7ff; color: #3730a3; }
 .qh-ot-badge.delivered  { background: #d1fae5; color: #065f46; }
 .qh-ot-badge.cancelled  { background: #fee2e2; color: #991b1b; }
+.qh-ot-badge.refunding { background: #fce7f3; color: #9d174d; }
 
 /* Detail button */
 .qh-ot-detail-btn {
@@ -397,7 +398,15 @@
                         <td class="date">{{ order.created_at|date:"d/m/Y H:i" }}</td>
                         <td class="code">{{ order.order_code }}</td>
                         <td class="center">
+                            {% if order.status == 'cancelled' and order.refund_status == 'pending' %}
+                            <span class="qh-ot-badge refunding">Chờ hoàn tiền</span>
+                            {% elif order.status == 'cancelled' and order.refund_status == 'completed' %}
+                            <span class="qh-ot-badge delivered">Đã tất toán</span>
+                            {% elif order.status == 'cancelled' %}
+                            <span class="qh-ot-badge cancelled">Đã hủy</span>
+                            {% else %}
                             <span class="qh-ot-badge {{ order.status }}">{{ order.get_status_display }}</span>
+                            {% endif %}
                         </td>
                         <td class="detail-cell">
                             <button class="qh-ot-detail-btn" onclick="openOtDetail('{{ order.order_code }}')">Xem</button>
@@ -414,7 +423,15 @@
                         <td class="date">{{ order.created_at|date:"d/m/Y H:i" }}</td>
                         <td class="code">{{ order.order_code }}</td>
                         <td class="center">
+                            {% if order.status == 'cancelled' and order.refund_status == 'pending' %}
+                            <span class="qh-ot-badge refunding">Chờ hoàn tiền</span>
+                            {% elif order.status == 'cancelled' and order.refund_status == 'completed' %}
+                            <span class="qh-ot-badge delivered">Đã tất toán</span>
+                            {% elif order.status == 'cancelled' %}
+                            <span class="qh-ot-badge cancelled">Đã hủy</span>
+                            {% else %}
                             <span class="qh-ot-badge {{ order.status }}">{{ order.get_status_display }}</span>
+                            {% endif %}
                         </td>
                         <td class="detail-cell">
                             <button class="qh-ot-detail-btn" onclick="openOtDetail('{{ order.order_code }}')">Xem</button>
@@ -476,9 +493,9 @@
             <p class="qh-ot-confirm-text">Đơn hàng thanh toán qua VNPay/VietQR. Vui lòng nhập thông tin để hoàn tiền.</p>
             <div style="text-align: left; margin-bottom: 20px;">
                 <label style="display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px;">Số tài khoản</label>
-                <input type="text" id="otRefundAccount" placeholder="Nhập số tài khoản" style="width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; box-sizing: border-box;">
+                <input type="text" id="otRefundAccount" placeholder="Nhập số tài khoản" style="width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
                 <label style="display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px; margin-top: 12px;">Ngân hàng</label>
-                <input type="text" id="otRefundBank" placeholder="Nhập tên ngân hàng" style="width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; box-sizing: border-box;">
+                <input type="text" id="otRefundBank" placeholder="Nhập tên ngân hàng" style="width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
             </div>
             <div class="qh-ot-confirm-btns">
                 <button class="qh-ot-confirm-btn cancel" onclick="closeOtRefundModal()">Hủy bỏ</button>
@@ -510,6 +527,7 @@ OT_ORDERS['{{ order.order_code }}'] = {
     order_code: '{{ order.order_code }}',
     status: '{{ order.status }}',
     status_display: '{{ order.get_status_display }}',
+    refund_status: '{{ order.refund_status }}',
     payment_method: '{{ order.payment_method }}',
     payment_display: '{{ order.get_payment_method_display }}',
     created_at: '{{ order.created_at|date:"d/m/Y H:i" }}',
@@ -605,7 +623,18 @@ function openOtDetail(code) {
     html += otInfoRow('Mã đơn hàng', '<span style="color:#3b82f6;font-weight:600;font-family:monospace;">' + escOtHtml(o.order_code) + '</span>');
     html += otInfoRow('Hình thức TT', otPayBadge(o.payment_method, o.payment_display));
     html += otInfoRow('Ngày đặt', escOtHtml(o.created_at));
-    html += otInfoRow('Trạng thái', '<span class="qh-ot-badge ' + o.status + '">' + escOtHtml(o.status_display) + '</span>');
+    // Hiển thị trạng thái theo logic mới
+    var statusHtml = '';
+    if (o.status === 'cancelled' && o.refund_status === 'pending') {
+        statusHtml = '<span class="qh-ot-badge refunding">Chờ hoàn tiền</span>';
+    } else if (o.status === 'cancelled' && o.refund_status === 'completed') {
+        statusHtml = '<span class="qh-ot-badge delivered">Đã tất toán</span>';
+    } else if (o.status === 'cancelled') {
+        statusHtml = '<span class="qh-ot-badge cancelled">Đã hủy</span>';
+    } else {
+        statusHtml = '<span class="qh-ot-badge ' + o.status + '">' + escOtHtml(o.status_display) + '</span>';
+    }
+    html += otInfoRow('Trạng thái', statusHtml);
     html += '</div>';
     html += '<div class="qh-ot-total-row">';
     html += '<span style="font-size:14px;font-weight:600;color:#334155;">Tổng cộng</span>';
@@ -710,11 +739,11 @@ function submitOtRefund() {
     var bank = document.getElementById('otRefundBank').value.trim();
     
     if (!account) {
-        alert('Vui lòng nhập số tài khoản');
+        QHToast.show('Vui lòng nhập số tài khoản', 'error');
         return;
     }
     if (!bank) {
-        alert('Vui lòng nhập tên ngân hàng');
+        QHToast.show('Vui lòng nhập tên ngân hàng', 'error');
         return;
     }
     
@@ -743,17 +772,17 @@ function doCancelOtOrder(orderCode, btn, refundInfo) {
     .then(function(response) { return response.json(); })
     .then(function(data) {
         if (data.success) {
-            alert('Đã hủy đơn hàng thành công!');
+            QHToast.success('Đã hủy đơn hàng và yêu cầu hoàn tiền thành công!');
             location.reload();
         } else {
-            alert(data.message || 'Có lỗi xảy ra');
+            QHToast.show(data.message || 'Có lỗi xảy ra', 'error');
             btn.disabled = false;
             btn.innerHTML = '<i class="ri-close-circle-line"></i> Hủy đơn hàng';
         }
     })
     .catch(function(err) {
         console.error(err);
-        alert('Có lỗi xảy ra khi hủy đơn');
+        QHToast.show('Có lỗi xảy ra khi hủy đơn', 'error');
         btn.disabled = false;
         btn.innerHTML = '<i class="ri-close-circle-line"></i> Hủy đơn hàng';
     });

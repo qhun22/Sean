@@ -550,6 +550,12 @@ class Order(models.Model):
     # Thông tin hoàn tiền
     refund_account = models.CharField(max_length=50, blank=True, null=True, verbose_name='Số tài khoản hoàn tiền')
     refund_bank = models.CharField(max_length=100, blank=True, null=True, verbose_name='Ngân hàng hoàn tiền')
+    REFUND_STATUS_CHOICES = [
+        ('', 'Chưa yêu cầu'),
+        ('pending', 'Chờ hoàn tiền'),
+        ('completed', 'Đã hoàn tiền'),
+    ]
+    refund_status = models.CharField(max_length=20, choices=REFUND_STATUS_CHOICES, blank=True, default='', verbose_name='Trạng thái hoàn tiền')
     
     class Meta:
         verbose_name = 'Đơn hàng'

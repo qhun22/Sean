@@ -34,3 +34,10 @@ def format_price_with_unit(value):
         return '0đ'
     
     return '{:,}đ'.format(value).replace(',', '.')
+
+@register.filter
+def filter_refunded(orders):
+    """
+    Lọc đơn hàng đã hoàn tiền (cancelled + refund_status = 'completed')
+    """
+    return [o for o in orders if o.status == 'cancelled' and o.refund_status == 'completed']

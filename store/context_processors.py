@@ -36,9 +36,17 @@ def qhun22_context(request):
         else:
             context['cart_count'] = 0
 
-        # Thêm số lượng đơn hàng
+        # Thêm số lượng đơn hàng (chỉ đơn chưa hoàn thành: không tính cancelled, delivered, và đã tất toán)
         from store.models import Order
-        context['order_count'] = Order.objects.filter(user=request.user).count()
+        context['order_count'] = Order.objects.filter(
+            user=request.user
+        ).exclude(
+            # Loại trừ đơn đã hủy, đã giao, và đã tất toán
+            status__in=['cancelled', 'delivered']
+        ).exclude(
+            # Loại trừ đơn đã tất toán (hoàn tiền xong)
+            refund_status='completed'
+        ).count()
     else:
         context['wishlist_count'] = 0
         context['cart_count'] = 0
