@@ -431,11 +431,20 @@ def cancel_order(request):
     try:
         data = json.loads(request.body)
         order_code = data.get('order_code', '')
+        refund_account = data.get('refund_account', '')
+        refund_bank = data.get('refund_bank', '')
         
         order = Order.objects.get(order_code=order_code, user=request.user)
         
         if order.status not in ('pending', 'processing'):
             return JsonResponse({'success': False, 'message': 'Đơn hàng không thể hủy ở trạng thái này'})
+        
+        # Lưu thông tin hoàn tiền nếu có (VNPay/VietQR)
+        if order.payment_method in ('vietqr', 'vnpay'):
+            if refund_account:
+                order.refund_account = refund_account
+            if refund_bank:
+                order.refund_bank = refund_bank
         
         order.status = 'cancelled'
         order.save()
@@ -446,6 +455,117 @@ def cancel_order(request):
         return JsonResponse({'success': False, 'message': 'Không tìm thấy đơn hàng'})
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
+
+
+def refund_pending(request):
+    """
+    API lấy danh sách đơn cần hoàn tiền (đã hủy + thanh toán VNPay/VietQR)
+    """
+    from store.models import Order
+    
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Unauthorized'}, status=401)
+    
+    orders = Order.objects.filter(
+        user=request.user,
+        status='cancelled',
+        payment_method__in=['vietqr', 'vnpay']
+    ).prefetch_related('items')
+    
+    orders_data = []
+    for order in orders:
+        items_data = []
+        for item in order.items.all():
+            items_data.append({
+                'product_name': item.product_name,
+                'quantity': item.quantity,
+                'color_name': item.color_name,
+                'storage': item.storage,
+                'price': str(item.price)
+            })
+        orders_data.append({
+            'order_code': order.order_code,
+            'total_amount': str(order.total_amount),
+            'payment_method': order.payment_method,
+            'refund_account': order.refund_account,
+            'refund_bank': order.refund_bank,
+            'created_at': order.created_at.strftime('%d/%m/%Y %H:%M'),
+            'items': items_data
+        })
+    
+    return JsonResponse({'orders': orders_data})
+
+
+def refund_history(request):
+    """
+    API lấy lịch sử hoàn tiền (đã hủy + có thông tin hoàn tiền)
+    """
+    from store.models import Order
+    
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Unauthorized'}, status=401)
+    
+    orders = Order.objects.filter(
+        user=request.user,
+        status='cancelled',
+        payment_method__in=['vietqr', 'vnpay']
+    ).exclude(refund_account__isnull=True).exclude(refund_account='').prefetch_related('items')
+    
+    orders_data = []
+    for order in orders:
+        items_data = []
+        for item in order.items.all():
+            items_data.append({
+                'product_name': item.product_name,
+                'quantity': item.quantity
+            })
+        orders_data.append({
+            'order_code': order.order_code,
+            'total_amount': str(order.total_amount),
+            'refund_account': order.refund_account,
+            'refund_bank': order.refund_bank,
+            'created_at': order.created_at.strftime('%d/%m/%Y %H:%M'),
+            'items': items_data
+        })
+    
+    return JsonResponse({'orders': orders_data})
+
+
+def refund_detail(request, order_code):
+    """
+    API lấy chi tiết đơn hoàn tiền
+    """
+    from store.models import Order
+    
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Unauthorized'}, status=401)
+    
+    try:
+        order = Order.objects.get(order_code=order_code, user=request.user)
+    except Order.DoesNotExist:
+        return JsonResponse({'error': 'Không tìm thấy đơn hàng'}, status=404)
+    
+    items_data = []
+    for item in order.items.all():
+        items_data.append({
+            'product_name': item.product_name,
+            'quantity': item.quantity,
+            'color_name': item.color_name,
+            'storage': item.storage,
+            'price': str(item.price)
+        })
+    
+    return JsonResponse({
+        'order': {
+            'order_code': order.order_code,
+            'total_amount': str(order.total_amount),
+            'payment_method': order.payment_method,
+            'refund_account': order.refund_account,
+            'refund_bank': order.refund_bank,
+            'created_at': order.created_at.strftime('%d/%m/%Y %H:%M'),
+            'items': items_data
+        }
+    })
 
 
 def wishlist(request):
@@ -3271,6 +3391,163 @@ def qr_payment_create(request):
         transfer_code=transfer_code,
     )
     return JsonResponse({'success': True, 'id': qr.id, 'message': 'Đã tạo QR thành công'})
+
+
+# ==================== ADMIN ORDER MANAGEMENT ====================
+
+@login_required
+def admin_order_list(request):
+    """
+    Admin: lấy danh sách đơn hàng (JSON API)
+    """
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền'}, status=403)
+    
+    from store.models import Order
+    
+    orders = Order.objects.select_related('user').prefetch_related('items').order_by('-created_at')
+    
+    result = []
+    stt = 0
+    for order in orders:
+        items = list(order.items.all())
+        if not items:
+            # Đơn không có item → vẫn hiển thị 1 dòng
+            stt += 1
+            result.append({
+                'stt': stt,
+                'id': order.id,
+                'order_code': order.order_code,
+                'product_name': '—',
+                'quantity': 0,
+                'color_name': '—',
+                'storage': '—',
+                'price': str(order.total_amount),
+                'status': order.status,
+                'status_display': order.get_status_display(),
+                'payment_method': order.payment_method,
+                'refund_account': order.refund_account or '',
+                'refund_bank': order.refund_bank or '',
+                'created_at': order.created_at.strftime('%d/%m/%Y %H:%M'),
+            })
+        else:
+            for item in items:
+                stt += 1
+                result.append({
+                    'stt': stt,
+                    'id': order.id,
+                    'order_code': order.order_code,
+                    'product_name': item.product_name,
+                    'quantity': item.quantity,
+                    'color_name': item.color_name or '—',
+                    'storage': item.storage or '—',
+                    'price': str(item.price),
+                    'status': order.status,
+                    'status_display': order.get_status_display(),
+                    'payment_method': order.payment_method,
+                    'refund_account': order.refund_account or '',
+                    'refund_bank': order.refund_bank or '',
+                    'created_at': order.created_at.strftime('%d/%m/%Y %H:%M'),
+                })
+    
+    return JsonResponse({'success': True, 'orders': result})
+
+
+@login_required
+def admin_order_detail(request):
+    """
+    Admin: chi tiết đơn hàng (JSON API)
+    """
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền'}, status=403)
+    
+    from store.models import Order, Address
+    
+    order_id = request.GET.get('id')
+    if not order_id:
+        return JsonResponse({'success': False, 'message': 'Thiếu ID'}, status=400)
+    
+    try:
+        order = Order.objects.select_related('user').prefetch_related('items').get(id=order_id)
+    except Order.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Không tìm thấy đơn hàng'}, status=404)
+    
+    # Lấy địa chỉ mặc định của người đặt
+    address_data = None
+    try:
+        addr = Address.objects.filter(user=order.user, is_default=True).first()
+        if not addr:
+            addr = Address.objects.filter(user=order.user).first()
+        if addr:
+            address_data = {
+                'full_name': addr.full_name,
+                'phone': addr.phone,
+                'address': f"{addr.detail}, {addr.ward_name}, {addr.district_name}, {addr.province_name}",
+            }
+    except Exception:
+        pass
+    
+    # Items
+    items = []
+    for item in order.items.all():
+        items.append({
+            'product_name': item.product_name,
+            'quantity': item.quantity,
+            'color_name': item.color_name,
+            'storage': item.storage,
+            'price': str(item.price),
+            'thumbnail': item.thumbnail,
+        })
+    
+    data = {
+        'order_code': order.order_code,
+        'status': order.status,
+        'status_display': order.get_status_display(),
+        'payment_method': order.get_payment_method_display(),
+        'payment_method_key': order.payment_method,
+        'created_at': order.created_at.strftime('%d/%m/%Y %H:%M'),
+        'total_amount': str(order.total_amount),
+        'user_email': order.user.email if order.user else '—',
+        'address': address_data,
+        'items': items,
+        'voucher': None,  # TODO: voucher khi có
+        'discount_amount': '0',  # TODO: khi có voucher
+    }
+    
+    return JsonResponse({'success': True, 'order': data})
+
+
+@login_required
+@require_POST
+def admin_order_update_status(request):
+    """
+    Admin: cập nhật trạng thái đơn hàng
+    """
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền'}, status=403)
+    
+    import json
+    from store.models import Order
+    
+    try:
+        data = json.loads(request.body)
+        order_id = data.get('id')
+        new_status = data.get('status')
+        
+        valid_statuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled']
+        if new_status not in valid_statuses:
+            return JsonResponse({'success': False, 'message': 'Trạng thái không hợp lệ'})
+        
+        order = Order.objects.get(id=order_id)
+        order.status = new_status
+        order.save()
+        
+        return JsonResponse({'success': True, 'message': f'Đã cập nhật trạng thái đơn {order.order_code}'})
+    
+    except Order.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Không tìm thấy đơn hàng'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
 
 
 @login_required

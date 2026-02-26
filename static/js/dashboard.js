@@ -230,6 +230,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const bannerImagesSection = document.getElementById('banner-images-section');
     const productContentSection = document.getElementById('product-content-section');
     const qrApprovalSection = document.getElementById('qr-approval-section');
+    const adminOrdersSection = document.getElementById('admin-orders-section');
 
     if (statsSection) statsSection.style.display = (currentSection === 'stats') ? 'block' : 'none';
     if (usersSection) usersSection.style.display = (currentSection === 'users') ? 'block' : 'none';
@@ -248,6 +249,9 @@ document.addEventListener('DOMContentLoaded', function () {
     if (qrApprovalSection) {
         qrApprovalSection.style.display = (currentSection === 'qr-approval') ? 'block' : 'none';
     }
+    if (adminOrdersSection) {
+        adminOrdersSection.style.display = (currentSection === 'admin-orders') ? 'block' : 'none';
+    }
 
     // Load SKU list if on SKU section (hoặc khi vào phần Ảnh sản phẩm để dùng dropdown SKU)
     if (currentSection === 'sku' || currentSection === 'product-images') {
@@ -259,6 +263,13 @@ document.addEventListener('DOMContentLoaded', function () {
         loadQrApprovalList();
         // Auto-refresh mỗi 30 giây
         setInterval(loadQrApprovalList, 30000);
+    }
+
+    // Load admin orders if on admin-orders section
+    if (currentSection === 'admin-orders') {
+        loadAdminOrders();
+        // Activate default "Tất cả" filter button
+        filterAdminOrders('all');
     }
 
     // Add Brand Form Submit
@@ -2559,4 +2570,272 @@ function approveQrFromDetail() {
 
 function cancelQrFromDetail() {
     if (_qrDetailCurrentId) cancelQr(_qrDetailCurrentId);
+}
+
+// ==================== ADMIN ORDERS ====================
+
+var _adminOrderDetailCurrentId = null;
+var _adminOrdersData = [];  // Cache all orders data
+var _adminOrdersFilter = 'all';  // Current active filter
+
+function loadAdminOrders() {
+    var tbody = document.getElementById('adminOrderTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px 16px; text-align: center; color: #94a3b8; font-size: 14px;">Đang tải...</td></tr>';
+
+    fetch(window.adminOrderListUrl)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (!data.success) {
+                tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px 16px; text-align: center; color: #ef4444;">Lỗi: ' + (data.message || 'Không tải được') + '</td></tr>';
+                return;
+            }
+            _adminOrdersData = data.orders || [];
+            _renderAdminOrdersTable();
+        })
+        .catch(function () {
+            tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px 16px; text-align: center; color: #ef4444;">Lỗi kết nối server</td></tr>';
+        });
+}
+
+function _renderAdminOrdersTable() {
+    var tbody = document.getElementById('adminOrderTableBody');
+    if (!tbody) return;
+
+    var filtered = _adminOrdersData;
+    if (_adminOrdersFilter !== 'all') {
+        if (_adminOrdersFilter === 'refund') {
+            // Filter: đơn cần hoàn tiền (đã hủy + VNPay/VietQR + chưa có STK)
+            filtered = _adminOrdersData.filter(function (o) { 
+                return o.status === 'cancelled' && 
+                       (o.payment_method === 'vietqr' || o.payment_method === 'vnpay') &&
+                       (!o.refund_account || o.refund_account === '');
+            });
+        } else {
+            filtered = _adminOrdersData.filter(function (o) { return o.status === _adminOrdersFilter; });
+        }
+    }
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px 16px; text-align: center; color: #94a3b8; font-size: 14px;">Không có đơn hàng nào</td></tr>';
+        return;
+    }
+
+    var html = '';
+    filtered.forEach(function (o, idx) {
+        var statusBadge = _getStatusBadge(o.status, o.status_display);
+        html += '<tr style="border-bottom: 1px solid #f1f5f9;">'
+            + '<td style="padding: 12px 14px; text-align: center; font-size: 14px; color: #64748b;">' + (idx + 1) + '</td>'
+            + '<td style="padding: 12px 14px; font-size: 14px; color: #1e293b; font-weight: 500;">' + _escHtml(o.product_name) + '</td>'
+            + '<td style="padding: 12px 14px; text-align: center; font-size: 14px; color: #64748b;">' + o.quantity + '</td>'
+            + '<td style="padding: 12px 14px; text-align: center; font-size: 14px; color: #64748b;">' + _escHtml(o.color_name) + '</td>'
+            + '<td style="padding: 12px 14px; text-align: center; font-size: 14px; color: #64748b;">' + _escHtml(o.storage) + '</td>'
+            + '<td style="padding: 12px 14px; text-align: right; font-size: 14px; color: #1e293b; font-weight: 600;">' + _formatVND(o.price) + '</td>'
+            + '<td style="padding: 12px 14px; font-size: 13px; color: #64748b;">' + _escHtml(o.created_at) + '</td>'
+            + '<td style="padding: 12px 14px; font-size: 13px; color: #3b82f6; font-weight: 600; font-family: monospace;">' + _escHtml(o.order_code) + '</td>'
+            + '<td style="padding: 12px 14px; text-align: center;">' + statusBadge + '</td>'
+            + '<td style="padding: 12px 14px; text-align: center;">'
+            + '<button type="button" onclick="openAdminOrderDetail(' + o.id + ')" style="background: #3b82f6; color: white; border: none; border-radius: 6px; padding: 6px 14px; font-size: 13px; cursor: pointer; font-family: \'Signika\', sans-serif; font-weight: 500;">Xem</button>'
+            + '</td></tr>';
+    });
+    tbody.innerHTML = html;
+}
+
+function filterAdminOrders(status) {
+    _adminOrdersFilter = status;
+    _renderAdminOrdersTable();
+    // Update active button
+    var btns = document.querySelectorAll('.admin-order-filter-btn');
+    btns.forEach(function (btn) {
+        var f = btn.getAttribute('data-filter');
+        if (f === status) {
+            btn.style.color = '#3b82f6';
+            btn.style.fontWeight = '600';
+            btn.style.borderBottomColor = '#3b82f6';
+        } else {
+            btn.style.color = '#64748b';
+            btn.style.fontWeight = '500';
+            btn.style.borderBottomColor = 'transparent';
+        }
+    });
+}
+
+function openAdminOrderDetail(id) {
+    _adminOrderDetailCurrentId = id;
+    var modal = document.getElementById('adminOrderDetailModal');
+    var body = document.getElementById('adminOrderDetailBody');
+    var footer = document.getElementById('adminOrderDetailFooter');
+    if (!modal || !body || !footer) return;
+
+    modal.style.display = 'flex';
+    body.innerHTML = '<p style="text-align: center; color: #94a3b8; padding: 40px 0;">Đang tải...</p>';
+    footer.innerHTML = '';
+
+    fetch(window.adminOrderDetailUrl + '?id=' + id)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (!data.success) {
+                body.innerHTML = '<p style="text-align: center; color: #ef4444;">' + (data.message || 'Lỗi') + '</p>';
+                return;
+            }
+            var o = data.order;
+            var html = '';
+
+            // Address block
+            html += '<div style="background: #f8fafc; border-radius: 8px; padding: 14px 18px; margin-bottom: 16px;">';
+            html += '<h4 style="font-size: 14px; font-weight: 600; color: #334155; margin: 0 0 8px;">Địa chỉ nhận hàng</h4>';
+            if (o.address) {
+                html += '<p style="margin:0; font-size:13px; color:#1e293b;"><strong>' + _escHtml(o.address.full_name) + '</strong> &nbsp;|&nbsp; ' + _escHtml(o.address.phone) + '</p>';
+                html += '<p style="margin:4px 0 0; font-size:13px; color:#64748b;">' + _escHtml(o.address.address) + '</p>';
+            } else {
+                html += '<p style="margin:0; font-size:13px; color:#94a3b8;">Chưa có địa chỉ</p>';
+            }
+            html += '</div>';
+
+            // Items table
+            html += '<div style="margin-bottom: 16px;">';
+            html += '<h4 style="font-size: 14px; font-weight: 600; color: #334155; margin: 0 0 10px;">Sản phẩm</h4>';
+            html += '<table style="width:100%; border-collapse:collapse; font-size:13px;">';
+            html += '<thead><tr style="background:#f1f5f9; text-align:left;">';
+            html += '<th style="padding:8px 10px;">Tên SP</th>';
+            html += '<th style="padding:8px 10px; text-align:center;">SL</th>';
+            html += '<th style="padding:8px 10px;">Màu</th>';
+            html += '<th style="padding:8px 10px;">Bộ nhớ</th>';
+            html += '<th style="padding:8px 10px; text-align:right;">Giá</th>';
+            html += '</tr></thead><tbody>';
+            o.items.forEach(function (item) {
+                html += '<tr style="border-bottom: 1px solid #f1f5f9;">';
+                html += '<td style="padding:8px 10px; color:#1e293b; font-weight:500;">' + _escHtml(item.product_name) + '</td>';
+                html += '<td style="padding:8px 10px; text-align:center; color:#64748b;">' + item.quantity + '</td>';
+                html += '<td style="padding:8px 10px; color:#64748b;">' + _escHtml(item.color_name || '—') + '</td>';
+                html += '<td style="padding:8px 10px; color:#64748b;">' + _escHtml(item.storage || '—') + '</td>';
+                html += '<td style="padding:8px 10px; text-align:right; color:#1e293b; font-weight:600;">' + _formatVND(item.price) + '</td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+
+            // Order info block
+            html += '<div style="background: #f8fafc; border-radius: 8px; padding: 14px 18px;">';
+            html += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px;">';
+            html += _infoRow('Mã đơn hàng', '<span style="color:#3b82f6; font-weight:600; font-family:monospace;">' + _escHtml(o.order_code) + '</span>');
+            html += _infoRow('Email', _escHtml(o.user_email));
+            html += _infoRow('Hình thức TT', _getPaymentBadge(o.payment_method_key, o.payment_method));
+            html += _infoRow('Ngày đặt', _escHtml(o.created_at));
+            html += _infoRow('Voucher', o.voucher ? _escHtml(o.voucher) : '<span style="color:#94a3b8;">Không có</span>');
+            html += _infoRow('Giảm giá', _formatVND(o.discount_amount));
+            html += '</div>';
+            html += '<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">';
+            html += '<span style="font-size: 14px; font-weight: 600; color: #334155;">Tổng cộng</span>';
+            html += '<span style="font-size: 18px; font-weight: 700; color: #ef4444;">' + _formatVND(o.total_amount) + '</span>';
+            html += '</div></div>';
+
+            body.innerHTML = html;
+
+            // Footer: status action buttons
+            _renderStatusButtons(footer, o.status, id);
+        })
+        .catch(function () {
+            body.innerHTML = '<p style="text-align: center; color: #ef4444;">Lỗi kết nối server</p>';
+        });
+}
+
+function closeAdminOrderDetail() {
+    var modal = document.getElementById('adminOrderDetailModal');
+    if (modal) modal.style.display = 'none';
+    _adminOrderDetailCurrentId = null;
+}
+
+function updateOrderStatus(id, status) {
+    fetch(window.adminOrderUpdateStatusUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': window.csrfToken },
+        body: JSON.stringify({ id: id, status: status })
+    })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.success) {
+                window.QHToast && window.QHToast.show(data.message, 'success');
+                loadAdminOrders();
+                // Re-open detail to refresh status
+                openAdminOrderDetail(id);
+            } else {
+                window.QHToast && window.QHToast.show(data.message || 'Lỗi', 'error');
+            }
+        })
+        .catch(function () {
+            window.QHToast && window.QHToast.show('Lỗi kết nối', 'error');
+        });
+}
+
+// ---- HELPERS ----
+
+function _escHtml(str) {
+    if (!str) return '';
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+}
+
+function _formatVND(val) {
+    var num = parseInt(val, 10);
+    if (isNaN(num)) return '0 ₫';
+    return num.toLocaleString('vi-VN') + ' ₫';
+}
+
+function _infoRow(label, value) {
+    return '<div style="display:contents;">'
+        + '<span style="color:#64748b;">' + label + '</span>'
+        + '<span style="color:#1e293b; text-align:right;">' + value + '</span>'
+        + '</div>';
+}
+
+function _getStatusBadge(status, display) {
+    var colors = {
+        'pending': { bg: '#fef3c7', text: '#92400e' },  // Đã đặt hàng
+        'processing': { bg: '#dbeafe', text: '#1e40af' },  // Đang xử lý
+        'shipped': { bg: '#e0e7ff', text: '#3730a3' },  // Đang giao
+        'delivered': { bg: '#d1fae5', text: '#065f46' },  // Đã giao hàng
+        'cancelled': { bg: '#fee2e2', text: '#991b1b' }   // Hủy đơn
+    };
+    var c = colors[status] || { bg: '#f1f5f9', text: '#334155' };
+    return '<span style="display:inline-block; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:600; background:' + c.bg + '; color:' + c.text + ';">' + _escHtml(display) + '</span>';
+}
+
+function _getPaymentBadge(key, display) {
+    var colors = {
+        'cod': { bg: '#fef3c7', text: '#92400e' },
+        'vietqr': { bg: '#dbeafe', text: '#1e40af' },
+        'vnpay': { bg: '#e0e7ff', text: '#3730a3' }
+    };
+    var c = colors[key] || { bg: '#f1f5f9', text: '#334155' };
+    return '<span style="display:inline-block; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:600; background:' + c.bg + '; color:' + c.text + ';">' + _escHtml(display) + '</span>';
+}
+
+function _renderStatusButtons(footer, currentStatus, orderId) {
+    var statuses = [
+        { key: 'pending', label: 'Đã đặt hàng', bg: '#fef3c7', text: '#92400e', activeBg: '#f59e0b', activeText: '#fff' },
+        { key: 'processing', label: 'Đang xử lý', bg: '#dbeafe', text: '#1e40af', activeBg: '#3b82f6', activeText: '#fff' },
+        { key: 'shipped', label: 'Đang giao', bg: '#e0e7ff', text: '#3730a3', activeBg: '#6366f1', activeText: '#fff' },
+        { key: 'delivered', label: 'Đã giao hàng', bg: '#d1fae5', text: '#065f46', activeBg: '#10b981', activeText: '#fff' },
+        { key: 'cancelled', label: 'Hủy đơn', bg: '#fee2e2', text: '#991b1b', activeBg: '#ef4444', activeText: '#fff' }
+    ];
+
+    footer.innerHTML = '';
+    statuses.forEach(function (s) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = s.label;
+        var isActive = (currentStatus === s.key);
+        btn.style.cssText = 'padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:none; font-family:\'Signika\',sans-serif; transition: all 0.2s;'
+            + 'background:' + (isActive ? s.activeBg : s.bg) + ';'
+            + 'color:' + (isActive ? s.activeText : s.text) + ';'
+            + (isActive ? 'box-shadow:0 2px 8px rgba(0,0,0,0.15);' : '');
+        if (!isActive) {
+            btn.onclick = function () { updateOrderStatus(orderId, s.key); };
+        } else {
+            btn.style.cursor = 'default';
+            btn.style.opacity = '0.85';
+        }
+        footer.appendChild(btn);
+    });
 }

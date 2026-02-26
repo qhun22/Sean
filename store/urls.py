@@ -109,4 +109,14 @@ urlpatterns = [
     
     # Cancel Order API
     path('api/cancel-order/', views.cancel_order, name='cancel_order'),
+    
+    # Refund APIs
+    path('api/refund-pending/', views.refund_pending, name='refund_pending'),
+    path('api/refund-history/', views.refund_history, name='refund_history'),
+    path('api/refund-detail/<str:order_code>/', views.refund_detail, name='refund_detail'),
+
+    # Admin Order Management
+    path('api/admin/orders/', views.admin_order_list, name='admin_order_list'),
+    path('api/admin/order-detail/', views.admin_order_detail, name='admin_order_detail'),
+    path('api/admin/order-update-status/', views.admin_order_update_status, name='admin_order_update_status'),
 ]

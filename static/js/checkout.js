@@ -307,31 +307,31 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             body: formData
         })
-        .then(function(res) { return res.json(); })
-        .then(function(data) {
-            if (data.success && data.payment_url) {
-                // Redirect sang VNPay sandbox
-                window.location.href = data.payment_url;
-            } else {
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                if (data.success && data.payment_url) {
+                    // Redirect sang VNPay sandbox
+                    window.location.href = data.payment_url;
+                } else {
+                    if (window.QHToast) {
+                        QHToast.show(data.message || 'Lỗi tạo thanh toán VNPay', 'error');
+                    }
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'ĐẶT HÀNG';
+                    }
+                }
+            })
+            .catch(function (err) {
+                console.error('[VNPay Create Error]', err);
                 if (window.QHToast) {
-                    QHToast.show(data.message || 'Lỗi tạo thanh toán VNPay', 'error');
+                    QHToast.show('Lỗi kết nối đến VNPay. Vui lòng thử lại.', 'error');
                 }
                 if (submitBtn) {
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'ĐẶT HÀNG';
                 }
-            }
-        })
-        .catch(function(err) {
-            console.error('[VNPay Create Error]', err);
-            if (window.QHToast) {
-                QHToast.show('Lỗi kết nối đến VNPay. Vui lòng thử lại.', 'error');
-            }
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'ĐẶT HÀNG';
-            }
-        });
+            });
     }
 
     /* ==================== Place Order ==================== */

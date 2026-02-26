@@ -525,11 +525,11 @@ class Order(models.Model):
     Model đơn hàng để theo dõi doanh thu
     """
     STATUS_CHOICES = [
-        ('pending', 'Chờ xử lý'),
+        ('pending', 'Đã đặt hàng'),
         ('processing', 'Đang xử lý'),
-        ('shipped', 'Đang giao hàng'),
+        ('shipped', 'Đang giao'),
         ('delivered', 'Đã giao hàng'),
-        ('cancelled', 'Đã hủy'),
+        ('cancelled', 'Hủy đơn'),
     ]
     
     PAYMENT_METHOD_CHOICES = [
@@ -546,6 +546,10 @@ class Order(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='Trạng thái')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Ngày cập nhật')
+    
+    # Thông tin hoàn tiền
+    refund_account = models.CharField(max_length=50, blank=True, null=True, verbose_name='Số tài khoản hoàn tiền')
+    refund_bank = models.CharField(max_length=100, blank=True, null=True, verbose_name='Ngân hàng hoàn tiền')
     
     class Meta:
         verbose_name = 'Đơn hàng'
