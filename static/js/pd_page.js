@@ -189,7 +189,7 @@ function updatePriceDisplay() {
     var stockBadge = document.getElementById('pdStockBadge');
     
     if (variant.stock_quantity <= 0) {
-        // Hết hàng
+        // Hết hàng - hiển thị badge và disable nút
         if (cartBtn) {
             cartBtn.disabled = true;
             cartBtn.style.opacity = '0.5';
@@ -201,10 +201,12 @@ function updatePriceDisplay() {
             buyBtn.style.cursor = 'not-allowed';
         }
         if (stockBadge) {
+            stockBadge.style.display = 'block';
+            stockBadge.style.background = '#fee2e2';
             stockBadge.innerHTML = '<span style="color: #ef4444; font-weight: 600;">Hết hàng</span>';
         }
     } else {
-        // Còn hàng
+        // Còn hàng - ẩn badge và enable nút
         if (cartBtn) {
             cartBtn.disabled = false;
             cartBtn.style.opacity = '1';
@@ -216,7 +218,7 @@ function updatePriceDisplay() {
             buyBtn.style.cursor = 'pointer';
         }
         if (stockBadge) {
-            stockBadge.innerHTML = '<span style="color: #10b981; font-weight: 600;">Còn ' + variant.stock_quantity + ' sản phẩm</span>';
+            stockBadge.style.display = 'none';
         }
     }
 

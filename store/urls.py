@@ -63,6 +63,7 @@ urlpatterns = [
     path('product-images/color/list/', views.folder_color_image_list, name='folder_color_image_list'),
     path('product-images/color/upload/', views.folder_color_image_upload, name='folder_color_image_upload'),
     path('product-images/color/delete/', views.folder_color_image_delete, name='folder_color_image_delete'),
+    path('product-images/color/rename/', views.folder_color_rename, name='folder_color_rename'),
     path('product-images/color/row-delete/', views.folder_color_row_delete, name='folder_color_row_delete'),
     # Temp Image Upload
     path('upload-temp-image/', views.upload_temp_image, name='upload_temp_image'),
@@ -104,6 +105,12 @@ urlpatterns = [
     path('qr-payment/approve/', views.qr_payment_approve, name='qr_payment_approve'),
     path('qr-payment/status/', views.qr_payment_status, name='qr_payment_status'),
     path('qr-payment/cancel/', views.qr_payment_cancel, name='qr_payment_cancel'),
+
+    # VietQR Separate Payment Page
+    path('vietqr/create-order/', views.vietqr_create_order, name='vietqr_create_order'),
+    path('vietqr-payment/', views.vietqr_payment_page, name='vietqr_payment_page'),
+    path('vietqr/page-status/', views.vietqr_page_status, name='vietqr_page_status'),
+    path('vietqr/expire/', views.vietqr_expire, name='vietqr_expire'),
 
     # VNPay Payment
     path('vnpay/create/', views.vnpay_create, name='vnpay_create'),

@@ -164,6 +164,11 @@ def product_detail_view(request, product_id):
     # Convert to list for JSON (Decimal -> int để JSON serialize được)
     variants_list = []
     for v in variants:
+        # Nếu variant không có stock riêng, fallback dùng Product.stock
+        variant_stock = int(v.stock_quantity) if v.stock_quantity else 0
+        if variant_stock == 0:
+            variant_stock = product.stock
+        
         variants_list.append({
             'id': v.id,
             'color_name': v.color_name,
@@ -173,7 +178,7 @@ def product_detail_view(request, product_id):
             'original_price': int(v.original_price) if v.original_price is not None else 0,
             'discount_percent': int(v.discount_percent) if v.discount_percent is not None else 0,
             'sku': v.sku or '',
-            'stock_quantity': int(v.stock_quantity) if v.stock_quantity is not None else 0,
+            'stock_quantity': variant_stock,
         })
     
     # Get specifications
@@ -811,8 +816,9 @@ def cart_add(request):
                 storage=storage,
                 is_active=True
             ).first()
-            if variant:
+            if variant and variant.stock_quantity > 0:
                 available_stock = variant.stock_quantity
+            # Nếu variant không có stock riêng, giữ nguyên product.stock
         except ProductDetail.DoesNotExist:
             pass
     
@@ -2723,6 +2729,42 @@ def folder_color_image_delete(request):
 @login_required
 @require_http_methods(["POST"])
 @csrf_exempt
+def folder_color_rename(request):
+    """Đổi tên màu cho tất cả ảnh cùng folder + sku + color cũ."""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+
+    from store.models import FolderColorImage
+
+    folder_id = request.POST.get('folder_id')
+    sku = request.POST.get('sku', '').strip()
+    old_color = request.POST.get('old_color_name', '').strip()
+    new_color = request.POST.get('new_color_name', '').strip()
+
+    if not folder_id or not sku or not old_color or not new_color:
+        return JsonResponse({'success': False, 'message': 'Thiếu thông tin!'}, status=400)
+
+    if old_color == new_color:
+        return JsonResponse({'success': True, 'message': 'Tên màu không thay đổi.'})
+
+    updated = FolderColorImage.objects.filter(
+        folder_id=folder_id,
+        sku=sku,
+        color_name=old_color
+    ).update(color_name=new_color)
+
+    if updated == 0:
+        return JsonResponse({'success': False, 'message': 'Không tìm thấy ảnh để cập nhật!'})
+
+    return JsonResponse({
+        'success': True,
+        'message': f'Đã đổi tên màu "{old_color}" → "{new_color}" ({updated} ảnh).'
+    })
+
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
 def folder_color_row_delete(request):
     """Xóa tất cả ảnh màu theo folder + sku + color (xóa cả row)"""
     if not request.user.is_superuser:
@@ -3634,11 +3676,257 @@ def place_order(request):
     if payment_method == 'vietqr' and transfer_code:
         PendingQRPayment.objects.filter(transfer_code=transfer_code, user=request.user).delete()
     
+    if payment_method == 'cod':
+        from store.telegram_utils import notify_order_success
+        items_info = [
+            {
+                'product_name': ci.product.name if ci.product else 'Sản phẩm',
+                'quantity': ci.quantity,
+                'storage': ci.storage,
+                'color_name': ci.color_name,
+            }
+            for ci in cart_items
+        ]
+        notify_order_success(tracking_code, 'cod', items_info)
+    
     return JsonResponse({
         'success': True,
         'message': 'Đặt hàng thành công!',
         'order_code': tracking_code
     })
+
+
+# ==================== VIETQR SEPARATE PAGE ====================
+
+@csrf_exempt
+@login_required
+@require_POST
+def vietqr_create_order(request):
+    """
+    Tạo đơn hàng VietQR (awaiting_payment) + PendingQRPayment,
+    trả về URL trang thanh toán VietQR riêng.
+    """
+    from store.models import Cart, Order, OrderItem, ProductDetail, FolderColorImage, PendingQRPayment
+    import json
+    import random as _rand
+    
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Dữ liệu không hợp lệ'}, status=400)
+    
+    items_param = data.get('items_param', '')
+    
+    if not items_param:
+        return JsonResponse({'success': False, 'message': 'Không có sản phẩm'}, status=400)
+    
+    try:
+        item_ids = [int(x) for x in items_param.split(',') if x.strip()]
+    except (ValueError, TypeError):
+        return JsonResponse({'success': False, 'message': 'Danh sách sản phẩm không hợp lệ'}, status=400)
+    
+    cart = Cart.get_or_create_for_user(request.user)
+    if not cart:
+        return JsonResponse({'success': False, 'message': 'Không tìm thấy giỏ hàng'}, status=400)
+    
+    cart_items = list(cart.items.filter(id__in=item_ids).select_related('product', 'product__brand'))
+    if not cart_items:
+        return JsonResponse({'success': False, 'message': 'Không tìm thấy sản phẩm trong giỏ'}, status=400)
+    
+    total_amount = sum(item.price_at_add * item.quantity for item in cart_items)
+    
+    tracking_code = 'QHUN' + str(_rand.randint(10000, 99999))
+    
+    digits = '0123456789'
+    transfer_code = 'QHUN'
+    for _ in range(5):
+        transfer_code += digits[_rand.randint(0, 9)]
+    
+    order = Order.objects.create(
+        user=request.user,
+        order_code=tracking_code,
+        total_amount=total_amount,
+        payment_method='vietqr',
+        status='awaiting_payment'
+    )
+    
+    for ci in cart_items:
+        thumb_url = ''
+        try:
+            if ci.product and ci.product.brand_id:
+                detail = ProductDetail.objects.get(product=ci.product)
+                variant = detail.variants.filter(
+                    is_active=True, color_name=ci.color_name
+                ).first()
+                if variant and variant.sku:
+                    img = FolderColorImage.objects.filter(
+                        brand_id=ci.product.brand_id,
+                        sku=variant.sku
+                    ).order_by('order').first()
+                    if img:
+                        thumb_url = img.image.url
+            if not thumb_url and ci.product and ci.product.image:
+                thumb_url = ci.product.image.url
+        except Exception:
+            pass
+        
+        OrderItem.objects.create(
+            order=order,
+            product=ci.product,
+            product_name=ci.product.name if ci.product else 'Sản phẩm',
+            color_name=ci.color_name,
+            storage=ci.storage,
+            quantity=ci.quantity,
+            price=ci.price_at_add,
+            thumbnail=thumb_url,
+        )
+    
+    cart.items.filter(id__in=item_ids).delete()
+    
+    PendingQRPayment.objects.create(
+        user=request.user,
+        amount=total_amount,
+        transfer_code=transfer_code,
+    )
+    
+    from store.telegram_utils import notify_payment_created
+    notify_payment_created('vietqr', tracking_code, request.user.username, total_amount)
+    
+    return JsonResponse({
+        'success': True,
+        'redirect_url': '/vietqr-payment/?order=' + tracking_code + '&code=' + transfer_code,
+    })
+
+
+@login_required
+def vietqr_payment_page(request):
+    """
+    Trang thanh toán VietQR riêng - hiển thị QR, timer, polling admin duyệt.
+    """
+    from store.models import Order, PendingQRPayment
+    
+    order_code = request.GET.get('order', '')
+    transfer_code = request.GET.get('code', '')
+    
+    if not order_code or not transfer_code:
+        messages.error(request, 'Thiếu thông tin thanh toán')
+        return redirect('store:cart_detail')
+    
+    try:
+        order = Order.objects.get(order_code=order_code, user=request.user)
+    except Order.DoesNotExist:
+        messages.error(request, 'Không tìm thấy đơn hàng')
+        return redirect('store:cart_detail')
+    
+    if order.status not in ('awaiting_payment', 'processing'):
+        return redirect('store:order_success', order_code=order_code)
+    
+    qr = PendingQRPayment.objects.filter(
+        transfer_code=transfer_code, user=request.user
+    ).first()
+    
+    timeout_seconds = 15 * 60
+    if qr and qr.created_at:
+        elapsed = (timezone.now() - qr.created_at).total_seconds()
+        timeout_seconds = max(0, int(15 * 60 - elapsed))
+    
+    if timeout_seconds <= 0 and order.status == 'awaiting_payment':
+        order.status = 'cancelled'
+        order.save()
+        if qr:
+            qr.delete()
+    
+    context = {
+        'order': order,
+        'transfer_code': transfer_code,
+        'timeout_seconds': timeout_seconds,
+    }
+    return render(request, 'store/vietqr_payment.html', context)
+
+
+@login_required
+def vietqr_page_status(request):
+    """
+    Polling API cho trang VietQR riêng.
+    GET: code, order_code
+    """
+    from store.models import PendingQRPayment, Order
+    
+    code = request.GET.get('code', '')
+    order_code = request.GET.get('order_code', '')
+    
+    if not code:
+        return JsonResponse({'success': False, 'status': 'error'})
+    
+    try:
+        qr = PendingQRPayment.objects.get(transfer_code=code, user=request.user)
+    except PendingQRPayment.DoesNotExist:
+        try:
+            order = Order.objects.get(order_code=order_code, user=request.user)
+            if order.status in ('processing', 'pending', 'delivered'):
+                return JsonResponse({'success': True, 'status': 'approved'})
+        except Order.DoesNotExist:
+            pass
+        return JsonResponse({'success': True, 'status': 'expired'})
+    
+    if qr.is_expired:
+        qr.delete()
+        return JsonResponse({'success': True, 'status': 'expired'})
+    
+    if qr.status == 'approved':
+        try:
+            order = Order.objects.get(order_code=order_code, user=request.user)
+            if order.status == 'awaiting_payment':
+                order.status = 'processing'
+                order.save()
+                
+                from store.telegram_utils import notify_order_success
+                vqr_items = list(order.items.values('product_name', 'quantity', 'storage', 'color_name'))
+                notify_order_success(order_code, 'vietqr', vqr_items)
+        except Order.DoesNotExist:
+            pass
+        qr.delete()
+        return JsonResponse({'success': True, 'status': 'approved'})
+    
+    if qr.status == 'cancelled':
+        return JsonResponse({'success': True, 'status': 'cancelled'})
+    
+    return JsonResponse({'success': True, 'status': 'pending'})
+
+
+@csrf_exempt
+@login_required
+@require_POST
+def vietqr_expire(request):
+    """
+    Client báo hết thời gian → huỷ đơn + xoá QR pending.
+    """
+    from store.models import Order, PendingQRPayment
+    import json
+    
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False})
+    
+    order_code = data.get('order_code', '')
+    transfer_code = data.get('transfer_code', '')
+    
+    if order_code:
+        try:
+            order = Order.objects.get(order_code=order_code, user=request.user)
+            if order.status == 'awaiting_payment':
+                order.status = 'cancelled'
+                order.save()
+        except Order.DoesNotExist:
+            pass
+    
+    if transfer_code:
+        PendingQRPayment.objects.filter(
+            transfer_code=transfer_code, user=request.user
+        ).delete()
+    
+    return JsonResponse({'success': True})
 
 
 # ==================== ADMIN ORDER MANAGEMENT ====================
@@ -4046,6 +4334,9 @@ def vnpay_create(request):
             return_url=return_url
         )
         
+        from store.telegram_utils import notify_payment_created
+        notify_payment_created('vnpay', order_code, request.user.username, amount)
+        
         return JsonResponse({
             'success': True,
             'payment_url': payment_url,
@@ -4161,7 +4452,10 @@ def vnpay_return(request):
                 except (ValueError, TypeError):
                     pass
             
-            # Redirect sang trang thành công
+            from store.telegram_utils import notify_order_success
+            vnpay_items = list(order.items.values('product_name', 'quantity', 'storage', 'color_name'))
+            notify_order_success(tracking_code, 'vnpay', vnpay_items)
+            
             return redirect('store:order_success', order_code=tracking_code)
         else:
             vnpay_payment.status = 'failed'

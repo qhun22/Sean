@@ -82,9 +82,9 @@
                 </div>
             </div>
 
-            <!-- Stock Badge -->
-            <div id="pdStockBadge" style="margin-bottom: 12px; padding: 8px 12px; background: #f0fdf4; border-radius: 8px; text-align: center;">
-                <span style="color: #10b981; font-weight: 600;">Đang kiểm tra tồn kho...</span>
+            <!-- Stock Badge - chỉ hiển thị khi hết hàng -->
+            <div id="pdStockBadge" style="display: none; margin-bottom: 12px; padding: 8px 12px; background: #fee2e2; border-radius: 8px; text-align: center;">
+                <span style="color: #ef4444; font-weight: 600;">Hết hàng</span>
             </div>
             
             <!-- Buy Section -->
@@ -287,7 +287,6 @@
 
                         {% if rp.stock == 0 %}
                         <div class="out-of-stock-overlay"></div>
-                        <span class="out-of-stock-badge">Hết hàng</span>
                         {% endif %}
                     </div>
 

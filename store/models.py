@@ -529,6 +529,7 @@ class Order(models.Model):
     Model đơn hàng để theo dõi doanh thu
     """
     STATUS_CHOICES = [
+        ('awaiting_payment', 'Chờ thanh toán'),
         ('pending', 'Đã đặt hàng'),
         ('processing', 'Đang xử lý'),
         ('shipped', 'Đang giao'),

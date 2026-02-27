@@ -694,9 +694,13 @@ function refreshImageFolderOptions() {
     if (currentValue) select.value = currentValue;
 }
 
+var _colorImageEditOriginal = null;
+
 function openAddColorImageModal(folderId = null, sku = '', colorName = '', brandId = null, folderBrandId = null, folderProductId = null) {
     const modal = document.getElementById('addColorImageModal');
     if (!modal) return;
+
+    _colorImageEditOriginal = null;
 
     const folderSelect = document.getElementById('colorImageFolderSelect');
     const brandSelect = document.getElementById('colorImageBrandSelect');
@@ -714,7 +718,12 @@ function openAddColorImageModal(folderId = null, sku = '', colorName = '', brand
     const effectiveBrandId = brandId || folderBrandId;
     
     if (effectiveBrandId && folderId && sku) {
-        // Chế độ chỉnh sửa - pre-fill dữ liệu
+        _colorImageEditOriginal = {
+            folder_id: folderId,
+            sku: sku,
+            color_name: colorName || ''
+        };
+
         if (brandSelect) {
             brandSelect.value = String(effectiveBrandId);
         }
@@ -808,6 +817,42 @@ function closeAddColorImageModal() {
 }
 
 function saveColorImageModal() {
+    var colorInput = document.getElementById('colorImageNameInput');
+    var newColor = colorInput ? colorInput.value.trim() : '';
+
+    if (_colorImageEditOriginal && newColor && newColor !== _colorImageEditOriginal.color_name) {
+        var formData = new FormData();
+        formData.append('folder_id', _colorImageEditOriginal.folder_id);
+        formData.append('sku', _colorImageEditOriginal.sku);
+        formData.append('old_color_name', _colorImageEditOriginal.color_name);
+        formData.append('new_color_name', newColor);
+
+        fetch('/product-images/color/rename/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': window.csrfToken
+            }
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    window.QHToast && window.QHToast.show(data.message, 'success');
+                    _colorImageEditOriginal.color_name = newColor;
+                } else {
+                    window.QHToast && window.QHToast.show(data.message || 'Lỗi đổi tên màu!', 'error');
+                }
+                loadImageFolderRows();
+                closeAddColorImageModal();
+            })
+            .catch(function() {
+                window.QHToast && window.QHToast.show('Lỗi kết nối!', 'error');
+                closeAddColorImageModal();
+            });
+        return;
+    }
+
     if (window.QHToast && window.QHToast.show) {
         window.QHToast.show('Đã lưu.', 'success');
     }
@@ -3196,11 +3241,12 @@ function _getStatusBadge(status, display, refundStatus) {
         return '<span style="display:inline-block; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:600; background:#d1fae5; color:#065f46;">Đã tất toán</span>';
     }
     var colors = {
-        'pending': { bg: '#fef3c7', text: '#92400e' },  // Đã đặt hàng
-        'processing': { bg: '#dbeafe', text: '#1e40af' },  // Đang xử lý
-        'shipped': { bg: '#e0e7ff', text: '#3730a3' },  // Đang giao
-        'delivered': { bg: '#d1fae5', text: '#065f46' },  // Đã giao hàng
-        'cancelled': { bg: '#fee2e2', text: '#991b1b' }   // Hủy đơn
+        'awaiting_payment': { bg: '#fef9c3', text: '#854d0e' },
+        'pending': { bg: '#fef3c7', text: '#92400e' },
+        'processing': { bg: '#dbeafe', text: '#1e40af' },
+        'shipped': { bg: '#e0e7ff', text: '#3730a3' },
+        'delivered': { bg: '#d1fae5', text: '#065f46' },
+        'cancelled': { bg: '#fee2e2', text: '#991b1b' }
     };
     var c = colors[status] || { bg: '#f1f5f9', text: '#334155' };
     return '<span style="display:inline-block; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:600; background:' + c.bg + '; color:' + c.text + ';">' + _escHtml(display) + '</span>';

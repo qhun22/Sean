@@ -147,10 +147,9 @@
                     </svg>
                 </button>
                 
-                <!-- Out of Stock -->
+                <!-- Out of Stock Overlay (chỉ hiển thị overlay mờ, không hiển thị badge) -->
                 {% if product.stock == 0 %}
                 <div class="out-of-stock-overlay"></div>
-                <span class="out-of-stock-badge">Hết hàng</span>
                 {% endif %}
             </div>
             
@@ -278,9 +277,15 @@ function toggleWishlist(button, productId) {
                 QHToast.show(data.message, 'success');
             }
         } else if (data.require_login) {
-            // Chuyển hướng đến trang đăng nhập
-            if (confirm(data.message + '. Bạn có muốn đăng nhập không?')) {
-                window.location.href = '{% url "store:login" %}';
+            // Chuyển hướng đến trang đăng nhập với QHConfirm
+            if (window.QHConfirm) {
+                QHConfirm.show(data.message + '. Bạn có muốn đăng nhập không?', function() {
+                    window.location.href = '{% url "store:login" %}';
+                });
+            } else {
+                if (confirm(data.message + '. Bạn có muốn đăng nhập không?')) {
+                    window.location.href = '{% url "store:login" %}';
+                }
             }
         } else {
             // Hiển thị lỗi
