@@ -202,6 +202,37 @@ def product_detail_view(request, product_id):
     # Lấy YouTube ID
     youtube_id = product_detail.youtube_id if product_detail.youtube_id else ''
     
+    # --- Đánh giá sản phẩm ---
+    from store.models import ProductReview, OrderItem, Order
+    reviews = ProductReview.objects.filter(product=product).select_related('user')
+    review_count = reviews.count()
+    avg_rating = 0
+    if review_count > 0:
+        avg_rating = round(sum(r.rating for r in reviews) / review_count, 1)
+    
+    user_review = None
+    can_review = False
+    must_login = not request.user.is_authenticated
+    if request.user.is_authenticated:
+        user_review = reviews.filter(user=request.user).first()
+        if not user_review:
+            has_delivered = OrderItem.objects.filter(
+                order__user=request.user,
+                order__status='delivered',
+                product=product
+            ).exists()
+            can_review = has_delivered
+
+    # --- Sản phẩm liên quan (cùng brand, random 5, loại trừ SP hiện tại) ---
+    related_products = []
+    if product.brand:
+        related_products = list(
+            Product.objects.filter(brand=product.brand, is_active=True)
+            .exclude(id=product.id)
+            .select_related('detail')
+            .order_by('?')[:5]
+        )
+    
     context = {
         'product': product,
         'product_detail': product_detail,
@@ -214,9 +245,70 @@ def product_detail_view(request, product_id):
         'promo_banner': promo_banner,
         'product_content': product_content,
         'youtube_id': youtube_id,
+        'reviews': reviews,
+        'review_count': review_count,
+        'avg_rating': avg_rating,
+        'user_review': user_review,
+        'can_review': can_review,
+        'must_login': must_login,
+        'related_products': related_products,
     }
     
     return render(request, 'store/product_detail.html', context)
+
+
+def submit_review(request):
+    """API đánh giá sản phẩm - chỉ user đã mua thành công (delivered) mới được"""
+    from django.http import JsonResponse
+    from store.models import Product, ProductReview, OrderItem
+
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Method not allowed'}, status=405)
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'message': 'Vui lòng đăng nhập'}, status=401)
+
+    product_id = request.POST.get('product_id')
+    rating = request.POST.get('rating')
+
+    if not product_id or not rating:
+        return JsonResponse({'success': False, 'message': 'Thiếu thông tin'})
+
+    try:
+        rating = int(rating)
+        if rating < 1 or rating > 5:
+            return JsonResponse({'success': False, 'message': 'Số sao không hợp lệ'})
+    except (ValueError, TypeError):
+        return JsonResponse({'success': False, 'message': 'Số sao không hợp lệ'})
+
+    try:
+        product = Product.objects.get(id=product_id)
+    except Product.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Sản phẩm không tồn tại'})
+
+    if ProductReview.objects.filter(user=request.user, product=product).exists():
+        return JsonResponse({'success': False, 'message': 'Bạn đã đánh giá sản phẩm này rồi'})
+
+    has_delivered = OrderItem.objects.filter(
+        order__user=request.user,
+        order__status='delivered',
+        product=product
+    ).exists()
+    if not has_delivered:
+        return JsonResponse({'success': False, 'message': 'Bạn cần mua và nhận hàng thành công mới được đánh giá'})
+
+    ProductReview.objects.create(user=request.user, product=product, rating=rating)
+
+    reviews = ProductReview.objects.filter(product=product)
+    count = reviews.count()
+    avg = round(sum(r.rating for r in reviews) / count, 1) if count else 0
+
+    return JsonResponse({
+        'success': True,
+        'message': 'Đánh giá thành công!',
+        'avg_rating': avg,
+        'review_count': count,
+        'user_rating': rating,
+    })
 
 
 def home(request):

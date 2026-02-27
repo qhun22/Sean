@@ -741,6 +741,23 @@ class VNPayPayment(models.Model):
         return f"VNPay {self.order_code} - {self.amount}đ - {self.status}"
 
 
+class ProductReview(models.Model):
+    """Đánh giá sản phẩm - chỉ user đã mua thành công mới được đánh giá, mỗi user 1 lần/sản phẩm"""
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='reviews', verbose_name='Người dùng')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews', verbose_name='Sản phẩm')
+    rating = models.PositiveIntegerField(verbose_name='Số sao (1-5)')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày đánh giá')
+
+    class Meta:
+        verbose_name = 'Đánh giá sản phẩm'
+        verbose_name_plural = 'Đánh giá sản phẩm'
+        unique_together = ['user', 'product']
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.email} - {self.product.name} - {self.rating} sao"
+
+
 class ProductContent(models.Model):
     """
     Model lưu trữ nội dung sản phẩm theo hãng và sản phẩm

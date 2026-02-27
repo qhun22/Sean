@@ -582,6 +582,19 @@
     font-size: 13px;
     color: var(--qh-text-light);
 }
+.qh-pf-order-product {
+    font-size: 13px;
+    color: var(--qh-text);
+    max-width: 340px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.qh-pf-order-more {
+    font-size: 12px;
+    color: var(--qh-primary-dark);
+    font-style: italic;
+}
 .qh-pf-order-right {
     display: flex;
     align-items: center;
@@ -893,8 +906,13 @@
                 {% for order in orders %}
                 <div class="qh-pf-order">
                     <div class="qh-pf-order-left">
-                        <div class="qh-pf-order-id">Đơn hàng <span>#{{ order.id }}</span></div>
+                        <div class="qh-pf-order-id">Đơn hàng <span>#{{ order.order_code }}</span></div>
                         <div class="qh-pf-order-date">{{ order.created_at|date:"d/m/Y H:i" }}</div>
+                        {% with first_item=order.items.first %}
+                        {% if first_item %}
+                        <div class="qh-pf-order-product">{{ first_item.product_name }}{% if order.items.count > 1 %} <span class="qh-pf-order-more">+{{ order.items.count|add:"-1" }} sản phẩm khác</span>{% endif %}</div>
+                        {% endif %}
+                        {% endwith %}
                     </div>
                     <div class="qh-pf-order-right">
                         <span class="qh-pf-status {{ order.status }}">
@@ -905,7 +923,7 @@
                             {% elif order.status == 'cancelled' %}Đã hủy
                             {% endif %}
                         </span>
-                        <div class="qh-pf-order-amount">{{ order.total_amount|floatformat:0 }}đ</div>
+                        <div class="qh-pf-order-amount">{{ order.total_amount|format_price_with_unit }}</div>
                     </div>
                 </div>
                 {% endfor %}
