@@ -11,6 +11,8 @@ urlpatterns = [
     path('', views.home, name='home'),
     # Chi tiết sản phẩm
     path('product/<int:product_id>/', views.product_detail_view, name='product_detail'),
+    # So sánh sản phẩm
+    path('compare/', views.compare_view, name='compare'),
     # Tìm kiếm sản phẩm
     path('products/search/', views.product_search, name='product_search'),
     # Giỏ hàng

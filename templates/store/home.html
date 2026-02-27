@@ -106,6 +106,22 @@
     font-weight: 600;
     z-index: 6;
 }
+
+/* Compare Button */
+.qh-compare-btn {
+    font-family: 'Signika', sans-serif;
+}
+.qh-compare-btn:hover {
+    background: var(--qh-primary) !important;
+    border-color: var(--qh-primary) !important;
+    color: var(--qh-text) !important;
+}
+.qh-compare-btn.active {
+    background: var(--qh-primary) !important;
+    border-color: var(--qh-primary-dark) !important;
+    color: var(--qh-text) !important;
+    font-weight: 600;
+}
 </style>
 
 <div class="qh-home">
@@ -194,8 +210,14 @@
                 
                 <!-- Action Buttons -->
                 <div style="display: flex; gap: 6px;">
-                    <button class="qh-btn qh-btn-outline" style="flex: 1; padding: 8px 4px; font-size: 15px; border: 1px solid var(--qh-border); background: transparent; {% if product.stock == 0 %}opacity: 0.5;{% endif %}">
-                        Thêm vào so sánh
+                    <button class="qh-btn qh-btn-outline qh-compare-btn"
+                            data-product-id="{{ product.id }}"
+                            data-product-name="{{ product.name }}"
+                            data-product-image="{% if product.image %}{{ product.image.url }}{% else %}{% endif %}"
+                            data-product-price="{% if product.detail %}{{ product.detail.discounted_price|format_price_with_unit }}{% else %}{{ product.price|format_price_with_unit }}{% endif %}"
+                            onclick="event.preventDefault();event.stopPropagation();QHCompare.addToCompare({{ product.id }}, this.dataset.productName, this.dataset.productImage, this.dataset.productPrice)"
+                            style="flex: 1; padding: 8px 4px; font-size: 14px; border: 1px solid var(--qh-border); background: transparent; border-radius: 6px; cursor: pointer; transition: all 0.2s; display:flex; align-items:center; justify-content:center; gap:4px;">
+                        <i class="ri-arrow-left-right-line"></i> So sánh
                     </button>
                 </div>
             </div>
@@ -312,5 +334,50 @@ function toggleWishlist(button, productId) {
     });
 }
 </script>
+
+<!-- USP Section -->
+<section class="qh-usp-section">
+    <div class="qh-usp-container">
+        <h2 class="qh-usp-title">TẠI SAO CHỌN QHUN22 MOBILE?</h2>
+        <div class="qh-usp-grid">
+            <div class="qh-usp-card">
+                <div class="qh-usp-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                    </svg>
+                </div>
+                <h3 class="qh-usp-card-title">Hàng Chính Hãng</h3>
+                <p class="qh-usp-card-desc">Cam kết 100% sản phẩm chính hãng, đầy đủ phụ kiện.</p>
+            </div>
+            <div class="qh-usp-card">
+                <div class="qh-usp-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                </div>
+                <h3 class="qh-usp-card-title">Đổi Trả Dễ Dàng</h3>
+                <p class="qh-usp-card-desc">Hỗ trợ đổi trả trong 7 ngày nếu lỗi kỹ thuật.</p>
+            </div>
+            <div class="qh-usp-card">
+                <div class="qh-usp-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                </div>
+                <h3 class="qh-usp-card-title">Giao Hàng Nhanh</h3>
+                <p class="qh-usp-card-desc">Giao hàng toàn quốc từ 1-2 ngày làm việc.</p>
+            </div>
+            <div class="qh-usp-card">
+                <div class="qh-usp-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+                    </svg>
+                </div>
+                <h3 class="qh-usp-card-title">Bảo Hành Uy Tín</h3>
+                <p class="qh-usp-card-desc">Bảo hành chính hãng từ 6-12 tháng.</p>
+            </div>
+        </div>
+    </div>
+</section>
 
 {% endblock %}

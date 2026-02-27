@@ -4545,3 +4545,272 @@ def order_success(request, order_code):
         'order': order,
         'order_items': order.items.all(),
     })
+
+
+def compare_view(request):
+    """
+    Trang so sánh sản phẩm - hiển thị thông số mỗi SP thành 1 cột
+    URL: /compare/?ids=1,2,3
+    """
+    from store.models import Product, ProductSpecification
+    import json as json_lib
+
+    ids_param = request.GET.get('ids', '')
+    if not ids_param:
+        return redirect('store:home')
+
+    try:
+        ids = [int(x.strip()) for x in ids_param.split(',') if x.strip()]
+    except (ValueError, TypeError):
+        return redirect('store:home')
+
+    if not ids or len(ids) < 2:
+        return redirect('store:home')
+
+    products = list(
+        Product.objects.filter(id__in=ids, is_active=True)
+        .select_related('brand', 'category', 'detail')
+    )
+
+    if len(products) < 2:
+        messages.error(request, 'Cần ít nhất 2 sản phẩm để so sánh')
+        return redirect('store:home')
+
+    def parse_groups(raw):
+        """Parse spec_json into list of {title, items: [{label, value}]}"""
+        groups = []
+        if not raw:
+            return groups
+        if isinstance(raw, dict) and 'groups' in raw:
+            raw = raw['groups']
+        if isinstance(raw, list):
+            for g in raw:
+                title = g.get('title', '') or g.get('name', '')
+                items_raw = g.get('items', []) or g.get('specs', [])
+                items = []
+                for item in items_raw:
+                    label = item.get('label', '') or item.get('name', '') or item.get('key', '')
+                    value = item.get('value', '')
+                    if label:
+                        items.append({'label': label, 'value': value})
+                if items:
+                    groups.append({'title': title, 'items': items})
+        elif isinstance(raw, dict):
+            items = [{'label': k, 'value': v} for k, v in raw.items()]
+            if items:
+                groups.append({'title': 'Thông số kỹ thuật', 'items': items})
+        return groups
+
+    compare_data = []
+    for product in products:
+        groups = []
+        try:
+            if hasattr(product, 'detail') and product.detail:
+                spec_obj = ProductSpecification.objects.filter(detail=product.detail).first()
+                if spec_obj and spec_obj.spec_json:
+                    groups = parse_groups(spec_obj.spec_json)
+        except Exception:
+            pass
+        compare_data.append({
+            'product': product,
+            'groups': groups,
+        })
+
+    context = {
+        'products': products,
+        'compare_data': compare_data,
+    }
+    return render(request, 'store/compare.html', context)
+
+
+# ==================== COUPON MANAGEMENT ====================
+
+@login_required
+def coupon_list(request):
+    """Lấy danh sách mã giảm giá (admin) hoặc chi tiết 1 coupon"""
+    if not request.user.is_staff:
+        return JsonResponse({'success': False, 'message': 'Không có quyền'}, status=403)
+    
+    from store.models import Coupon
+    
+    coupon_id = request.GET.get('id')
+    if coupon_id:
+        try:
+            c = Coupon.objects.get(id=coupon_id)
+            return JsonResponse({'success': True, 'coupon': {
+                'id': c.id,
+                'code': c.code,
+                'description': c.description,
+                'discount_type': c.discount_type,
+                'discount_value': str(c.discount_value),
+                'min_order_amount': str(c.min_order_amount),
+                'max_discount': str(c.max_discount),
+                'usage_limit': c.usage_limit,
+                'used_count': c.used_count,
+                'is_active': c.is_active,
+                'start_date_raw': c.start_date.strftime('%Y-%m-%dT%H:%M'),
+                'end_date_raw': c.end_date.strftime('%Y-%m-%dT%H:%M'),
+            }})
+        except Coupon.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Không tìm thấy'}, status=404)
+    
+    coupons = Coupon.objects.all()
+    result = []
+    for c in coupons:
+        result.append({
+            'id': c.id,
+            'code': c.code,
+            'description': c.description,
+            'discount_type': c.discount_type,
+            'discount_value': str(c.discount_value),
+            'min_order_amount': str(c.min_order_amount),
+            'max_discount': str(c.max_discount),
+            'usage_limit': c.usage_limit,
+            'used_count': c.used_count,
+            'is_active': c.is_active,
+            'is_valid': c.is_valid(),
+            'start_date': c.start_date.strftime('%d/%m/%Y %H:%M'),
+            'end_date': c.end_date.strftime('%d/%m/%Y %H:%M'),
+        })
+    return JsonResponse({'success': True, 'coupons': result})
+
+
+@login_required
+@require_POST
+def coupon_add(request):
+    """Thêm mã giảm giá mới"""
+    if not request.user.is_staff:
+        return JsonResponse({'success': False, 'message': 'Không có quyền'}, status=403)
+    
+    from store.models import Coupon
+    
+    code = request.POST.get('code', '').strip().upper()
+    if not code:
+        return JsonResponse({'success': False, 'message': 'Mã giảm giá không được để trống'})
+    
+    if Coupon.objects.filter(code=code).exists():
+        return JsonResponse({'success': False, 'message': 'Mã giảm giá đã tồn tại'})
+    
+    start_date = request.POST.get('start_date', '')
+    end_date = request.POST.get('end_date', '')
+    if not start_date or not end_date:
+        return JsonResponse({'success': False, 'message': 'Vui lòng chọn ngày bắt đầu và kết thúc'})
+    
+    try:
+        Coupon.objects.create(
+            code=code,
+            description=request.POST.get('description', ''),
+            discount_type=request.POST.get('discount_type', 'percentage'),
+            discount_value=Decimal(request.POST.get('discount_value', '0')),
+            min_order_amount=Decimal(request.POST.get('min_order_amount', '0')),
+            max_discount=Decimal(request.POST.get('max_discount', '0')),
+            usage_limit=int(request.POST.get('usage_limit', '0')),
+            is_active=request.POST.get('is_active') == '1',
+            start_date=start_date,
+            end_date=end_date,
+        )
+        return JsonResponse({'success': True, 'message': 'Đã thêm mã giảm giá'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Lỗi: {str(e)}'})
+
+
+@login_required
+@require_POST
+def coupon_edit(request):
+    """Sửa mã giảm giá"""
+    if not request.user.is_staff:
+        return JsonResponse({'success': False, 'message': 'Không có quyền'}, status=403)
+    
+    from store.models import Coupon
+    
+    coupon_id = request.POST.get('id')
+    if not coupon_id:
+        return JsonResponse({'success': False, 'message': 'Thiếu ID'})
+    
+    try:
+        c = Coupon.objects.get(id=coupon_id)
+    except Coupon.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Không tìm thấy'})
+    
+    start_date = request.POST.get('start_date', '')
+    end_date = request.POST.get('end_date', '')
+    if not start_date or not end_date:
+        return JsonResponse({'success': False, 'message': 'Vui lòng chọn ngày bắt đầu và kết thúc'})
+    
+    try:
+        c.description = request.POST.get('description', '')
+        c.discount_type = request.POST.get('discount_type', 'percentage')
+        c.discount_value = Decimal(request.POST.get('discount_value', '0'))
+        c.min_order_amount = Decimal(request.POST.get('min_order_amount', '0'))
+        c.max_discount = Decimal(request.POST.get('max_discount', '0'))
+        c.usage_limit = int(request.POST.get('usage_limit', '0'))
+        c.is_active = request.POST.get('is_active') == '1'
+        c.start_date = start_date
+        c.end_date = end_date
+        c.save()
+        return JsonResponse({'success': True, 'message': 'Đã cập nhật mã giảm giá'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Lỗi: {str(e)}'})
+
+
+@login_required
+@require_POST
+def coupon_delete(request):
+    """Xóa mã giảm giá"""
+    if not request.user.is_staff:
+        return JsonResponse({'success': False, 'message': 'Không có quyền'}, status=403)
+    
+    from store.models import Coupon
+    
+    coupon_id = request.POST.get('id')
+    if not coupon_id:
+        return JsonResponse({'success': False, 'message': 'Thiếu ID'})
+    
+    try:
+        c = Coupon.objects.get(id=coupon_id)
+        c.delete()
+        return JsonResponse({'success': True, 'message': 'Đã xóa mã giảm giá'})
+    except Coupon.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Không tìm thấy'})
+
+
+@login_required
+@require_POST
+def coupon_apply(request):
+    """Áp dụng mã giảm giá (dùng ở checkout)"""
+    from store.models import Coupon
+    import json
+    
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Dữ liệu không hợp lệ'})
+    
+    code = data.get('code', '').strip().upper()
+    order_total = Decimal(str(data.get('order_total', '0')))
+    
+    if not code:
+        return JsonResponse({'success': False, 'message': 'Vui lòng nhập mã giảm giá'})
+    
+    try:
+        coupon = Coupon.objects.get(code=code)
+    except Coupon.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Mã giảm giá không tồn tại'})
+    
+    if not coupon.is_valid():
+        return JsonResponse({'success': False, 'message': 'Mã giảm giá đã hết hạn hoặc hết lượt sử dụng'})
+    
+    if order_total < coupon.min_order_amount:
+        return JsonResponse({'success': False, 'message': f'Đơn hàng tối thiểu {int(coupon.min_order_amount):,}đ để áp dụng mã này'.replace(',', '.')})
+    
+    discount = coupon.calculate_discount(order_total)
+    
+    return JsonResponse({
+        'success': True,
+        'code': coupon.code,
+        'discount': str(discount),
+        'discount_display': f'{int(discount):,}đ'.replace(',', '.'),
+        'new_total': str(order_total - discount),
+        'new_total_display': f'{int(order_total - discount):,}đ'.replace(',', '.'),
+        'description': coupon.description,
+    })
