@@ -136,6 +136,9 @@ urlpatterns = [
     path('api/admin/order-detail/', views.admin_order_detail, name='admin_order_detail'),
     path('api/admin/order-update-status/', views.admin_order_update_status, name='admin_order_update_status'),
 
+    # AI Chatbot
+    path('api/chatbot/', views.chatbot_api, name='chatbot_api'),
+
     # Coupon Management
     path('api/coupons/', views.coupon_list, name='coupon_list'),
     path('api/coupons/add/', views.coupon_add, name='coupon_add'),

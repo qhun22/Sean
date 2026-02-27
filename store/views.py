@@ -4914,3 +4914,42 @@ def coupon_apply(request):
         'new_total_display': f'{int(order_total - discount):,}đ'.replace(',', '.'),
         'name': coupon.name,
     })
+
+
+# ── AI Chatbot ──────────────────────────────────────────────────
+@csrf_exempt
+@require_POST
+def chatbot_api(request):
+    import json as _json
+    import traceback as _tb
+
+    try:
+        body = _json.loads(request.body)
+        message = body.get("message", "").strip()
+    except Exception:
+        return JsonResponse({"message": "Tin nhắn không hợp lệ.", "suggestions": []}, status=400)
+
+    if not message:
+        return JsonResponse({"message": "Vui lòng nhập nội dung.", "suggestions": []}, status=400)
+
+    if len(message) > 500:
+        return JsonResponse({"message": "Tin nhắn quá dài, vui lòng rút gọn lại nhé!", "suggestions": []}, status=400)
+
+    try:
+        from .chatbot_service import ChatbotService
+        user = request.user if hasattr(request, 'user') and request.user.is_authenticated else None
+        service = ChatbotService()
+        result = service.process_message(message, user=user)
+        return JsonResponse(result)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).exception("Chatbot API error")
+        if settings.DEBUG:
+            return JsonResponse({
+                "message": f"[DEBUG] Lỗi: {type(e).__name__}: {e}",
+                "suggestions": [],
+            }, status=200)
+        return JsonResponse({
+            "message": "Xin lỗi, hệ thống đang gặp sự cố. Vui lòng thử lại sau! 🙏",
+            "suggestions": ["Tư vấn chọn máy", "Gặp nhân viên"],
+        }, status=200)

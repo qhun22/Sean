@@ -6,3 +6,4 @@ tzdata==2025.3
 django-allauth==0.63.8
 requests==2.31.0
 python-dotenv==1.2.1
+httpx==0.28.1

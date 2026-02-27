@@ -21,6 +21,9 @@
     <link href="https://cdn.jsdelivr.net/npm/remixicon@4.6.0/fonts/remixicon.css" rel="stylesheet">
     
     {% block extra_css %}{% endblock %}
+
+    <!-- Chatbot CSS -->
+    <link rel="stylesheet" href="{% static 'css/chatbot.css' %}">
     
     <!-- Load Toast JS early -->
     <script src="{% static 'js/toast.js' %}"></script>
@@ -479,6 +482,36 @@
 
     <!-- JavaScript Files -->
     <script src="{% static 'js/compare.js' %}"></script>
+
+    <!-- AI Chatbot Widget -->
+    <div id="qh-chat-window" class="qh-chat-window">
+        <div class="qh-chat-header">
+            <div class="qh-chat-avatar"><i class="ri-robot-2-line"></i></div>
+            <div class="qh-chat-header-info">
+                <h6>QHUN22 AI</h6>
+                <small>Trợ lý mua sắm thông minh</small>
+            </div>
+            <button id="qh-chat-close" class="qh-chat-header-close" title="Đóng">
+                <i class="ri-close-line"></i>
+            </button>
+        </div>
+        <div id="qh-chat-messages" class="qh-chat-messages"></div>
+        <div id="qh-chat-typing" class="qh-chat-typing">
+            <div class="qh-chat-msg-avatar" style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--qh-primary),var(--qh-secondary));display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;flex-shrink:0;">
+                <i class="ri-robot-2-line"></i>
+            </div>
+            <div class="qh-chat-typing-dots"><span></span><span></span><span></span></div>
+        </div>
+        <div class="qh-chat-input-area">
+            <input id="qh-chat-input" class="qh-chat-input" type="text" placeholder="Nhập tin nhắn..." maxlength="500" autocomplete="off">
+            <button id="qh-chat-send" class="qh-chat-send" title="Gửi"><i class="ri-send-plane-2-fill"></i></button>
+        </div>
+    </div>
+    <button id="qh-chat-fab" class="qh-chat-fab" title="Chat với AI">
+        <i class="ri-chat-smile-3-line qh-chat-fab-open"></i>
+        <i class="ri-close-line qh-chat-fab-close"></i>
+    </button>
+    <script src="{% static 'js/chatbot.js' %}"></script>
     
     {% block extra_js %}{% endblock %}
 </body>
