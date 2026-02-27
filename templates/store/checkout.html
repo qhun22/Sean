@@ -146,58 +146,6 @@
                     Bạn đang chọn hình thức thanh toán <strong>Thanh toán khi nhận hàng (COD)</strong>
                 </div>
 
-                <!-- VietQR Payment Box -->
-                <div class="qh-checkout-qr-box" id="vietqrBox" style="display:none;">
-                    <!-- QR Content -->
-                    <div id="vietqrContent">
-                        <div class="qh-checkout-qr-header">
-                            <i class="ri-qr-code-line"></i> Quét mã QR để thanh toán
-                        </div>
-                        <div class="qh-checkout-qr-body">
-                            <div class="qh-checkout-qr-img">
-                                <img id="vietqrImage" src="" alt="VietQR">
-                            </div>
-                            <div class="qh-checkout-qr-info">
-                                <div class="qh-checkout-qr-row">
-                                    <span>Ngân hàng</span>
-                                    <strong>Techcombank</strong>
-                                </div>
-                                <div class="qh-checkout-qr-row">
-                                    <span>Chủ tài khoản</span>
-                                    <strong>TRUONG QUANG HUY</strong>
-                                </div>
-                                <div class="qh-checkout-qr-row">
-                                    <span>Số tài khoản</span>
-                                    <strong>22100588888888</strong>
-                                </div>
-                                <div class="qh-checkout-qr-row">
-                                    <span>Số tiền</span>
-                                    <strong class="qh-qr-amount" id="vietqrAmount">0đ</strong>
-                                </div>
-                                <div class="qh-checkout-qr-row">
-                                    <span>Nội dung CK</span>
-                                    <strong id="vietqrCode">QH...</strong>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="qh-checkout-qr-footer">
-                            <div class="qh-checkout-qr-timer">
-                                <i class="ri-time-line"></i> Thời gian còn lại: <span id="vietqrTimer">15:00</span>
-                            </div>
-                            <div class="qh-checkout-qr-notice">
-                                Sau khi chuyển khoản hệ thống sẽ tự động cập nhập. Bạn chờ một chút nhé !
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Success State -->
-                    <div class="qh-checkout-qr-success" id="vietqrSuccess" style="display:none;">
-                        <div class="qh-checkout-qr-success-icon">
-                            <i class="ri-checkbox-circle-fill"></i>
-                        </div>
-                        <div class="qh-checkout-qr-success-title">Thanh toán thành công!</div>
-                        <div class="qh-checkout-qr-success-desc">Bây giờ bạn có thể ấn đặt hàng.</div>
-                    </div>
-                </div>
             </div>
 
         </div>
@@ -263,10 +211,9 @@
 <script>
     var QH_CHECKOUT_TOTAL = {{ total }};
     var QH_CSRF_TOKEN = '{{ csrf_token }}';
-    var QH_QR_CREATE_URL = '{% url "store:qr_payment_create" %}';
-    var QH_QR_STATUS_URL = '{% url "store:qr_payment_status" %}';
     var QH_VNPAY_CREATE_URL = '{% url "store:vnpay_create" %}';
     var QH_PLACE_ORDER_URL = '{% url "store:place_order" %}';
+    var QH_VIETQR_CREATE_ORDER_URL = '{% url "store:vietqr_create_order" %}';
     var QH_CHECKOUT_ITEMS_PARAM = '{{ items_param }}';
 </script>
 <script src="{% static 'js/checkout.js' %}"></script>

@@ -616,6 +616,7 @@
     font-size: 12px;
     font-weight: 600;
 }
+.qh-pf-status.awaiting_payment { background: #fef9c3; color: #854d0e; }
 .qh-pf-status.pending    { background: #fef3c7; color: #d97706; }
 .qh-pf-status.processing { background: #dbeafe; color: #2563eb; }
 .qh-pf-status.shipped    { background: #e0e7ff; color: #4f46e5; }
@@ -916,7 +917,8 @@
                     </div>
                     <div class="qh-pf-order-right">
                         <span class="qh-pf-status {{ order.status }}">
-                            {% if order.status == 'pending' %}Chờ xử lý
+                            {% if order.status == 'awaiting_payment' %}Chờ thanh toán
+                            {% elif order.status == 'pending' %}Chờ xử lý
                             {% elif order.status == 'processing' %}Đang xử lý
                             {% elif order.status == 'shipped' %}Đang giao
                             {% elif order.status == 'delivered' %}Đã giao

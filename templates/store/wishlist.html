@@ -149,7 +149,6 @@
                 <!-- Out of Stock -->
                 {% if product.stock == 0 %}
                 <div class="out-of-stock-overlay"></div>
-                <span class="out-of-stock-badge">Hết hàng</span>
                 {% endif %}
             </div>
 
@@ -293,8 +292,14 @@ function toggleWishlist(event, button, productId) {
             }
             {% endif %}
         } else if (data.require_login) {
-            if (confirm(data.message + '. Bạn có muốn đăng nhập không?')) {
-                window.location.href = '{% url "store:login" %}';
+            if (window.QHConfirm) {
+                QHConfirm.show(data.message + '. Bạn có muốn đăng nhập không?', function() {
+                    window.location.href = '{% url "store:login" %}';
+                });
+            } else {
+                if (confirm(data.message + '. Bạn có muốn đăng nhập không?')) {
+                    window.location.href = '{% url "store:login" %}';
+                }
             }
         } else {
             if (window.QHToast) {
