@@ -128,6 +128,7 @@ class Brand(models.Model):
 class HangingProduct(models.Model):
     """Sản phẩm treo (hiển trang chủ thị trên)"""
     brand = models.ForeignKey(Brand, on_delete=models.SET_NULL, related_name='hanging_products', verbose_name='Hãng sản xuất', null=True, blank=True)
+    product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True, related_name='hanging_products', verbose_name='Sản phẩm liên kết')
     name = models.CharField(max_length=200, verbose_name='Tên sản phẩm')
     image_url = models.URLField(blank=True, null=True, verbose_name='URL Ảnh bên ngoài')
     image_local = models.ImageField(upload_to='hanging_products/', blank=True, null=True, verbose_name='Ảnh sản phẩm')
