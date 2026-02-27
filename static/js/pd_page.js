@@ -183,6 +183,43 @@ function updatePriceDisplay() {
         origEl.style.display = 'none';
     }
 
+    // Cập nhật trạng thái nút theo tồn kho
+    var cartBtn = document.querySelector('.pd-btn-cart');
+    var buyBtn = document.querySelector('.pd-btn-buy');
+    var stockBadge = document.getElementById('pdStockBadge');
+    
+    if (variant.stock_quantity <= 0) {
+        // Hết hàng
+        if (cartBtn) {
+            cartBtn.disabled = true;
+            cartBtn.style.opacity = '0.5';
+            cartBtn.style.cursor = 'not-allowed';
+        }
+        if (buyBtn) {
+            buyBtn.disabled = true;
+            buyBtn.style.opacity = '0.5';
+            buyBtn.style.cursor = 'not-allowed';
+        }
+        if (stockBadge) {
+            stockBadge.innerHTML = '<span style="color: #ef4444; font-weight: 600;">Hết hàng</span>';
+        }
+    } else {
+        // Còn hàng
+        if (cartBtn) {
+            cartBtn.disabled = false;
+            cartBtn.style.opacity = '1';
+            cartBtn.style.cursor = 'pointer';
+        }
+        if (buyBtn) {
+            buyBtn.disabled = false;
+            buyBtn.style.opacity = '1';
+            buyBtn.style.cursor = 'pointer';
+        }
+        if (stockBadge) {
+            stockBadge.innerHTML = '<span style="color: #10b981; font-weight: 600;">Còn ' + variant.stock_quantity + ' sản phẩm</span>';
+        }
+    }
+
     document.getElementById('pdSku').textContent = variant.sku || '-';
 
     var installEl = document.getElementById('pdInstallment');
@@ -571,6 +608,14 @@ function buyNow() {
         return;
     }
 
+    // Kiểm tra tồn kho
+    if (variant.stock_quantity <= 0) {
+        if (window.QHToast) {
+            QHToast.show('Sản phẩm đã hết hàng!', 'error');
+        }
+        return;
+    }
+
     // Gọi API thêm vào giỏ hàng rồi chuyển trang
     fetch('/cart/add/', {
         method: 'POST',
@@ -632,6 +677,16 @@ function addToCart() {
             QHToast.show('Không tìm thấy sản phẩm', 'error');
         } else {
             alert('Không tìm thấy sản phẩm');
+        }
+        return;
+    }
+
+    // Kiểm tra tồn kho
+    if (variant.stock_quantity <= 0) {
+        if (window.QHToast) {
+            QHToast.show('Sản phẩm đã hết hàng!', 'error');
+        } else {
+            alert('Sản phẩm đã hết hàng!');
         }
         return;
     }

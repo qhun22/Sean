@@ -798,6 +798,36 @@ def cart_add(request):
             'message': 'Sản phẩm không tồn tại',
         }, status=404)
 
+    # Kiểm tra tồn kho trước khi thêm vào giỏ
+    from store.models import ProductDetail
+    available_stock = product.stock  # Mặc định dùng Product.stock
+    
+    # Nếu có color_name và storage, kiểm tra ProductVariant.stock_quantity
+    if color_name and storage:
+        try:
+            detail = ProductDetail.objects.get(product=product)
+            variant = detail.variants.filter(
+                color_name=color_name,
+                storage=storage,
+                is_active=True
+            ).first()
+            if variant:
+                available_stock = variant.stock_quantity
+        except ProductDetail.DoesNotExist:
+            pass
+    
+    if available_stock <= 0:
+        return JsonResponse({
+            'success': False,
+            'message': 'Sản phẩm đã hết hàng!',
+        }, status=400)
+    
+    if quantity > available_stock:
+        return JsonResponse({
+            'success': False,
+            'message': f'Chỉ còn {available_stock} sản phẩm trong kho!',
+        }, status=400)
+
     # Lấy hoặc tạo giỏ hàng cho user
     cart = Cart.get_or_create_for_user(request.user)
 
@@ -810,8 +840,15 @@ def cart_add(request):
     ).first()
 
     if existing_item:
+        # Kiểm tra tổng số lượng mới có vượt quá stock không
+        new_quantity = existing_item.quantity + quantity
+        if new_quantity > available_stock:
+            return JsonResponse({
+                'success': False,
+                'message': f'Không thể thêm! Trong giỏ đã có {existing_item.quantity}, kho chỉ còn {available_stock} sản phẩm.',
+            }, status=400)
         # Tăng số lượng
-        existing_item.quantity += quantity
+        existing_item.quantity = new_quantity
         existing_item.save()
         item = existing_item
         message = 'Đã cập nhật số lượng sản phẩm trong giỏ hàng'
@@ -3741,13 +3778,13 @@ def admin_order_detail(request):
 def admin_order_update_status(request):
     """
     Admin: cập nhật trạng thái đơn hàng hoặc trạng thái hoàn tiền
-    Khi chuyển sang 'delivered' → giảm số lượng tồn kho
+    Khi chuyển sang 'delivered' → giảm số lượng tồn kho (HangingProduct + ProductVariant)
     """
     if not request.user.is_superuser:
         return JsonResponse({'success': False, 'message': 'Không có quyền'}, status=403)
     
     import json
-    from store.models import Order, ProductDetail
+    from store.models import Order, ProductDetail, HangingProduct
     
     try:
         data = json.loads(request.body)
@@ -3768,6 +3805,25 @@ def admin_order_update_status(request):
             if new_status == 'delivered' and old_status != 'delivered':
                 for item in order.items.all():
                     if item.product:
+                        # 1. Giảm stock Product.stock (hiển thị trong dashboard Treo sản phẩm)
+                        try:
+                            product = item.product
+                            if product.stock >= item.quantity:
+                                product.stock -= item.quantity
+                                product.save(update_fields=['stock'])
+                        except Exception:
+                            pass
+                        
+                        # 2. Giảm stock HangingProduct (nếu có liên kết)
+                        try:
+                            hanging = HangingProduct.objects.filter(product=item.product).first()
+                            if hanging and hanging.stock_quantity >= item.quantity:
+                                hanging.stock_quantity -= item.quantity
+                                hanging.save(update_fields=['stock_quantity'])
+                        except Exception:
+                            pass
+                        
+                        # 3. Giảm stock ProductVariant (match theo color + storage)
                         try:
                             detail = ProductDetail.objects.get(product=item.product)
                             variant = detail.variants.filter(
