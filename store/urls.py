@@ -115,6 +115,9 @@ urlpatterns = [
     path('api/refund-history/', views.refund_history, name='refund_history'),
     path('api/refund-detail/<str:order_code>/', views.refund_detail, name='refund_detail'),
 
+    # Product Review
+    path('api/submit-review/', views.submit_review, name='submit_review'),
+
     # Admin Order Management
     path('api/admin/orders/', views.admin_order_list, name='admin_order_list'),
     path('api/admin/order-detail/', views.admin_order_detail, name='admin_order_detail'),

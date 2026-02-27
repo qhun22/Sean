@@ -169,6 +169,164 @@
         </div>
     </div>
     {% endif %}
+
+    <!-- ===== Đánh giá sản phẩm ===== -->
+    <div class="pd-extra-box pd-review-section" style="margin-top: 32px;">
+        <h2 class="pd-extra-title">
+            <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+            Đánh giá sản phẩm
+            {% if review_count > 0 %}
+            <span class="pd-review-summary">{{ avg_rating }}/5 ({{ review_count }} đánh giá)</span>
+            {% endif %}
+        </h2>
+
+        <div class="pd-review-body">
+            <!-- Trung bình sao -->
+            {% if review_count > 0 %}
+            <div class="pd-review-avg">
+                <div class="pd-review-avg-stars">
+                    {% for i in "12345" %}
+                    <svg class="pd-star {% if forloop.counter <= avg_rating %}filled{% endif %}" viewBox="0 0 24 24"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                    {% endfor %}
+                </div>
+                <span class="pd-review-avg-text">{{ avg_rating }} / 5</span>
+                <span class="pd-review-avg-count">({{ review_count }} đánh giá)</span>
+            </div>
+            {% endif %}
+
+            <!-- Form đánh giá -->
+            <div class="pd-review-form-area" id="pdReviewForm">
+                {% if must_login %}
+                <div class="pd-review-login-msg">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                    Vui lòng <a href="{% url 'store:login' %}">đăng nhập</a> để đánh giá sản phẩm.
+                </div>
+                {% elif user_review %}
+                <div class="pd-review-done-msg">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Bạn đã đánh giá sản phẩm này <strong>{{ user_review.rating }} sao</strong>.
+                    <div class="pd-review-done-stars">
+                        {% for i in "12345" %}
+                        <svg class="pd-star {% if forloop.counter <= user_review.rating %}filled{% endif %}" viewBox="0 0 24 24"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% elif can_review %}
+                <div class="pd-review-input">
+                    <p class="pd-review-label">Chọn số sao để đánh giá:</p>
+                    <div class="pd-review-stars" id="pdReviewStars">
+                        {% for i in "12345" %}
+                        <svg class="pd-star-btn" data-value="{{ forloop.counter }}" viewBox="0 0 24 24"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                        {% endfor %}
+                    </div>
+                    <button class="pd-review-submit" id="pdReviewSubmitBtn" disabled>Gửi đánh giá</button>
+                    <div class="pd-review-msg" id="pdReviewMsg"></div>
+                </div>
+                {% else %}
+                <div class="pd-review-login-msg">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Bạn cần mua và nhận hàng thành công để đánh giá sản phẩm này.
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Danh sách đánh giá -->
+            {% if reviews %}
+            <div class="pd-review-list">
+                {% for r in reviews %}
+                <div class="pd-review-item">
+                    <div class="pd-review-user">
+                        <div class="pd-review-avatar">{{ r.user.get_short_name|first }}</div>
+                        <div class="pd-review-user-info">
+                            <span class="pd-review-name">{{ r.user.get_full_name }}</span>
+                            <span class="pd-review-date">{{ r.created_at|date:"d/m/Y H:i" }}</span>
+                        </div>
+                    </div>
+                    <div class="pd-review-rating">
+                        {% for i in "12345" %}
+                        <svg class="pd-star-sm {% if forloop.counter <= r.rating %}filled{% endif %}" viewBox="0 0 24 24"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ===== Sản phẩm liên quan ===== -->
+    {% if related_products %}
+    <div class="pd-extra-box" style="margin-top: 32px;">
+        <h2 class="pd-extra-title">
+            <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+            Sản phẩm liên quan
+        </h2>
+        <div class="pd-related-body">
+            <div class="qh-product-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px;">
+                {% for rp in related_products %}
+                <a href="{% url 'store:product_detail' rp.id %}" class="qh-product-card {% if rp.stock == 0 %}out-of-stock{% endif %}" style="text-decoration: none; color: inherit; display: block;">
+                    <div class="qh-product-image" style="position: relative; aspect-ratio: 1; background: #f5f5f5; overflow: visible;">
+                        {% if rp.image %}
+                        <img src="{{ rp.image.url }}" alt="{{ rp.name }}" style="width: 100%; height: 100%; object-fit: cover;">
+                        {% else %}
+                        <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--qh-text-light);">
+                            <svg style="width: 64px; height: 64px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                        </div>
+                        {% endif %}
+
+                        {% if rp.detail and rp.detail.summary_original_price and rp.detail.summary_original_price > rp.detail.discounted_price and rp.detail.summary_discount_percent > 0 %}
+                        <div class="discount-badge">-{{ rp.detail.summary_discount_percent }}%</div>
+                        {% endif %}
+
+                        {% if rp.stock == 0 %}
+                        <div class="out-of-stock-overlay"></div>
+                        <span class="out-of-stock-badge">Hết hàng</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="qh-product-info" style="padding: 14px;">
+                        <h3 class="qh-product-name" style="font-size: 18px; font-weight: 600; color: var(--qh-text); margin-bottom: 10px; line-height: 1.4; height: 25px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                            {{ rp.name }}
+                        </h3>
+
+                        <div class="qh-product-price" style="margin-bottom: 10px;">
+                            {% if rp.detail and rp.detail.summary_original_price and rp.detail.summary_original_price > rp.detail.discounted_price and rp.detail.summary_discount_percent > 0 %}
+                            <span style="font-size: 14px; color: var(--qh-text-light); text-decoration: line-through; display: block; margin-bottom: 2px;">
+                                {{ rp.detail.summary_original_price|format_price_with_unit }}
+                            </span>
+                            <span style="font-size: 18px; font-weight: 700; color: var(--qh-primary);">
+                                {{ rp.detail.discounted_price|format_price_with_unit }}
+                            </span>
+                            {% else %}
+                            <span style="font-size: 18px; font-weight: 700; color: var(--qh-primary);">
+                                {% if rp.detail %}{{ rp.detail.discounted_price|format_price_with_unit }}{% else %}{{ rp.price|format_price_with_unit }}{% endif %}
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <div style="display: flex; gap: 6px; margin-bottom: 12px;">
+                            {% if rp.stock > 0 %}
+                            <span style="font-size: 13px; color: #10b981; font-weight: 600; background: #d1fae5; padding: 4px 8px; border-radius: 4px; flex: 1; text-align: center;">Còn hàng</span>
+                            <span style="font-size: 13px; color: #f59e0b; font-weight: 600; background: #fef3c7; padding: 4px 8px; border-radius: 4px; flex: 1; text-align: center;">Trả góp 0%</span>
+                            {% else %}
+                            <span style="font-size: 13px; color: #ef4444; font-weight: 600; background: #fee2e2; padding: 4px 8px; border-radius: 4px; flex: 1; text-align: center;">Hết hàng</span>
+                            {% endif %}
+                        </div>
+
+                        <div style="display: flex; gap: 6px;">
+                            <button class="qh-btn qh-btn-outline" style="flex: 1; padding: 8px 4px; font-size: 15px; border: 1px solid var(--qh-border); background: transparent; {% if rp.stock == 0 %}opacity: 0.5;{% endif %}">
+                                Thêm vào so sánh
+                            </button>
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 <!-- Product Content Panel (slide from right, y hệt Thông số kỹ thuật) -->
@@ -257,4 +415,63 @@ function onYouTubeIframeAPIReady() {
 </script>
 {% endif %}
 <script src="{% static 'js/pd_page.js' %}"></script>
+
+{% if can_review %}
+<script>
+(function() {
+    const stars = document.querySelectorAll('#pdReviewStars .pd-star-btn');
+    const submitBtn = document.getElementById('pdReviewSubmitBtn');
+    const msgEl = document.getElementById('pdReviewMsg');
+    let selectedRating = 0;
+
+    stars.forEach(star => {
+        star.addEventListener('mouseenter', function() {
+            const val = parseInt(this.dataset.value);
+            stars.forEach((s, i) => s.classList.toggle('hover', i < val));
+        });
+        star.addEventListener('mouseleave', function() {
+            stars.forEach((s, i) => s.classList.toggle('hover', false));
+            stars.forEach((s, i) => s.classList.toggle('selected', i < selectedRating));
+        });
+        star.addEventListener('click', function() {
+            selectedRating = parseInt(this.dataset.value);
+            stars.forEach((s, i) => s.classList.toggle('selected', i < selectedRating));
+            submitBtn.disabled = false;
+        });
+    });
+
+    submitBtn.addEventListener('click', function() {
+        if (!selectedRating) return;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Đang gửi...';
+
+        const formData = new FormData();
+        formData.append('product_id', productId);
+        formData.append('rating', selectedRating);
+        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}');
+
+        fetch('{% url "store:submit_review" %}', { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    msgEl.textContent = data.message;
+                    msgEl.className = 'pd-review-msg success';
+                    setTimeout(() => location.reload(), 800);
+                } else {
+                    msgEl.textContent = data.message;
+                    msgEl.className = 'pd-review-msg error';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Gửi đánh giá';
+                }
+            })
+            .catch(() => {
+                msgEl.textContent = 'Có lỗi xảy ra, vui lòng thử lại.';
+                msgEl.className = 'pd-review-msg error';
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Gửi đánh giá';
+            });
+    });
+})();
+</script>
+{% endif %}
 {% endblock %}

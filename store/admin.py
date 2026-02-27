@@ -2,9 +2,15 @@
 Cấu hình Django Admin cho ứng dụng store
 """
 from django.contrib import admin
-from store.models import VNPayPayment
+from store.models import VNPayPayment, ProductReview
 
-# Register your models here if you have any
+
+@admin.register(ProductReview)
+class ProductReviewAdmin(admin.ModelAdmin):
+    list_display = ['user', 'product', 'rating', 'created_at']
+    list_filter = ['rating', 'created_at']
+    search_fields = ['user__email', 'product__name']
+    readonly_fields = ['created_at']
 
 
 @admin.register(VNPayPayment)
