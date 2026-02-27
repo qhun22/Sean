@@ -1,3 +1,9 @@
+/* Hide horizontal scrollbar globally */
+html,
+body {
+    overflow-x: hidden !important;
+}
+
 /*
  * QHUN22 Mobile - Custom Styles
  * Màu sắc thương hiệu: #A9CCF0 (xanh pastel), #D3BAFF (tím pastel)
