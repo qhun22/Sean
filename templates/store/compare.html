@@ -1,0 +1,338 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}So sánh sản phẩm - QHUN22 Mobile{% endblock %}
+
+{% block content %}
+<style>
+/* ==================== COMPARE PAGE ==================== */
+
+/* Header */
+.qh-compare-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+.qh-compare-header h1 {
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--qh-text);
+    margin: 0;
+}
+.qh-compare-back {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--qh-bg);
+    color: var(--qh-text-light);
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+.qh-compare-back:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(169, 204, 240, 0.3);
+    color: var(--qh-text);
+}
+
+/* Columns grid */
+.qh-compare-grid {
+    display: grid;
+    grid-template-columns: repeat({{ products|length }}, 1fr);
+    gap: 20px;
+    align-items: start;
+}
+
+/* Each product column */
+.qh-compare-col {
+    background: var(--qh-white);
+    border-radius: var(--qh-radius);
+    box-shadow: 0 4px 16px var(--qh-shadow);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+/* Product card header */
+.qh-compare-col-header {
+    padding: 20px;
+    text-align: center;
+    border-bottom: 2px solid var(--qh-border);
+    position: relative;
+}
+.qh-compare-col-img {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: var(--qh-radius);
+    margin: 0 auto 12px;
+    display: block;
+    background: var(--qh-bg);
+}
+.qh-compare-col-img-empty {
+    width: 120px;
+    height: 120px;
+    border-radius: var(--qh-radius);
+    background: var(--qh-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+    color: #ccc;
+}
+.qh-compare-col-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--qh-text);
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+.qh-compare-col-price {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--qh-primary-dark);
+    margin-bottom: 2px;
+}
+.qh-compare-col-oldprice {
+    font-size: 13px;
+    color: #999;
+    text-decoration: line-through;
+}
+.qh-compare-col-remove {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--qh-border);
+    background: var(--qh-white);
+    color: var(--qh-text-light);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    transition: all 0.3s ease;
+}
+.qh-compare-col-remove:hover {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #fca5a5;
+    transform: scale(1.1);
+}
+
+/* Spec groups (reuse product detail styles) */
+.qh-compare-spec-group {
+    padding: 0;
+}
+.qh-compare-spec-group-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--qh-white);
+    padding: 10px 20px;
+    margin: 0;
+    background: linear-gradient(135deg, var(--qh-primary), var(--qh-secondary));
+}
+.qh-compare-spec-group table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.qh-compare-spec-group tr {
+    border-bottom: 1px solid #f1f1f1;
+}
+.qh-compare-spec-group tr:last-child {
+    border-bottom: 1px solid var(--qh-border);
+}
+.qh-compare-spec-group td {
+    padding: 10px 20px;
+    font-size: 13px;
+    vertical-align: top;
+    font-family: 'Signika', sans-serif;
+}
+.qh-compare-spec-group td:first-child {
+    width: 45%;
+    color: var(--qh-text-light);
+    font-weight: 400;
+}
+.qh-compare-spec-group td:last-child {
+    color: var(--qh-text);
+    font-weight: 500;
+}
+
+/* Empty state */
+.qh-compare-col-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: #999;
+    font-size: 14px;
+}
+
+/* Filter bar */
+.qh-compare-filter {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+.qh-compare-filter label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--qh-text);
+}
+.qh-compare-filter select {
+    height: 40px;
+    padding: 0 36px 0 14px;
+    border: 2px solid var(--qh-border);
+    border-radius: var(--qh-radius-sm);
+    font-family: 'Signika', sans-serif;
+    font-size: 14px;
+    color: var(--qh-text);
+    background: var(--qh-white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;
+    appearance: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+.qh-compare-filter select:focus {
+    outline: none;
+    border-color: var(--qh-primary);
+    box-shadow: 0 4px 12px rgba(169, 204, 240, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .qh-compare-grid {
+        grid-template-columns: 1fr;
+    }
+    .qh-compare-header h1 {
+        font-size: 22px;
+    }
+}
+</style>
+
+<!-- Header -->
+<div class="qh-compare-header">
+    <h1>So sánh sản phẩm ({{ products|length }})</h1>
+</div>
+
+<!-- Filter -->
+<div class="qh-compare-filter">
+    <label for="qh-compare-filter-select"><i class="ri-filter-3-line"></i> Lọc thông số:</label>
+    <select id="qh-compare-filter-select" onchange="filterSpecs(this.value)">
+        <option value="all">Tất cả</option>
+        <option value="same">Chỉ giống nhau</option>
+        <option value="diff">Chỉ khác nhau</option>
+    </select>
+</div>
+
+<!-- Product Columns -->
+<div class="qh-compare-grid">
+    {% for item in compare_data %}
+    <div class="qh-compare-col">
+        <!-- Product Header -->
+        <div class="qh-compare-col-header">
+            <button class="qh-compare-col-remove" onclick="removeAndReload({{ item.product.id }})" title="Xóa khỏi so sánh">
+                <i class="ri-close-line"></i>
+            </button>
+            {% if item.product.image %}
+            <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" class="qh-compare-col-img">
+            {% else %}
+            <div class="qh-compare-col-img-empty">
+                <i class="ri-image-line" style="font-size:32px;"></i>
+            </div>
+            {% endif %}
+            <div class="qh-compare-col-name">{{ item.product.name }}</div>
+            {% if item.product.detail and item.product.detail.summary_original_price and item.product.detail.summary_original_price > item.product.detail.discounted_price and item.product.detail.summary_discount_percent > 0 %}
+            <div class="qh-compare-col-oldprice">{{ item.product.detail.summary_original_price|format_price_with_unit }}</div>
+            {% endif %}
+            <div class="qh-compare-col-price">
+                {% if item.product.detail %}{{ item.product.detail.discounted_price|format_price_with_unit }}{% else %}{{ item.product.price|format_price_with_unit }}{% endif %}
+            </div>
+        </div>
+
+        <!-- Spec Groups -->
+        {% for group in item.groups %}
+        <div class="qh-compare-spec-group">
+            <div class="qh-compare-spec-group-title">{{ group.title }}</div>
+            <table>
+                {% for spec in group.items %}
+                <tr class="qh-spec-row" data-label="{{ spec.label }}">
+                    <td>{{ spec.label }}</td>
+                    <td class="qh-spec-val">{{ spec.value }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        {% empty %}
+        <div class="qh-compare-col-empty">
+            <i class="ri-information-line" style="font-size:24px;display:block;margin-bottom:8px;color:#ccc;"></i>
+            Chưa có thông số kỹ thuật
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function filterSpecs(mode) {
+    const cols = document.querySelectorAll('.qh-compare-col');
+    if (cols.length < 2) return;
+
+    // Build lookup: label → [value, value, ...]
+    const labelValues = {};
+    cols.forEach(col => {
+        col.querySelectorAll('.qh-spec-row').forEach(row => {
+            const label = row.dataset.label;
+            const val = row.querySelector('.qh-spec-val').innerText.trim();
+            if (!labelValues[label]) labelValues[label] = [];
+            labelValues[label].push(val);
+        });
+    });
+
+    // Determine which labels are same vs different
+    const labelStatus = {};
+    for (const [label, vals] of Object.entries(labelValues)) {
+        labelStatus[label] = new Set(vals).size === 1 ? 'same' : 'diff';
+    }
+
+    // Show/hide rows
+    cols.forEach(col => {
+        col.querySelectorAll('.qh-spec-row').forEach(row => {
+            const label = row.dataset.label;
+            const status = labelStatus[label];
+            if (mode === 'all') {
+                row.style.display = '';
+            } else {
+                row.style.display = (status === mode) ? '' : 'none';
+            }
+        });
+
+        // Show/hide group titles
+        col.querySelectorAll('.qh-compare-spec-group').forEach(group => {
+            const rows = group.querySelectorAll('.qh-spec-row');
+            const hasVisible = Array.from(rows).some(r => r.style.display !== 'none');
+            const title = group.querySelector('.qh-compare-spec-group-title');
+            if (title) title.style.display = hasVisible ? '' : 'none';
+            const table = group.querySelector('table');
+            if (table) table.style.display = hasVisible ? '' : 'none';
+        });
+    });
+}
+
+function removeAndReload(productId) {
+    QHCompare.removeFromCompare(productId);
+    const items = QHCompare.getItems();
+    if (items.length < 2) {
+        window.location.href = '/';
+    } else {
+        const ids = items.map(i => i.id).join(',');
+        window.location.href = '/compare/?ids=' + ids;
+    }
+}
+</script>
+{% endblock %}

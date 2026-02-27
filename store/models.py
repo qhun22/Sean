@@ -548,6 +548,8 @@ class Order(models.Model):
     total_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0, verbose_name='Tổng tiền')
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='cod', verbose_name='Phương thức TT')
     vnpay_order_code = models.CharField(max_length=50, blank=True, null=True, verbose_name='Mã VNPay')
+    coupon_code = models.CharField(max_length=50, blank=True, default='', verbose_name='Mã giảm giá')
+    discount_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0, verbose_name='Số tiền giảm')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='Trạng thái')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Ngày cập nhật')
@@ -781,3 +783,54 @@ class ProductContent(models.Model):
     
     def __str__(self):
         return f"Nội dung - {self.product.name}"
+
+
+class Coupon(models.Model):
+    """Mã giảm giá"""
+    DISCOUNT_TYPE_CHOICES = [
+        ('percentage', 'Phần trăm (%)'),
+        ('fixed', 'Số tiền cố định (đ)'),
+    ]
+    
+    code = models.CharField(max_length=50, unique=True, verbose_name='Mã giảm giá')
+    description = models.CharField(max_length=255, blank=True, verbose_name='Mô tả')
+    discount_type = models.CharField(max_length=20, choices=DISCOUNT_TYPE_CHOICES, default='percentage', verbose_name='Loại giảm giá')
+    discount_value = models.DecimalField(max_digits=15, decimal_places=0, default=0, verbose_name='Giá trị giảm')
+    min_order_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0, verbose_name='Đơn tối thiểu')
+    max_discount = models.DecimalField(max_digits=15, decimal_places=0, default=0, verbose_name='Giảm tối đa', help_text='Chỉ áp dụng cho loại phần trăm. 0 = không giới hạn')
+    usage_limit = models.PositiveIntegerField(default=0, verbose_name='Giới hạn sử dụng', help_text='0 = không giới hạn')
+    used_count = models.PositiveIntegerField(default=0, verbose_name='Đã sử dụng')
+    is_active = models.BooleanField(default=True, verbose_name='Kích hoạt')
+    start_date = models.DateTimeField(verbose_name='Ngày bắt đầu')
+    end_date = models.DateTimeField(verbose_name='Ngày kết thúc')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
+    
+    class Meta:
+        verbose_name = 'Mã giảm giá'
+        verbose_name_plural = 'Mã giảm giá'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return self.code
+    
+    def is_valid(self):
+        from django.utils import timezone
+        now = timezone.now()
+        if not self.is_active:
+            return False
+        if now < self.start_date or now > self.end_date:
+            return False
+        if self.usage_limit > 0 and self.used_count >= self.usage_limit:
+            return False
+        return True
+    
+    def calculate_discount(self, order_total):
+        if order_total < self.min_order_amount:
+            return Decimal('0')
+        if self.discount_type == 'percentage':
+            discount = order_total * self.discount_value / Decimal('100')
+            if self.max_discount > 0:
+                discount = min(discount, self.max_discount)
+        else:
+            discount = self.discount_value
+        return min(discount, order_total)

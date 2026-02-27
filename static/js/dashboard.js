@@ -231,6 +231,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const productContentSection = document.getElementById('product-content-section');
     const qrApprovalSection = document.getElementById('qr-approval-section');
     const adminOrdersSection = document.getElementById('admin-orders-section');
+    const couponsSection = document.getElementById('coupons-section');
 
     if (statsSection) statsSection.style.display = (currentSection === 'stats') ? 'block' : 'none';
     if (usersSection) usersSection.style.display = (currentSection === 'users') ? 'block' : 'none';
@@ -252,6 +253,9 @@ document.addEventListener('DOMContentLoaded', function () {
     if (adminOrdersSection) {
         adminOrdersSection.style.display = (currentSection === 'admin-orders') ? 'block' : 'none';
     }
+    if (couponsSection) {
+        couponsSection.style.display = (currentSection === 'coupons') ? 'block' : 'none';
+    }
 
     // Load SKU list if on SKU section (hoặc khi vào phần Ảnh sản phẩm để dùng dropdown SKU)
     if (currentSection === 'sku' || currentSection === 'product-images') {
@@ -268,8 +272,12 @@ document.addEventListener('DOMContentLoaded', function () {
     // Load admin orders if on admin-orders section
     if (currentSection === 'admin-orders') {
         loadAdminOrders();
-        // Activate default "Tất cả" filter button
         filterAdminOrders('all');
+    }
+
+    // Load coupons if on coupons section
+    if (currentSection === 'coupons') {
+        loadCouponList();
     }
 
     // Add Brand Form Submit
@@ -3261,6 +3269,161 @@ function _getPaymentBadge(key, display) {
     var c = colors[key] || { bg: '#f1f5f9', text: '#334155' };
     return '<span style="display:inline-block; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:600; background:' + c.bg + '; color:' + c.text + ';">' + _escHtml(display) + '</span>';
 }
+
+// ==================== COUPON MANAGEMENT ====================
+
+function loadCouponList() {
+    var tbody = document.getElementById('couponTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="10" style="padding:40px 16px;text-align:center;color:#94a3b8;font-size:14px;">Đang tải...</td></tr>';
+    
+    fetch(window.couponListUrl, {
+        headers: { 'X-CSRFToken': window.csrfToken }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (!data.success) {
+            tbody.innerHTML = '<tr><td colspan="10" style="padding:40px 16px;text-align:center;color:#ef4444;font-size:14px;">Lỗi: ' + (data.message || 'Không thể tải') + '</td></tr>';
+            return;
+        }
+        var coupons = data.coupons || [];
+        if (coupons.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" style="padding:40px 16px;text-align:center;color:#94a3b8;font-size:14px;">Chưa có mã giảm giá nào</td></tr>';
+            return;
+        }
+        var html = '';
+        coupons.forEach(function(c, idx) {
+            var typeLabel = c.discount_type === 'percentage' ? c.discount_value + '%' : Number(c.discount_value).toLocaleString('vi-VN') + ' đ';
+            var statusBg = c.is_valid ? '#d1fae5' : '#fee2e2';
+            var statusColor = c.is_valid ? '#065f46' : '#991b1b';
+            var statusText = c.is_valid ? 'Còn hiệu lực' : (c.is_active ? 'Hết hạn/hết lượt' : 'Tắt');
+            var usageText = c.used_count + (c.usage_limit > 0 ? '/' + c.usage_limit : '/∞');
+            
+            html += '<tr style="border-bottom:1px solid #f1f5f9;">'
+                + '<td style="padding:12px 14px;text-align:center;font-size:14px;color:#64748b;">' + (idx + 1) + '</td>'
+                + '<td style="padding:12px 14px;font-size:14px;font-weight:600;color:#1e293b;white-space:nowrap;">' + c.code + '</td>'
+                + '<td style="padding:12px 14px;font-size:13px;color:#64748b;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (c.description || '-') + '</td>'
+                + '<td style="padding:12px 14px;text-align:center;font-size:13px;color:#64748b;">' + (c.discount_type === 'percentage' ? '%' : 'đ') + '</td>'
+                + '<td style="padding:12px 14px;text-align:right;font-size:14px;font-weight:500;color:#1e293b;">' + typeLabel + '</td>'
+                + '<td style="padding:12px 14px;text-align:right;font-size:13px;color:#64748b;">' + (c.min_order_amount > 0 ? Number(c.min_order_amount).toLocaleString('vi-VN') + ' đ' : '-') + '</td>'
+                + '<td style="padding:12px 14px;text-align:center;font-size:13px;color:#64748b;">' + usageText + '</td>'
+                + '<td style="padding:12px 14px;text-align:center;"><span style="padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;background:' + statusBg + ';color:' + statusColor + ';">' + statusText + '</span></td>'
+                + '<td style="padding:12px 14px;font-size:12px;color:#64748b;white-space:nowrap;">' + c.start_date + '<br>' + c.end_date + '</td>'
+                + '<td style="padding:12px 14px;text-align:center;white-space:nowrap;">'
+                + '<button type="button" onclick="editCoupon(' + c.id + ')" style="padding:6px 12px;background:#dbeafe;color:#1e40af;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-family:\'Signika\',sans-serif;font-weight:500;margin-right:4px;">Sửa</button>'
+                + '<button type="button" onclick="deleteCoupon(' + c.id + ',\'' + c.code + '\')" style="padding:6px 12px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-family:\'Signika\',sans-serif;font-weight:500;">Xóa</button>'
+                + '</td>'
+                + '</tr>';
+        });
+        tbody.innerHTML = html;
+    })
+    .catch(function(err) {
+        tbody.innerHTML = '<tr><td colspan="10" style="padding:40px 16px;text-align:center;color:#ef4444;font-size:14px;">Lỗi kết nối</td></tr>';
+    });
+}
+
+function openAddCouponModal() {
+    document.getElementById('couponModalTitle').textContent = 'Thêm mã giảm giá';
+    document.getElementById('couponEditId').value = '';
+    document.getElementById('couponCode').value = '';
+    document.getElementById('couponCode').disabled = false;
+    document.getElementById('couponDescription').value = '';
+    document.getElementById('couponDiscountType').value = 'percentage';
+    document.getElementById('couponDiscountValue').value = '';
+    document.getElementById('couponMaxDiscount').value = '';
+    document.getElementById('couponMinOrder').value = '';
+    document.getElementById('couponUsageLimit').value = '';
+    document.getElementById('couponStartDate').value = '';
+    document.getElementById('couponEndDate').value = '';
+    document.getElementById('couponIsActive').checked = true;
+    document.getElementById('couponModal').style.display = 'flex';
+}
+
+function closeCouponModal() {
+    document.getElementById('couponModal').style.display = 'none';
+}
+
+function editCoupon(id) {
+    fetch(window.couponListUrl + '?id=' + id, {
+        headers: { 'X-CSRFToken': window.csrfToken }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (!data.success) return alert(data.message || 'Lỗi');
+        var c = data.coupon;
+        document.getElementById('couponModalTitle').textContent = 'Sửa mã giảm giá';
+        document.getElementById('couponEditId').value = c.id;
+        document.getElementById('couponCode').value = c.code;
+        document.getElementById('couponCode').disabled = true;
+        document.getElementById('couponDescription').value = c.description || '';
+        document.getElementById('couponDiscountType').value = c.discount_type;
+        document.getElementById('couponDiscountValue').value = c.discount_value;
+        document.getElementById('couponMaxDiscount').value = c.max_discount || '';
+        document.getElementById('couponMinOrder').value = c.min_order_amount || '';
+        document.getElementById('couponUsageLimit').value = c.usage_limit || '';
+        document.getElementById('couponStartDate').value = c.start_date_raw || '';
+        document.getElementById('couponEndDate').value = c.end_date_raw || '';
+        document.getElementById('couponIsActive').checked = c.is_active;
+        document.getElementById('couponModal').style.display = 'flex';
+    });
+}
+
+function saveCoupon() {
+    var editId = document.getElementById('couponEditId').value;
+    var fd = new FormData();
+    fd.append('code', document.getElementById('couponCode').value.trim().toUpperCase());
+    fd.append('description', document.getElementById('couponDescription').value.trim());
+    fd.append('discount_type', document.getElementById('couponDiscountType').value);
+    fd.append('discount_value', document.getElementById('couponDiscountValue').value || '0');
+    fd.append('max_discount', document.getElementById('couponMaxDiscount').value || '0');
+    fd.append('min_order_amount', document.getElementById('couponMinOrder').value || '0');
+    fd.append('usage_limit', document.getElementById('couponUsageLimit').value || '0');
+    fd.append('start_date', document.getElementById('couponStartDate').value);
+    fd.append('end_date', document.getElementById('couponEndDate').value);
+    fd.append('is_active', document.getElementById('couponIsActive').checked ? '1' : '0');
+    
+    var url = editId ? window.couponEditUrl : window.couponAddUrl;
+    if (editId) fd.append('id', editId);
+    
+    fetch(url, {
+        method: 'POST',
+        body: fd,
+        headers: { 'X-CSRFToken': window.csrfToken }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.success) {
+            closeCouponModal();
+            loadCouponList();
+        } else {
+            alert(data.message || 'Lỗi khi lưu');
+        }
+    })
+    .catch(function() { alert('Lỗi kết nối'); });
+}
+
+function deleteCoupon(id, code) {
+    if (!confirm('Bạn có chắc muốn xóa mã giảm giá "' + code + '"?')) return;
+    var fd = new FormData();
+    fd.append('id', id);
+    
+    fetch(window.couponDeleteUrl, {
+        method: 'POST',
+        body: fd,
+        headers: { 'X-CSRFToken': window.csrfToken }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.success) {
+            loadCouponList();
+        } else {
+            alert(data.message || 'Lỗi khi xóa');
+        }
+    })
+    .catch(function() { alert('Lỗi kết nối'); });
+}
+
+// ==================== END COUPON MANAGEMENT ====================
 
 function _renderStatusButtons(footer, currentStatus, orderId) {
     var statuses = [

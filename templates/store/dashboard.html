@@ -360,6 +360,12 @@
                 </svg>
                 Đơn hàng
             </li>
+            <li class="qh-sidebar-item" data-section="coupons" onclick="window.location.href='?section=coupons'">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                </svg>
+                Mã giảm giá
+            </li>
         </ul>
         <div class="qh-sidebar-pagination" id="qhSidebarPagination" style="display: none;"></div>
     </div>
@@ -1134,6 +1140,121 @@
             </div>
         </div>
 
+        <!-- ==================== COUPONS SECTION ==================== -->
+        <div id="coupons-section" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <h1 class="qh-content-title">Mã giảm giá</h1>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" onclick="loadCouponList()" style="background: #3b82f6; color: white; border: none; border-radius: 8px; padding: 10px 16px; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; font-family: 'Signika', sans-serif;">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        Làm mới
+                    </button>
+                    <button type="button" onclick="openAddCouponModal()" style="background: #22c55e; color: white; border: none; border-radius: 8px; padding: 10px 16px; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; font-family: 'Signika', sans-serif;">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        Thêm mã
+                    </button>
+                </div>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <thead>
+                        <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                            <th style="padding: 12px 14px; text-align: center; font-size: 13px; font-weight: 600; color: #64748b; white-space: nowrap;">STT</th>
+                            <th style="padding: 12px 14px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b; white-space: nowrap;">Mã</th>
+                            <th style="padding: 12px 14px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b; white-space: nowrap;">Mô tả</th>
+                            <th style="padding: 12px 14px; text-align: center; font-size: 13px; font-weight: 600; color: #64748b; white-space: nowrap;">Loại</th>
+                            <th style="padding: 12px 14px; text-align: right; font-size: 13px; font-weight: 600; color: #64748b; white-space: nowrap;">Giá trị</th>
+                            <th style="padding: 12px 14px; text-align: right; font-size: 13px; font-weight: 600; color: #64748b; white-space: nowrap;">Đơn tối thiểu</th>
+                            <th style="padding: 12px 14px; text-align: center; font-size: 13px; font-weight: 600; color: #64748b; white-space: nowrap;">Đã dùng</th>
+                            <th style="padding: 12px 14px; text-align: center; font-size: 13px; font-weight: 600; color: #64748b; white-space: nowrap;">Trạng thái</th>
+                            <th style="padding: 12px 14px; text-align: left; font-size: 13px; font-weight: 600; color: #64748b; white-space: nowrap;">Thời gian</th>
+                            <th style="padding: 12px 14px; text-align: center; font-size: 13px; font-weight: 600; color: #64748b; white-space: nowrap;">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="couponTableBody">
+                        <tr>
+                            <td colspan="10" style="padding: 40px 16px; text-align: center; color: #94a3b8; font-size: 14px;">
+                                Đang tải dữ liệu...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Add/Edit Coupon Modal -->
+        <div id="couponModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+            <div style="background: white; border-radius: 12px; width: 560px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #e2e8f0; flex-shrink: 0;">
+                    <h3 id="couponModalTitle" style="font-size: 18px; font-weight: 600; font-family: 'Signika', sans-serif; margin: 0; color: #1e293b;">Thêm mã giảm giá</h3>
+                    <button type="button" onclick="closeCouponModal()" style="padding: 8px 16px; background: #f1f5f9; color: #334155; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif;">Đóng</button>
+                </div>
+                <div style="padding: 20px 24px; overflow-y: auto; flex: 1; scrollbar-width: thin; scrollbar-color: #c1c1c1 #f8fafc;">
+                    <form id="couponForm">
+                        <input type="hidden" id="couponEditId" value="">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+                            <div>
+                                <label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Mã giảm giá *</label>
+                                <input type="text" id="couponCode" placeholder="VD: SALE50" required style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif; text-transform: uppercase;">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Loại giảm giá *</label>
+                                <select id="couponDiscountType" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+                                    <option value="percentage">Phần trăm (%)</option>
+                                    <option value="fixed">Số tiền cố định (đ)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 14px;">
+                            <label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Mô tả</label>
+                            <input type="text" id="couponDescription" placeholder="VD: Giảm 50% cho đơn từ 10 triệu" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+                            <div>
+                                <label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Giá trị giảm *</label>
+                                <input type="number" id="couponDiscountValue" placeholder="VD: 50" min="0" required style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Giảm tối đa (đ)</label>
+                                <input type="number" id="couponMaxDiscount" placeholder="0 = không giới hạn" min="0" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+                            <div>
+                                <label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Đơn tối thiểu (đ)</label>
+                                <input type="number" id="couponMinOrder" placeholder="0" min="0" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Giới hạn sử dụng</label>
+                                <input type="number" id="couponUsageLimit" placeholder="0 = không giới hạn" min="0" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+                            <div>
+                                <label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Ngày bắt đầu *</label>
+                                <input type="datetime-local" id="couponStartDate" required style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif;">Ngày kết thúc *</label>
+                                <input type="datetime-local" id="couponEndDate" required style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; font-family: 'Signika', sans-serif;">
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 14px;">
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; color: #333; font-family: 'Signika', sans-serif; cursor: pointer;">
+                                <input type="checkbox" id="couponIsActive" checked style="width: 18px; height: 18px; accent-color: #3b82f6;">
+                                Kích hoạt mã giảm giá
+                            </label>
+                        </div>
+                    </form>
+                </div>
+                <div style="padding: 16px 24px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px; flex-shrink: 0;">
+                    <button type="button" onclick="closeCouponModal()" style="padding: 10px 20px; background: #f1f5f9; color: #334155; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif;">Hủy</button>
+                    <button type="button" onclick="saveCoupon()" style="padding: 10px 24px; background: #22c55e; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: 'Signika', sans-serif; font-weight: 500;">Lưu</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Admin Order Detail Modal -->
         <div id="adminOrderDetailModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
             <div style="background: white; border-radius: 12px; width: 700px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;">
@@ -1373,6 +1494,10 @@
     window.adminOrderListUrl = '{% url "store:admin_order_list" %}';
     window.adminOrderDetailUrl = '{% url "store:admin_order_detail" %}';
     window.adminOrderUpdateStatusUrl = '{% url "store:admin_order_update_status" %}';
+    window.couponListUrl = '{% url "store:coupon_list" %}';
+    window.couponAddUrl = '{% url "store:coupon_add" %}';
+    window.couponEditUrl = '{% url "store:coupon_edit" %}';
+    window.couponDeleteUrl = '{% url "store:coupon_delete" %}';
 </script>
 <script src="https://cdn.ckeditor.com/ckeditor5/41.0.0/classic/ckeditor.js"></script>
 <script src="https://cdn.ckeditor.com/ckeditor5/41.0.0/classic/translations/vi.js"></script>
