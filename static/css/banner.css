@@ -1,0 +1,329 @@
+/* ==================== SLIDER SYSTEM - PRODUCTION READY ==================== */
+
+/* --- Shared Slider Navigation System --- */
+.slider-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.95);
+    border: none;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 100;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+    color: #374151;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.slider-nav:hover {
+    background: #fff;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+    transform: translateY(-50%) scale(1.08);
+}
+
+.slider-nav:active {
+    transform: translateY(-50%) scale(0.95);
+}
+
+.slider-nav svg {
+    width: 20px;
+    height: 20px;
+}
+
+.slider-nav.prev {
+    left: 16px;
+}
+
+.slider-nav.next {
+    right: 16px;
+}
+
+/* Mobile: Smaller navigation */
+@media (max-width: 768px) {
+    .slider-nav {
+        width: 36px;
+        height: 36px;
+    }
+
+    .slider-nav.prev {
+        left: 10px;
+    }
+
+    .slider-nav.next {
+        right: 10px;
+    }
+
+    .slider-nav svg {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+/* --- Hero Slider --- */
+.qh-hero-slider {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto 22px;
+    padding: 0;
+    position: relative;
+}
+
+.qh-hero-slider-wrap {
+    position: relative;
+    width: 100%;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 10px 36px rgba(0, 0, 0, 0.14);
+}
+
+.qh-hero-stage {
+    position: relative;
+    height: min(480px, 55vh);
+    width: 100%;
+    background: #111827;
+}
+
+.qh-hero-slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.7s ease;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+}
+
+.qh-hero-slide.active {
+    opacity: 1;
+    z-index: 1;
+}
+
+.qh-hero-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scale(1.02);
+    transition: transform 0.7s ease;
+}
+
+.qh-hero-slide.active .qh-hero-video {
+    transform: scale(1);
+}
+
+.qh-hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
+    display: flex;
+    align-items: center;
+}
+
+.qh-hero-text {
+    padding-left: 80px;
+    max-width: 600px;
+}
+
+.qh-hero-text h2 {
+    font-size: 48px;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    color: #fff;
+    margin: 0 0 12px;
+}
+
+.qh-hero-text p {
+    font-size: 20px;
+    color: rgba(255, 255, 255, 0.85);
+    margin: 0;
+}
+
+/* Hero Dots */
+.qh-hero-dots {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    z-index: 50;
+}
+
+.qh-hero-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    border: none;
+    background: rgba(255, 255, 255, 0.45);
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.qh-hero-dot:hover {
+    background: rgba(255, 255, 255, 0.75);
+    transform: scale(1.08);
+}
+
+.qh-hero-dot.active {
+    background: rgba(255, 255, 255, 0.95);
+}
+
+/* Fallback text when video fails */
+.qh-hero-fallback {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: rgba(255, 255, 255, 0.3);
+}
+
+/* --- Banner Slider --- */
+.qh-banner-slider {
+    display: block;
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto 22px;
+    padding: 0;
+    position: relative;
+    box-sizing: border-box;
+}
+
+.qh-banner-slider-wrap {
+    position: relative;
+    width: 100%;
+    overflow: hidden; /* LUÔN hidden - KHÔNG dùng visible */
+    border-radius: 12px;
+}
+
+.qh-banner-track {
+    display: flex;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    /* KHÔNG hard-code width - dùng flex tự động */
+}
+
+.qh-banner-item {
+    min-width: 50%; /* Desktop: 2 banners = 50% each */
+    flex-shrink: 0;
+    box-sizing: border-box;
+    padding: 0 4px; /* Small gap inside container */
+}
+
+.qh-banner-item:first-child {
+    padding-left: 0;
+}
+
+.qh-banner-item:last-child {
+    padding-right: 0;
+}
+
+.qh-banner-item a {
+    display: block;
+}
+
+.qh-banner-item img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    display: block;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Banner sử dụng .slider-nav */
+.qh-banner-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.95);
+    border: none;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 100;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+    color: #374151;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.qh-banner-nav:hover {
+    background: #fff;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+    transform: translateY(-50%) scale(1.08);
+}
+
+.qh-banner-nav:active {
+    transform: translateY(-50%) scale(0.95);
+}
+
+.qh-banner-nav svg {
+    width: 20px;
+    height: 20px;
+}
+
+.qh-banner-nav.prev {
+    left: 16px;
+}
+
+.qh-banner-nav.next {
+    right: 16px;
+}
+
+@media (max-width: 768px) {
+    .qh-banner-nav {
+        width: 36px;
+        height: 36px;
+    }
+    .qh-banner-nav.prev {
+        left: 10px;
+    }
+    .qh-banner-nav.next {
+        right: 10px;
+    }
+    .qh-banner-nav svg {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+/* Responsive: Mobile - Hiển thị 1 banner */
+@media (max-width: 768px) {
+    .qh-hero-slider { 
+        padding: 0; 
+    }
+    
+    .qh-hero-stage { 
+        height: min(220px, 40vh); 
+    }
+    
+    .qh-hero-text { 
+        padding-left: 24px; 
+        padding-right: 24px; 
+    }
+    
+    .qh-hero-text h2 { 
+        font-size: 24px; 
+    }
+    
+    .qh-hero-text p { 
+        font-size: 14px; 
+    }
+
+    /* Banner mobile */
+    .qh-banner-item {
+        min-width: 100%; /* Mobile: 1 banner = 100% */
+    }
+
+    .qh-banner-item img {
+        height: 140px;
+    }
+}

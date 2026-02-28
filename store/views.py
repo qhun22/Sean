@@ -3179,9 +3179,7 @@ def product_specification_delete(request):
 
 # ==================== Banner Images API ====================
 def banner_list(request):
-    """Lấy danh sách tất cả banner"""
-    if not request.user.is_superuser:
-        return JsonResponse({'success': False, 'message': 'Không có quyền!'}, status=403)
+    """Lấy danh sách tất cả banner - cho phép truy cập công khai"""
     
     from store.models import Banner
     

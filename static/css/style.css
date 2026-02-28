@@ -2,6 +2,7 @@
 html,
 body {
     overflow-x: hidden !important;
+    min-height: 100vh;
 }
 
 /*
@@ -77,11 +78,18 @@ a {
 
 /* ==================== HEADER STYLES ==================== */
 .qh-header {
-    position: sticky;
+    position: fixed;
     top: 0;
-    z-index: 1000;
+    left: 0;
+    right: 0;
+    z-index: 10000;
     background: var(--qh-white);
     box-shadow: 0 2px 12px var(--qh-shadow);
+}
+
+/* Add padding to body to account for fixed header */
+body {
+    padding-top: 80px;
 }
 
 .qh-header-container {
@@ -516,6 +524,9 @@ a {
 }
 
 @media (max-width: 768px) {
+    body {
+        padding-top: 70px;
+    }
     .qh-header-container {
         padding: 0 16px;
     }
