@@ -4939,7 +4939,7 @@ def chatbot_api(request):
         from .chatbot_service import ChatbotService
         user = request.user if hasattr(request, 'user') and request.user.is_authenticated else None
         service = ChatbotService()
-        result = service.process_message(message, user=user)
+        result = service.process_message(message, user=user, session=getattr(request, "session", None))
         return JsonResponse(result)
     except Exception as e:
         import logging

@@ -1,6 +1,7 @@
 import re
 import json
 import logging
+import time
 from typing import Any
 
 from django.db.models import Q, Sum
@@ -47,11 +48,11 @@ KHI SO SÁNH SẢN PHẨM:
 1. Chỉ so sánh dựa trên dữ liệu được cung cấp.
 2. Không sử dụng bảng Markdown.
 3. Trình bày dạng bullet point rõ ràng.
-4. So sánh tối đa 5 tiêu chí quan trọng nhất: Màn hình, Chip/Hiệu năng, Pin, Camera, Giá.
+4. So sánh các tiêu chí quan trọng: Màn hình, Chip/Hiệu năng, Pin, Camera, Giá, RAM, ROM.
 5. Chỉ nêu điểm khác biệt chính, không lặp lại điểm giống nhau.
-6. Không quá 12 dòng.
+6. Có thể viết 20-25 dòng để trả lời đầy đủ và chi tiết.
 7. Kết thúc bằng 1 câu gợi ý nên chọn máy nào theo nhu cầu.
-8. Không viết dài dòng.
+8. Trả lời đầy đủ, không bỏ sót thông tin quan trọng.
 9. Không dùng emoji hay icon."""
 
 COMPARE_USER_TEMPLATE = """DỮ LIỆU SẢN PHẨM ĐỂ SO SÁNH:
@@ -63,7 +64,7 @@ YÊU CẦU:
 Hãy so sánh theo đúng quy tắc."""
 
 NORMAL_MAX_TOKENS = 250
-COMPARE_MAX_TOKENS = 350
+COMPARE_MAX_TOKENS = 600
 
 # ════════════════════════════════════════════════════════════════
 # FIXED MESSAGES
@@ -182,7 +183,11 @@ ORDER_PATTERNS = re.compile(
     re.IGNORECASE,
 )
 
-ORDER_CODE_PATTERN = re.compile(r"\b(QH\d{6,})\b", re.IGNORECASE)
+ORDER_CODE_PATTERN = re.compile(r"\b(QH\d{6,}|QHUN\d+)\b", re.IGNORECASE)
+
+# Session keys (multi-turn)
+PENDING_COMPARE_KEY = "qh_chatbot_pending_compare"
+PENDING_COMPARE_TTL_SEC = 10 * 60
 
 INSTALLMENT_PATTERNS = re.compile(
     r"(trả góp|trả góp 0%|trả góp không lãi|"
@@ -389,7 +394,8 @@ class ChatbotService:
         return found
 
     def _fuzzy_match(self, msg_lower: str, product_names) -> list[str]:
-        tokens = re.findall(r"[a-zA-Z0-9]+(?:\s*[a-zA-Z0-9]+)*", msg_lower)
+        # Tokenize into single-word tokens (previous pattern produced multi-word tokens → poor matching)
+        tokens = re.findall(r"[a-zA-Z0-9]+", msg_lower)
         candidates: list[tuple[str, int]] = []
         for name in product_names:
             name_lower = name.lower()
@@ -399,6 +405,42 @@ class ChatbotService:
                 candidates.append((name, match_count))
         candidates.sort(key=lambda x: -x[1])
         return [c[0] for c in candidates[:3]]
+
+    def _get_pending_compare_base(self, session) -> str | None:
+        if not session:
+            return None
+        try:
+            data = session.get(PENDING_COMPARE_KEY)
+            if not isinstance(data, dict):
+                return None
+            base = (data.get("base") or "").strip()
+            ts = float(data.get("ts") or 0)
+            if not base:
+                return None
+            if not ts or (time.time() - ts) > PENDING_COMPARE_TTL_SEC:
+                session.pop(PENDING_COMPARE_KEY, None)
+                return None
+            return base
+        except Exception:
+            return None
+
+    def _set_pending_compare_base(self, session, base_name: str) -> None:
+        if not session:
+            return
+        try:
+            session[PENDING_COMPARE_KEY] = {"base": base_name, "ts": time.time()}
+            session.modified = True
+        except Exception:
+            pass
+
+    def _clear_pending_compare(self, session) -> None:
+        if not session:
+            return
+        try:
+            session.pop(PENDING_COMPARE_KEY, None)
+            session.modified = True
+        except Exception:
+            pass
 
     # ── Build product context for Claude ────────────────────────
     def _build_product_context(self, product: Product) -> str:
@@ -597,7 +639,7 @@ class ChatbotService:
                 return {"message": "\n".join(lines), "suggestions": ["Xem chi tiết đơn hàng"]}
 
         return {
-            "message": "Anh/chị cho mình mã đơn hàng (VD: QH250101) để mình tra cứu nhé!",
+            "message": "Anh/chị cho mình mã đơn hàng (VD: QH250101 hoặc QHUN38453) để mình tra cứu nhé!",
             "suggestions": ["Tư vấn chọn máy", "Gặp nhân viên"],
         }
 
@@ -692,10 +734,33 @@ class ChatbotService:
     # MAIN ENTRY POINT
     # ════════════════════════════════════════════════════════════
 
-    def process_message(self, message: str, user=None) -> dict[str, Any]:
+    def process_message(self, message: str, user=None, session=None) -> dict[str, Any]:
         message = message.strip()
         if not message:
             return {"message": MENU_MSG, "suggestions": MENU_SUGGESTIONS}
+
+        # ── Multi-turn compare: if user previously picked base product, and now sends a product name ──
+        pending_base = self._get_pending_compare_base(session)
+        if pending_base:
+            # Try resolve the second product from this message
+            target_names = self.detect_product_names(message)
+            if target_names:
+                base_product = Product.objects.filter(is_active=True, name=pending_base).first()
+                target_qs = (
+                    Product.objects.filter(is_active=True, name__in=target_names)
+                    .exclude(name=pending_base)
+                )
+                if base_product and target_qs.exists():
+                    target_product = max(list(target_qs), key=lambda p: len(p.name))
+                    self._clear_pending_compare(session)
+                    return self._handle_compare_with_ai(
+                        f"So sánh {base_product.name} và {target_product.name}",
+                        [base_product, target_product],
+                    )
+            # If user changes topic (non-compare intent), clear pending compare to avoid sticky state
+            intent_now = self.detect_intent(message)
+            if intent_now not in ("compare", "unknown"):
+                self._clear_pending_compare(session)
 
         intent = self.detect_intent(message)
 
@@ -745,6 +810,8 @@ class ChatbotService:
                 if products.count() >= 2:
                     return self._handle_compare_with_ai(message, list(products[:2]))
                 elif products.count() == 1:
+                    # Remember base product for the next user click/answer
+                    self._set_pending_compare_base(session, products.first().name)
                     return {
                         "message": f"Anh/chị muốn so sánh {products.first().name} với sản phẩm nào?",
                         "suggestions": [p.name for p in Product.objects.filter(is_active=True).exclude(name=products.first().name)[:3]],
