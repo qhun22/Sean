@@ -333,6 +333,27 @@
         </div>
     </section>
     
+    <!-- Banner Slider -->
+    <section class="qh-banner-slider">
+        <div class="qh-banner-slider-wrap">
+            <div class="qh-banner-track" id="qhBannerTrack">
+                <!-- Banners will be loaded via JavaScript from API -->
+            </div>
+            
+            <!-- Navigation Buttons -->
+            <button type="button" class="qh-banner-nav prev" id="qhBannerPrev" aria-label="Banner trước">
+                <svg style="width:20px;height:20px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+            </button>
+            <button type="button" class="qh-banner-nav next" id="qhBannerNext" aria-label="Banner sau">
+                <svg style="width:20px;height:20px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+            </button>
+        </div>
+    </section>
+    
     {% if products %}
     <!-- Product Grid: 5 products per row -->
     <div class="qh-product-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; margin-bottom: 40px;">
