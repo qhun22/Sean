@@ -196,7 +196,8 @@
 .qh-banner-slider-wrap {
     position: relative;
     width: 100%;
-    overflow: hidden; /* LUÔN hidden - KHÔNG dùng visible */
+    overflow: hidden;
+    /* LUÔN hidden - KHÔNG dùng visible */
     border-radius: 12px;
 }
 
@@ -207,10 +208,12 @@
 }
 
 .qh-banner-item {
-    min-width: 50%; /* Desktop: 2 banners = 50% each */
+    min-width: 50%;
+    /* Desktop: 2 banners = 50% each */
     flex-shrink: 0;
     box-sizing: border-box;
-    padding: 0 4px; /* Small gap inside container */
+    padding: 0 4px;
+    /* Small gap inside container */
 }
 
 .qh-banner-item:first-child {
@@ -283,12 +286,15 @@
         width: 36px;
         height: 36px;
     }
+
     .qh-banner-nav.prev {
         left: 10px;
     }
+
     .qh-banner-nav.next {
         right: 10px;
     }
+
     .qh-banner-nav svg {
         width: 18px;
         height: 18px;
@@ -297,30 +303,31 @@
 
 /* Responsive: Mobile - Hiển thị 1 banner */
 @media (max-width: 768px) {
-    .qh-hero-slider { 
-        padding: 0; 
+    .qh-hero-slider {
+        padding: 0;
     }
-    
-    .qh-hero-stage { 
-        height: min(220px, 40vh); 
+
+    .qh-hero-stage {
+        height: min(220px, 40vh);
     }
-    
-    .qh-hero-text { 
-        padding-left: 24px; 
-        padding-right: 24px; 
+
+    .qh-hero-text {
+        padding-left: 24px;
+        padding-right: 24px;
     }
-    
-    .qh-hero-text h2 { 
-        font-size: 24px; 
+
+    .qh-hero-text h2 {
+        font-size: 24px;
     }
-    
-    .qh-hero-text p { 
-        font-size: 14px; 
+
+    .qh-hero-text p {
+        font-size: 14px;
     }
 
     /* Banner mobile */
     .qh-banner-item {
-        min-width: 100%; /* Mobile: 1 banner = 100% */
+        min-width: 100%;
+        /* Mobile: 1 banner = 100% */
     }
 
     .qh-banner-item img {

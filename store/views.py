@@ -322,7 +322,7 @@ def home(request):
     Hiển thị danh sách sản phẩm với phân trang (tối đa 15 sản phẩm/trang)
     Sản phẩm có hàng hiển thị trước, hết hàng hiển thị sau
     """
-    from store.models import Product, SiteVisit
+    from store.models import Product, SiteVisit, OrderItem, Order
     
     # Tracking lượt truy cập trang chủ
     # Lấy IP của người dùng
@@ -374,9 +374,32 @@ def home(request):
         if wishlist:
             wishlist_product_ids = list(wishlist.products.values_list('id', flat=True))
 
+    # Lấy top 5 sản phẩm bán chạy nhất
+    # Chỉ tính các đơn hàng đã giao thành công (delivered)
+    from django.db.models import Sum, F
+    best_selling_products = OrderItem.objects.filter(
+        order__status='delivered',
+        product__is_active=True
+    ).values('product__id', 'product__name', 'product__image', 'product__price', 
+             'product__original_price', 'product__discount_percent', 'product__stock',
+             'product__slug', 'product__brand__name').annotate(
+        total_sold=Sum('quantity')
+    ).order_by('-total_sold')[:5]
+
+    # Chuyển đổi queryset thành list với thông tin đầy đủ
+    best_sellers = []
+    for item in best_selling_products:
+        product = Product.objects.filter(id=item['product__id']).first()
+        if product:
+            best_sellers.append({
+                'product': product,
+                'total_sold': item['total_sold']
+            })
+
     context = {
         'products': products,
         'wishlist_product_ids': wishlist_product_ids,
+        'best_sellers': best_sellers,
     }
     return render(request, 'store/home.html', context)
 
@@ -1810,21 +1833,38 @@ def dashboard_view(request):
     ).aggregate(total=Sum('total_amount'))['total'] or 0
     
     # Dữ liệu biểu đồ doanh thu năm 2026 (12 tháng)
-    # Hiện tại: 23/02/2026 - Tất cả tháng có chiều cao bằng nhau khi chưa có dữ liệu
-    month_data = [
-        {'name': 'T1', 'value': 0, 'height': 10},
-        {'name': 'T2', 'value': 0, 'height': 10},
-        {'name': 'T3', 'value': 0, 'height': 10},
-        {'name': 'T4', 'value': 0, 'height': 10},
-        {'name': 'T5', 'value': 0, 'height': 10},
-        {'name': 'T6', 'value': 0, 'height': 10},
-        {'name': 'T7', 'value': 0, 'height': 10},
-        {'name': 'T8', 'value': 0, 'height': 10},
-        {'name': 'T9', 'value': 0, 'height': 10},
-        {'name': 'T10', 'value': 0, 'height': 10},
-        {'name': 'T11', 'value': 0, 'height': 10},
-        {'name': 'T12', 'value': 0, 'height': 10},
-    ]
+    from django.db.models.functions import ExtractMonth
+    current_year = 2026
+    
+    # Lấy doanh thu từng tháng trong năm 2026
+    monthly_revenue = {}
+    for month in range(1, 13):
+        monthly_revenue[month] = 0
+    
+    # Query orders in 2026 with delivered status
+    orders_2026 = Order.objects.filter(
+        created_at__year=current_year,
+        status__in=['processing', 'shipped', 'delivered']
+    )
+    
+    for order in orders_2026:
+        month = order.created_at.month
+        monthly_revenue[month] += float(order.total_amount)
+    
+    # Tính toán chiều cao biểu đồ
+    max_revenue = max(monthly_revenue.values()) if max(monthly_revenue.values()) > 0 else 1
+    
+    month_data = []
+    month_names = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12']
+    for month in range(1, 13):
+        value = monthly_revenue[month]
+        # Chiều cao tối đa 280px, tối thiểu 8px
+        height = int((value / max_revenue) * 280) if value > 0 else 8
+        month_data.append({
+            'name': month_names[month - 1],
+            'value': int(value),
+            'height': height,
+        })
     
     context = {
         'users_paginated': users_paginated,
@@ -1836,6 +1876,7 @@ def dashboard_view(request):
         'revenue_today': revenue_today,
         'revenue_this_month': revenue_this_month,
         'months': month_data,
+        'chart_year': current_year,
         'brands': brands_for_stats,
         'brands_paginated': brands_paginated,
         'products_paginated': products_paginated,
@@ -4036,6 +4077,118 @@ def admin_order_list(request):
                 })
     
     return JsonResponse({'success': True, 'orders': result})
+
+
+@login_required
+def best_sellers_admin(request):
+    """
+    Admin: Trang xem thống kê sản phẩm bán chạy
+    Hiển thị tất cả sản phẩm được mua nhiều nhất với chi tiết
+    """
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này!')
+        return redirect('store:home')
+    
+    from store.models import OrderItem, Product, Order
+    from django.db.models import Sum
+    
+    # Lấy tất cả sản phẩm bán chạy (không giới hạn top 5)
+    # Chỉ tính các đơn hàng đã giao thành công (delivered)
+    best_sellers_data = OrderItem.objects.filter(
+        order__status='delivered',
+        product__is_active=True
+    ).values(
+        'product__id', 
+        'product__name', 
+        'product__image', 
+        'product__price',
+        'product__original_price', 
+        'product__discount_percent', 
+        'product__stock',
+        'product__slug',
+        'product__brand__name',
+        'product__brand__id'
+    ).annotate(
+        total_sold=Sum('quantity')
+    ).order_by('-total_sold')
+
+    # Chuyển đổi queryset thành list với thông tin đầy đủ
+    best_sellers = []
+    total_sold_all = 0
+    for item in best_sellers_data:
+        product = Product.objects.filter(id=item['product__id']).first()
+        if product:
+            best_sellers.append({
+                'product': product,
+                'total_sold': item['total_sold'],
+                'brand_name': item['product__brand__name'],
+                'brand_id': item['product__brand__id']
+            })
+            total_sold_all += item['total_sold']
+
+    context = {
+        'best_sellers': best_sellers,
+        'total_sold_all': total_sold_all,
+    }
+    return render(request, 'store/best_sellers_admin.html', context)
+
+
+@login_required
+def best_sellers_api(request):
+    """
+    API: Lấy danh sách sản phẩm bán chạy (JSON)
+    """
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Không có quyền'}, status=403)
+    
+    from store.models import OrderItem, Product
+    from django.db.models import Sum
+    
+    best_sellers_data = OrderItem.objects.filter(
+        order__status='delivered',
+        product__is_active=True
+    ).values(
+        'product__id', 
+        'product__name', 
+        'product__image', 
+        'product__price',
+        'product__original_price', 
+        'product__discount_percent', 
+        'product__stock',
+        'product__slug',
+        'product__brand__name'
+    ).annotate(
+        total_sold=Sum('quantity')
+    ).order_by('-total_sold')[:50]
+
+    items = []
+    for item in best_sellers_data:
+        product = Product.objects.filter(id=item['product__id']).first()
+        if product:
+            # Lấy giá
+            if product.detail:
+                original_price = product.detail.summary_original_price or 0
+                discounted_price = product.detail.discounted_price or 0
+                discount_percent = product.detail.summary_discount_percent or 0
+            else:
+                original_price = int(product.original_price or 0) if product.original_price else 0
+                discounted_price = int(product.price) if product.price else 0
+                discount_percent = product.discount_percent or 0
+            
+            items.append({
+                'id': product.id,
+                'name': product.name,
+                'brand': item['product__brand__name'] or '',
+                'image': product.image.url if product.image else '',
+                'original_price': original_price,
+                'discounted_price': discounted_price,
+                'discount_percent': discount_percent,
+                'stock': product.stock,
+                'total_sold': item['total_sold'],
+                'slug': product.slug,
+            })
+
+    return JsonResponse({'success': True, 'items': items})
 
 
 @login_required
