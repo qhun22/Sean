@@ -1,0 +1,431 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}Thống Kê Sản Phẩm Bán Chạy - QHUN22 Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .qh-bestseller-stats-page {
+        min-height: calc(100vh - 140px);
+        background: var(--qh-bg);
+        padding: 20px;
+    }
+    
+    .qh-bestseller-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    .qh-bestseller-header {
+        background: var(--qh-white);
+        border-radius: 14px;
+        padding: 24px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    
+    .qh-bestseller-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--qh-primary);
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .qh-bestseller-title svg {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .qh-bestseller-subtitle {
+        color: #666;
+        font-size: 14px;
+    }
+    
+    .qh-bestseller-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+    
+    .qh-stat-card {
+        background: var(--qh-white);
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    
+    .qh-stat-card-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 12px;
+    }
+    
+    .qh-stat-card-icon.purple {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .qh-stat-card-icon.green {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    }
+    
+    .qh-stat-card-icon.orange {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    
+    .qh-stat-card-icon.blue {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+    
+    .qh-stat-card-icon svg {
+        width: 24px;
+        height: 24px;
+        color: white;
+    }
+    
+    .qh-stat-card-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--qh-text);
+    }
+    
+    .qh-stat-card-label {
+        font-size: 14px;
+        color: #666;
+        margin-top: 4px;
+    }
+    
+    .qh-bestseller-table-container {
+        background: var(--qh-white);
+        border-radius: 14px;
+        padding: 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    
+    .qh-table-title {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--qh-text);
+        margin-bottom: 20px;
+    }
+    
+    .qh-bestseller-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .qh-bestseller-table th {
+        text-align: left;
+        padding: 14px 16px;
+        background: #f8fafc;
+        color: #64748b;
+        font-weight: 600;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    
+    .qh-bestseller-table td {
+        padding: 16px;
+        border-bottom: 1px solid #e2e8f0;
+        vertical-align: middle;
+    }
+    
+    .qh-bestseller-table tr:hover {
+        background: #f8fafc;
+    }
+    
+    .qh-rank-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        font-weight: 700;
+        font-size: 14px;
+    }
+    
+    .qh-rank-badge.top-1 {
+        background: linear-gradient(135deg, #FFD700, #FFA500);
+        color: white;
+    }
+    
+    .qh-rank-badge.top-2 {
+        background: linear-gradient(135deg, #C0C0C0, #A0A0A0);
+        color: white;
+    }
+    
+    .qh-rank-badge.top-3 {
+        background: linear-gradient(135deg, #CD7F32, #8B4513);
+        color: white;
+    }
+    
+    .qh-rank-badge.top-4, .qh-rank-badge.top-5 {
+        background: linear-gradient(135deg, #4CAF50, #2E7D32);
+        color: white;
+    }
+    
+    .qh-rank-badge.other {
+        background: #e2e8f0;
+        color: #64748b;
+    }
+    
+    .qh-product-cell {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .qh-product-thumb {
+        width: 50px;
+        height: 50px;
+        border-radius: 8px;
+        object-fit: cover;
+        background: #f1f5f9;
+    }
+    
+    .qh-product-info {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .qh-product-name {
+        font-weight: 600;
+        color: var(--qh-text);
+        font-size: 14px;
+        max-width: 250px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    .qh-product-brand {
+        font-size: 12px;
+        color: #64748b;
+    }
+    
+    .qh-sold-count {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: #fef3c7;
+        color: #d97706;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 14px;
+    }
+    
+    .qh-sold-count svg {
+        width: 16px;
+        height: 16px;
+    }
+    
+    .qh-view-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        background: var(--qh-primary);
+        color: white;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 13px;
+        transition: all 0.2s;
+    }
+    
+    .qh-view-btn:hover {
+        background: #2563eb;
+        transform: translateY(-1px);
+    }
+    
+    .qh-back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        background: #f1f5f9;
+        color: #64748b;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s;
+        margin-bottom: 20px;
+    }
+    
+    .qh-back-btn:hover {
+        background: #e2e8f0;
+        color: var(--qh-text);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="qh-bestseller-stats-page">
+    <div class="qh-bestseller-container">
+        <a href="{% url 'store:home' %}" class="qh-back-btn">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+            Quay về trang chủ
+        </a>
+        
+        <div class="qh-bestseller-header">
+            <h1 class="qh-bestseller-title">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                </svg>
+                Thống Kê Sản Phẩm Bán Chạy
+            </h1>
+            <p class="qh-bestseller-subtitle">Danh sách các sản phẩm được mua nhiều nhất trên website</p>
+        </div>
+        
+        <div class="qh-bestseller-stats-grid">
+            <div class="qh-stat-card">
+                <div class="qh-stat-card-icon purple">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div class="qh-stat-card-value">{{ best_sellers|length }}</div>
+                <div class="qh-stat-card-label">Sản phẩm được mua</div>
+            </div>
+            
+            <div class="qh-stat-card">
+                <div class="qh-stat-card-icon green">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div class="qh-stat-card-value">
+                    {{ total_sold_all }}
+                </div>
+                <div class="qh-stat-card-label">Tổng sản phẩm đã bán</div>
+            </div>
+            
+            <div class="qh-stat-card">
+                <div class="qh-stat-card-icon orange">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                    </svg>
+                </div>
+                <div class="qh-stat-card-value">
+                    {% if best_sellers %}{{ best_sellers.0.total_sold }}{% else %}0{% endif %}
+                </div>
+                <div class="qh-stat-card-label">Sản phẩm bán chạy nhất</div>
+            </div>
+            
+            <div class="qh-stat-card">
+                <div class="qh-stat-card-icon blue">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                    </svg>
+                </div>
+                <div class="qh-stat-card-value">
+                    {% if best_sellers %}{{ best_sellers.0.product.name|truncatechars:15 }}{% else %}N/A{% endif %}
+                </div>
+                <div class="qh-stat-card-label">Tên sản phẩm top 1</div>
+            </div>
+        </div>
+        
+        <div class="qh-bestseller-table-container">
+            <h2 class="qh-table-title">Danh Sách Sản Phẩm Bán Chạy</h2>
+            <table class="qh-bestseller-table">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">#</th>
+                        <th style="width: 60px;">Hạng</th>
+                        <th>Sản phẩm</th>
+                        <th style="width: 120px;">Hãng</th>
+                        <th style="width: 150px;">Đã bán</th>
+                        <th style="width: 150px;">Giá</th>
+                        <th style="width: 120px;">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in best_sellers %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>
+                            <span class="qh-rank-badge {% if forloop.counter <= 5 %}top-{{ forloop.counter }}{% else %}other{% endif %}">
+                                {% if forloop.counter == 1 %}🥇
+                                {% elif forloop.counter == 2 %}🥈
+                                {% elif forloop.counter == 3 %}🥉
+                                {% else %}{{ forloop.counter }}
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="qh-product-cell">
+                                {% if item.product.image %}
+                                <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" class="qh-product-thumb">
+                                {% else %}
+                                <div class="qh-product-thumb" style="display: flex; align-items: center; justify-content: center;">
+                                    <svg width="24" height="24" fill="none" stroke="#94a3b8" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                </div>
+                                {% endif %}
+                                <div class="qh-product-info">
+                                    <span class="qh-product-name">{{ item.product.name }}</span>
+                                    <span class="qh-product-brand">{{ item.brand_name|default:"Không rõ" }}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ item.brand_name|default:"-" }}</td>
+                        <td>
+                            <span class="qh-sold-count">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                                </svg>
+                                {{ item.total_sold }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if item.product.detail %}
+                                {% if item.product.detail.summary_original_price and item.product.detail.summary_original_price > item.product.detail.discounted_price %}
+                                <span style="text-decoration: line-through; color: #94a3b8; font-size: 12px; margin-right: 8px;">
+                                    {{ item.product.detail.summary_original_price|format_price_with_unit }}
+                                </span>
+                                {% endif %}
+                                <span style="font-weight: 600; color: #dc2626;">
+                                    {{ item.product.detail.discounted_price|format_price_with_unit }}
+                                </span>
+                            {% else %}
+                                <span style="font-weight: 600;">{{ item.product.price|format_price_with_unit }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'store:product_detail' item.product.id %}" class="qh-view-btn">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                                Chi tiết
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px; color: #64748b;">
+                            Chưa có sản phẩm nào được mua
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

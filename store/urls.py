@@ -135,6 +135,10 @@ urlpatterns = [
     path('api/admin/orders/', views.admin_order_list, name='admin_order_list'),
     path('api/admin/order-detail/', views.admin_order_detail, name='admin_order_detail'),
     path('api/admin/order-update-status/', views.admin_order_update_status, name='admin_order_update_status'),
+    
+    # Best Sellers Admin
+    path('best-sellers/', views.best_sellers_admin, name='best_sellers_admin'),
+    path('api/admin/best-sellers/', views.best_sellers_api, name='best_sellers_api'),
 
     # AI Chatbot
     path('api/chatbot/', views.chatbot_api, name='chatbot_api'),
