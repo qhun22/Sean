@@ -482,7 +482,7 @@ function onYouTubeIframeAPIReady() {
 <!-- Student Verify Handler -->
 <script>
 function handleStudentVerify() {
-    var isLoggedIn = {{ is_authenticated|lower }};
+    var isLoggedIn = {{ request.user.is_authenticated|lower }};
     
     if (isLoggedIn) {
         window.location.href = "{% url 'store:profile' %}?tab=student";

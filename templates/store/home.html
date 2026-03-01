@@ -177,7 +177,7 @@
 .qh-hero-overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
+    background: linear-gradient(90deg, rgba(72, 71, 71, 0.55), rgba(110, 110, 110, 0));
     display: flex;
     align-items: center;
 }
@@ -383,7 +383,7 @@
         cursor: pointer;
     }
     .qh-featured-brand:hover {
-        box-shadow: 0 6px 24px rgba(40, 138, 199, 0.29);
+        box-shadow: 0 6px 24px rgba(0,0,0,0.13);
         transform: translateY(-4px) scale(1.04);
         border-color: #e0e7ef;
     }
@@ -409,7 +409,7 @@
         color: #222;
         letter-spacing: 1.2px;
         font-family: 'Signika', sans-serif;
-        background: linear-gradient(90deg,rgb(0, 0, 0) 0%,rgb(0, 0, 0) 100%);
+        background: linear-gradient(90deg, #565555 0%, #626161 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -425,7 +425,7 @@
         width: 44px;
         height: 4px;
         border-radius: 2px;
-        background: linear-gradient(90deg,rgb(0, 0, 0)rgb(0, 0, 0)75fc 100%);
+        background: linear-gradient(90deg, #000000 0%, #2575fc 100%);
         vertical-align: middle;
         margin: 0 10px;
         animation: qh-title-bar-move 2.2s infinite alternate;
@@ -442,22 +442,28 @@
         <span class="qh-featured-title">HÃNG NỔI BẬT</span>
     </div>
     <div class="qh-featured-brands-row">
-        <a class="qh-featured-brand" href="{% url 'store:product_search' %}?brand=apple"><img src="{% static 'icons/logo_iphone_ngang_eac93ff477.webp' %}" alt="iPhone"></a>
-        <a class="qh-featured-brand" href="{% url 'store:product_search' %}?brand=samsung"><img src="{% static 'icons/logo_samsung_ngang_1624d75bd8.webp' %}" alt="Samsung"></a>
-        <a class="qh-featured-brand" href="{% url 'store:product_search' %}?brand=xiaomi"><img src="{% static 'icons/logo_xiaomi_ngang_0faf267234.webp' %}" alt="Xiaomi"></a>
-        <a class="qh-featured-brand" href="{% url 'store:product_search' %}?brand=oppo"><img src="{% static 'icons/logo_oppo_ngang_68d31fcd73.webp' %}" alt="OPPO"></a>
-        <a class="qh-featured-brand" href="{% url 'store:product_search' %}?brand=vivo"><img src="{% static 'icons/logo_vivo_ngang_45494ff733.webp' %}" alt="Vivo"></a>
-        <a class="qh-featured-brand" href="{% url 'store:product_search' %}?brand=realme"><img src="{% static 'icons/logo_realme_ngang_0185815a13.webp' %}" alt="Realme"></a>
-        <a class="qh-featured-brand" href="{% url 'store:product_search' %}?brand=honor"><img src="{% static 'icons/logo_honor_ngang_814fca59e4.webp' %}" alt="Honor"></a>
-        <a class="qh-featured-brand" href="{% url 'store:product_search' %}?brand=red-magic"><img src="{% static 'icons/logo_redmagic_ngang_505d29c537.webp' %}" alt="Red Magic"></a>
-        <a class="qh-featured-brand" href="{% url 'store:product_search' %}?brand=tecno"><img src="{% static 'icons/logo_tecno_ngang_c587e5f1fa.webp' %}" alt="Tecno"></a>
-        <a class="qh-featured-brand" href="{% url 'store:product_search' %}?brand=benco"><img src="{% static 'icons/logo_benco_ngang_d31d9c3b77.webp' %}" alt="Benco"></a>
+        {% for brand in brands %}
+        <a class="qh-featured-brand" href="{% url 'store:product_search' %}?brand={{ brand.slug }}" title="{{ brand.name }}">
+            {% if brand.slug == 'apple' or brand.slug == 'iphone' %}<img src="{% static 'icons/logo_iphone_ngang_eac93ff477.webp' %}" alt="{{ brand.name }}">
+            {% elif brand.slug == 'samsung' %}<img src="{% static 'icons/logo_samsung_ngang_1624d75bd8.webp' %}" alt="{{ brand.name }}">
+            {% elif brand.slug == 'xiaomi' %}<img src="{% static 'icons/logo_xiaomi_ngang_0faf267234.webp' %}" alt="{{ brand.name }}">
+            {% elif brand.slug == 'oppo' %}<img src="{% static 'icons/logo_oppo_ngang_68d31fcd73.webp' %}" alt="{{ brand.name }}">
+            {% elif brand.slug == 'vivo' %}<img src="{% static 'icons/logo_vivo_ngang_45494ff733.webp' %}" alt="{{ brand.name }}">
+            {% elif brand.slug == 'realme' %}<img src="{% static 'icons/logo_realme_ngang_0185815a13.webp' %}" alt="{{ brand.name }}">
+            {% elif brand.slug == 'honor' %}<img src="{% static 'icons/logo_honor_ngang_814fca59e4.webp' %}" alt="{{ brand.name }}">
+            {% elif brand.slug == 'red-magic' or brand.slug == 'redmagic' %}<img src="{% static 'icons/logo_redmagic_ngang_505d29c537.webp' %}" alt="{{ brand.name }}">
+            {% elif brand.slug == 'tecno' %}<img src="{% static 'icons/logo_tecno_ngang_c587e5f1fa.webp' %}" alt="{{ brand.name }}">
+            {% elif brand.slug == 'benco' %}<img src="{% static 'icons/logo_benco_ngang_d31d9c3b77.webp' %}" alt="{{ brand.name }}">
+            {% else %}<span style="font-weight: 600; color: #333; font-size: 14px;">{{ brand.name }}</span>
+            {% endif %}
+        </a>
+        {% endfor %}
     </div>
 
     <!-- GỢI Ý CHO BẠN Section -->
     <style>
         .flash-sale-section {
-            background:rgb(255, 255, 255);
+            background: #01A400;
             border-radius: 20px;
             overflow: hidden;
             margin: 36px 0 32px 0;
@@ -466,7 +472,7 @@
         }
         .flash-banner {
             width: 100%;
-            background:rgb(255, 255, 255);
+            background: #01A400;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -498,7 +504,7 @@
             text-align: center;
             margin-bottom: 8px;
             letter-spacing: 1.5px;
-            text-shadow: 2px 4px 0rgb(255, 255, 255);
+            text-shadow: 2px 4px 0 #0b5c1a;
             color: #01A400;
         }
         .qh-suggest-sub {
@@ -725,46 +731,8 @@
     
     <!-- SẢN PHẨM BÁN CHẠY Section -->
     {% if best_sellers %}
-    <style>
-        .qh-bestseller-title-wrap {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: 40px 0 20px;
-            position: relative;
-        }
-        .qh-bestseller-title {
-            font-size: 24px;
-            font-weight: 700;
-            color: #dc2626;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            position: relative;
-            display: inline-block;
-            background: var(--qh-bg);
-            padding: 0 10px;
-        }
-        .qh-bestseller-title::before, .qh-bestseller-title::after {
-            content: '';
-            display: inline-block;
-            width: 44px;
-            height: 4px;
-            border-radius: 2px;
-            background: linear-gradient(90deg, #dc2626 0%, #f97316 100%);
-            vertical-align: middle;
-            margin: 0 10px;
-            animation: qh-bestseller-bar-move 2.2s infinite alternate;
-        }
-        .qh-bestseller-title::after {
-            animation-delay: 1.1s;
-        }
-        @keyframes qh-bestseller-bar-move {
-            0% { width: 44px; opacity: 1; }
-            100% { width: 80px; opacity: 0.5; }
-        }
-    </style>
     
-    <div class="qh-featured-title-wrap">
+<div class="qh-featured-title-wrap">
         <span class="qh-featured-title">SẢN PHẨM BÁN CHẠY</span>
     </div>
     
@@ -870,8 +838,8 @@
     
     {% if products %}
     <!-- Section Title -->
-    <div class="qh-featured-title-wrap">
-        <span class="qh-featured-title">SẢN PHẨM NỔI BẬT</span>
+<div class="qh-featured-title-wrap">
+        <span class="qh-featured-title">SẢN PHẨM BÁN CHẠY</span>
     </div>
     
     <!-- Product Grid: 5 products per row -->
@@ -1208,8 +1176,7 @@ function toggleWishlist(button, productId) {
             color: #222;
             letter-spacing: 1.2px;
             font-family: 'Signika', sans-serif;
-            {% comment %} màu chính của tiêu đề màu đen {% endcomment %}
-            background: linear-gradient(90deg,rgb(69, 68, 68) 0%,rgb(85, 85, 85) 100%);
+            background: linear-gradient(90deg, #4f4e4e 0%, #616060 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -1225,8 +1192,7 @@ function toggleWishlist(button, productId) {
             width: 44px;
             height: 4px;
             border-radius: 2px;
-            {% comment %} thanh laze 2 bên có màu đen {% endcomment %}
-            background: linear-gradient(90deg,rgb(0, 0, 0) 0%,rgb(0, 0, 0)0%);
+            background: linear-gradient(90deg, #000000 0%, #000000 100%);
             vertical-align: middle;
             margin: 0 10px;
             animation: qh-title-bar-move 2.2s infinite alternate;
@@ -1240,7 +1206,7 @@ function toggleWishlist(button, productId) {
         }
         </style>
         <div class="qh-featured-title-wrap">
-            <span class="qh-featured-title">TẠI SAO CHỌN CHÚNG TÔI</span>
+            <span class="qh-featured-title">TẠI SAO CHỌN QHUN22 MOBILE?</span>
         </div>
         <div class="qh-usp-grid">
             <div class="qh-usp-card">

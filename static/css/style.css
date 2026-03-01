@@ -148,7 +148,7 @@ body {
     border: 2px solid #b3c4d6;
     border-left: none;
     border-radius: 0 var(--qh-radius-lg) var(--qh-radius-lg) 0;
-    background: #a1c3d6;
+    background: #8bb8e0;
     color: white;
     cursor: pointer;
     display: flex;

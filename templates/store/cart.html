@@ -17,6 +17,7 @@
     grid-template-columns: 1fr 380px;
     gap: 24px;
     align-items: start;
+    min-height: 100vh;
 }
 @media (max-width: 992px) {
     .qh-cart-container {
@@ -397,13 +398,16 @@
 }
 
 /* ==================== CART SUMMARY ==================== */
+.qh-cart-container {
+    position: relative; /* cần cho js-sticky-bottom */
+}
 .qh-cart-summary {
     background: var(--qh-card-bg);
     border-radius: 12px;
     padding: 24px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    position: sticky;
-    top: 100px;
+    align-self: start;
+    z-index: 10;
 }
 .qh-cart-summary-title {
     font-size: 20px;
@@ -1028,6 +1032,91 @@ function updateSummaryPrices(totalPrice) {
     if (totalEl) totalEl.textContent = formatted;
 }
 
+/* ==================== JS Sticky Summary ==================== */
+(function () {
+    function initSticky() {
+        var summary = document.querySelector('.qh-cart-summary');
+        var container = document.querySelector('.qh-cart-container');
+        if (!summary || !container) return;
+
+        var TOP = 90; // chiều cao navbar
+        var isFixed = false;
+        var naturalLeft = 0;
+        var naturalWidth = 0;
+
+        function captureNaturalPosition() {
+            // Chỉ đo khi đang ở trạng thái tự nhiên (không fixed)
+            if (!isFixed) {
+                var r = summary.getBoundingClientRect();
+                naturalLeft = r.left;
+                naturalWidth = r.width;
+            }
+        }
+
+        function stick() {
+            if (isFixed) return;
+            captureNaturalPosition();
+            summary.style.position = 'fixed';
+            summary.style.top = TOP + 'px';
+            summary.style.left = naturalLeft + 'px';
+            summary.style.width = naturalWidth + 'px';
+            summary.style.zIndex = '100';
+            isFixed = true;
+        }
+
+        function unstick() {
+            if (!isFixed) return;
+            summary.style.position = '';
+            summary.style.top = '';
+            summary.style.left = '';
+            summary.style.width = '';
+            summary.style.zIndex = '';
+            isFixed = false;
+        }
+
+        function onScroll() {
+            if (window.innerWidth <= 992) {
+                unstick();
+                return;
+            }
+            var containerRect = container.getBoundingClientRect();
+            var summaryH = summary.offsetHeight;
+
+            if (containerRect.top <= TOP) {
+                stick();
+                // Clamp ở đáy container
+                var remaining = containerRect.bottom - summaryH;
+                var newTop = remaining < TOP ? Math.max(remaining, containerRect.top) : TOP;
+                summary.style.top = newTop + 'px';
+            } else {
+                unstick();
+            }
+        }
+
+        function onResize() {
+            unstick();
+            // Đo lại vị trí tự nhiên sau khi unstick
+            setTimeout(function () {
+                captureNaturalPosition();
+                onScroll();
+            }, 50);
+        }
+
+        // Đo vị trí ban đầu
+        captureNaturalPosition();
+        onScroll();
+
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('resize', onResize);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSticky);
+    } else {
+        initSticky();
+    }
+})();
+
 /* ==================== Checkout ==================== */
 function checkout() {
     var checked = document.querySelectorAll('.cart-item-check:checked');
@@ -1044,5 +1133,6 @@ function checkout() {
     });
     window.location.href = '/checkout/?items=' + ids.join(',');
 }
+
 </script>
 {% endblock %}
