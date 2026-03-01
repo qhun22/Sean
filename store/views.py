@@ -598,6 +598,7 @@ def order_tracking(request):
     (bao gồm cả đơn đã tất toán)
     """
     from store.models import Order
+    from django.core.paginator import Paginator
     
     context = {}
     if request.user.is_authenticated:
@@ -605,6 +606,18 @@ def order_tracking(request):
         orders = Order.objects.filter(
             user=request.user
         ).prefetch_related('items').order_by('-created_at')
+        
+        # Phân trang 10 đơn hàng mỗi trang
+        paginator = Paginator(orders, 10)
+        page = request.GET.get('page', 1)
+        
+        try:
+            orders = paginator.page(page)
+        except PageNotAnInteger:
+            orders = paginator.page(1)
+        except EmptyPage:
+            orders = paginator.page(paginator.num_pages)
+        
         context['orders'] = orders
     
     return render(request, 'store/order_tracking.html', context)
