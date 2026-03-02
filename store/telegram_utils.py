@@ -7,8 +7,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-TELEGRAM_BOT_TOKEN = '8657442759:AAHttHrO8fTCTMe2zxKewLvyUGWxwRaoA8I'
-TELEGRAM_CHAT_ID = '5032505212'
+TELEGRAM_BOT_TOKEN = 'gan bot token vao day'
+TELEGRAM_CHAT_ID = 'gan id chat vao day'
 TELEGRAM_API = f'https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}'
 
 
