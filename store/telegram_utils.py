@@ -1,24 +1,32 @@
 """
 Telegram notification utilities for QHUN22.
 """
+import os
 import threading
 import requests
 import logging
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-TELEGRAM_BOT_TOKEN = 'gan bot token vao day'
-TELEGRAM_CHAT_ID = 'gan id chat vao day'
-TELEGRAM_API = f'https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}'
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
+TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID', '')
+
+
+def _get_api():
+    """Build API base URL dynamically to avoid empty-token at import time."""
+    token = os.getenv('TELEGRAM_BOT_TOKEN', TELEGRAM_BOT_TOKEN)
+    return f'https://api.telegram.org/bot{token}'
 
 
 def _send_message(text, parse_mode='HTML'):
     """Send a Telegram message. Returns message_id or None."""
+    chat_id = os.getenv('TELEGRAM_CHAT_ID', TELEGRAM_CHAT_ID)
     try:
         resp = requests.post(
-            f'{TELEGRAM_API}/sendMessage',
+            f'{_get_api()}/sendMessage',
             json={
-                'chat_id': TELEGRAM_CHAT_ID,
+                'chat_id': chat_id,
                 'text': text,
                 'parse_mode': parse_mode,
             },
@@ -34,11 +42,12 @@ def _send_message(text, parse_mode='HTML'):
 
 def _delete_message(message_id):
     """Delete a Telegram message by message_id."""
+    chat_id = os.getenv('TELEGRAM_CHAT_ID', TELEGRAM_CHAT_ID)
     try:
         requests.post(
-            f'{TELEGRAM_API}/deleteMessage',
+            f'{_get_api()}/deleteMessage',
             json={
-                'chat_id': TELEGRAM_CHAT_ID,
+                'chat_id': chat_id,
                 'message_id': message_id,
             },
             timeout=10,

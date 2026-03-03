@@ -93,7 +93,7 @@
 .qh-compare-col-price {
     font-size: 18px;
     font-weight: 700;
-    color: var(--qh-primary-dark);
+    color: #dc2626;
     margin-bottom: 2px;
 }
 
@@ -139,7 +139,7 @@
     color: var(--qh-white);
     padding: 10px 20px;
     margin: 0;
-    background: linear-gradient(135deg, var(--qh-primary), var(--qh-secondary));
+    background: linear-gradient(135deg, var(--qh-primary));
 }
 
 .qh-compare-spec-group table {

@@ -634,7 +634,7 @@ body {
     width: 56px;
     height: 56px;
     margin: 0 auto 18px;
-    background: linear-gradient(135deg, var(--qh-primary), var(--qh-secondary));
+    background: linear-gradient(135deg, var(--qh-primary));
     border-radius: 50%;
     display: flex;
     align-items: center;

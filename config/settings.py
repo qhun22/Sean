@@ -156,8 +156,8 @@ MESSAGE_TAGS = {
 
 # ==================== VNPAY PAYMENT GATEWAY CONFIG ====================
 VNPAY_CONFIG = {
-    'vnp_TmnCode': os.getenv('VNPAY_TMN_CODE', '981P6A3M'),
-    'vnp_HashSecret': os.getenv('VNPAY_HASH_SECRET', '3MNKGRKED41AFWF4KJH88GCWH9KS73N5'),
+    'vnp_TmnCode': os.getenv('VNPAY_TMN_CODE', ''),
+    'vnp_HashSecret': os.getenv('VNPAY_HASH_SECRET', ''),
     'vnp_Url': os.getenv('VNPAY_URL', 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'),
     'vnp_ReturnUrl': os.getenv('VNPAY_RETURN_URL', 'http://localhost:8000/vnpay/return/'),
     'vnp_IpnUrl': os.getenv('VNPAY_IPN_URL', 'http://localhost:8000/vnpay/ipn/'),
@@ -165,3 +165,8 @@ VNPAY_CONFIG = {
     'vnp_Version': '2.1.0',
     'vnp_Command': 'pay',
 }
+
+# ==================== BANK ACCOUNT CONFIG (VietQR) ====================
+BANK_ID = os.getenv('BANK_ID', 'TCB')
+BANK_ACCOUNT_NO = os.getenv('BANK_ACCOUNT_NO', '')
+BANK_ACCOUNT_NAME = os.getenv('BANK_ACCOUNT_NAME', '')

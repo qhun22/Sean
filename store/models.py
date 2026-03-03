@@ -713,9 +713,10 @@ class PendingQRPayment(models.Model):
     def qr_url(self):
         """Build VietQR URL"""
         import urllib.parse
-        bank_id = 'TCB'
-        account_no = '22100588888888'
-        account_name = 'TRUONG QUANG HUY'
+        from django.conf import settings
+        bank_id = settings.BANK_ID
+        account_no = settings.BANK_ACCOUNT_NO
+        account_name = settings.BANK_ACCOUNT_NAME
         return (
             f'https://img.vietqr.io/image/{bank_id}-{account_no}-vietqr_net_2.jpg'
             f'?amount={int(self.amount)}'

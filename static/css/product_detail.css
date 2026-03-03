@@ -120,8 +120,6 @@
 }
 
 /* ========== Info Column ========== */
-.pd-info {}
-
 /* Price */
 .pd-price-section {
     display: flex;
@@ -525,6 +523,7 @@
     max-width: 80%;
     max-height: 55vh;
     object-fit: contain;
+    -webkit-user-select: none;
     user-select: none;
     -webkit-user-drag: none;
     transition: opacity 0.4s ease, transform 0.4s ease;
