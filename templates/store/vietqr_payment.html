@@ -52,11 +52,11 @@
                     </div>
                     <div class="qh-vqr-row">
                         <span class="lbl">Chủ tài khoản</span>
-                        <span class="val">TRUONG QUANG HUY</span>
+                        <span class="val">{{ bank_account_name }}</span>
                     </div>
                     <div class="qh-vqr-row">
                         <span class="lbl">Số tài khoản</span>
-                        <span class="val">22100588888888</span>
+                        <span class="val">{{ bank_account_no }}</span>
                     </div>
                     <div class="qh-vqr-row">
                         <span class="lbl">Số tiền</span>
@@ -118,9 +118,9 @@
 <script>
 (function() {
     // ==================== CONFIGURATION ====================
-    var BANK_ID = 'TCB';
-    var ACCOUNT_NO = '22100588888888';
-    var ACCOUNT_NAME = 'TRUONG QUANG HUY';
+    var BANK_ID = '{{ bank_id }}';
+    var ACCOUNT_NO = '{{ bank_account_no }}';
+    var ACCOUNT_NAME = '{{ bank_account_name }}';
     var TIMEOUT_SECONDS = {{ timeout_seconds }};
     var TRANSFER_CODE = '{{ transfer_code }}';
     var ORDER_CODE = '{{ order.order_code }}';

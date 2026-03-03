@@ -4,10 +4,6 @@
    ======================================== */
 
 /* ==================== Layout ==================== */
-.qh-checkout-page {
-    /* Inherits from .qh-main */
-}
-
 .qh-checkout-grid {
     display: grid;
     grid-template-columns: 1fr 380px;
@@ -599,6 +595,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
 }
 

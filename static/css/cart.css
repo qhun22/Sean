@@ -43,6 +43,7 @@
     font-size: 15px;
     font-weight: 500;
     color: var(--qh-text);
+    -webkit-user-select: none;
     user-select: none;
 }
 .qh-cart-select-all .qh-cart-delete-all {
@@ -69,8 +70,8 @@
     height: 20px;
     border: 2px solid #d1d5db;
     border-radius: 4px;
-    appearance: none;
     -webkit-appearance: none;
+    appearance: none;
     cursor: pointer;
     position: relative;
     transition: all 0.2s;
@@ -172,6 +173,7 @@
     color: var(--qh-text);
     background: white;
     transition: border-color 0.2s;
+    -webkit-user-select: none;
     user-select: none;
     font-family: 'Signika', sans-serif;
 }
@@ -244,6 +246,7 @@
     color: var(--qh-text);
     background: white;
     transition: border-color 0.2s;
+    -webkit-user-select: none;
     user-select: none;
     font-family: 'Signika', sans-serif;
 }
@@ -363,6 +366,7 @@
     outline: none;
     font-family: 'Signika', sans-serif;
     -moz-appearance: textfield;
+    appearance: textfield;
 }
 .qh-cart-qty-input::-webkit-outer-spin-button,
 .qh-cart-qty-input::-webkit-inner-spin-button {
