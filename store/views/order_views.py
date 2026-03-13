@@ -571,7 +571,7 @@ def place_order(request):
     items_param = data.get('items_param', '')
     transfer_code = data.get('transfer_code', '')
     
-    if payment_method not in ['cod', 'vietqr']:
+    if payment_method not in ['cod', 'vietqr', 'vnpay', 'momo']:
         return JsonResponse({'success': False, 'message': 'Phương thức thanh toán không hợp lệ'}, status=400)
     
     # Nếu VietQR, kiểm tra đã được duyệt chưa

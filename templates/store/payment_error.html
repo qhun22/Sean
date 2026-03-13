@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}THANH TOÁN THẤT BẠI - QHUN22 Mobile{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/order_success.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="qh-os-page">
+
+    <h1 class="qh-page-title">TRẠNG THÁI</h1>
+
+    <!-- Hộp bao -->
+    <div class="qh-os-wrapper" id="errorCard" style="border-color: #fee2e2;">
+
+        <!-- Tiêu đề nổi bật -->
+        <div class="qh-os-hero" style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);">
+            <div class="qh-os-icon" style="background: #dc2626;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </div>
+            <h2 style="color: #dc2626;">THANH TOÁN THẤT BẠI</h2>
+        </div>
+
+        <!-- Thông báo lỗi -->
+        <div style="text-align: center; padding: 20px;">
+            <p style="color: #991b1b; font-size: 16px; margin-bottom: 20px;">
+                {{ message|default:"Đã có lỗi xảy ra trong quá trình thanh toán. Vui lòng thử lại hoặc liên hệ hỗ trợ." }}
+            </p>
+
+            <!-- Các nút -->
+            <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                <a href="{% url 'store:checkout' %}" class="qh-os-btn primary" style="background: #dc2626; border-color: #dc2626;">
+                    <i class="ri-refresh-line"></i> Thử lại
+                </a>
+                <a href="{% url 'store:order_tracking' %}" class="qh-os-btn">
+                    <i class="ri-search-line"></i> Tra cứu đơn
+                </a>
+                <a href="{% url 'store:home' %}" class="qh-os-btn">
+                    <i class="ri-home-line"></i> Trang chủ
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

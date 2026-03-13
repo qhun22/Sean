@@ -218,14 +218,40 @@
                 </div>
                 {% elif can_review %}
                 <div class="pd-review-input">
-                    <p class="pd-review-label">Chọn số sao để đánh giá:</p>
-                    <div class="pd-review-stars" id="pdReviewStars">
-                        {% for i in "12345" %}
-                        <svg class="pd-star-btn" data-value="{{ forloop.counter }}" viewBox="0 0 24 24"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
-                        {% endfor %}
+                    <div class="pd-review-grid">
+                        <div class="pd-review-left">
+                            <div class="pd-review-block pd-review-stars-block">
+                                <span class="pd-review-label">Chọn số sao để đánh giá</span>
+                                <div class="pd-review-stars" id="pdReviewStars">
+                                    {% for i in "12345" %}
+                                    <svg class="pd-star-btn" data-value="{{ forloop.counter }}" viewBox="0 0 24 24"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="pd-review-block pd-review-images-block">
+                                <span class="pd-review-label">Chọn hình ảnh</span>
+                                <div class="pd-review-images-row">
+                                    <div class="pd-review-images-upload-cell">
+                                        <label for="pdReviewImages" class="pd-review-upload-btn">Chọn ảnh</label>
+                                        <input type="file" id="pdReviewImages" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp" multiple>
+                                    </div>
+                                    <div class="pd-review-preview-wrap">
+                                        <span class="pd-review-preview-label">Ảnh đã tải</span>
+                                        <div class="pd-review-preview" id="pdReviewPreview"></div>
+                                        <span class="pd-review-images-count" id="pdReviewImagesCount">Chưa chọn ảnh nào</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pd-review-right">
+                            <label class="pd-review-label" for="pdReviewComment">Nhập nội dung</label>
+                            <textarea class="pd-review-comment" id="pdReviewComment" placeholder="Nhập nội dung" rows="6"></textarea>
+                        </div>
                     </div>
-                    <button class="pd-review-submit" id="pdReviewSubmitBtn" disabled>Gửi đánh giá</button>
-                    <div class="pd-review-msg" id="pdReviewMsg"></div>
+                    <div class="pd-review-footer">
+                        <div class="pd-review-msg" id="pdReviewMsg"></div>
+                        <button class="pd-review-submit" id="pdReviewSubmitBtn" disabled>Gửi đánh giá</button>
+                    </div>
                 </div>
                 {% else %}
                 <div class="pd-review-login-msg">
@@ -252,6 +278,16 @@
                         <svg class="pd-star-sm {% if forloop.counter <= r.rating %}filled{% endif %}" viewBox="0 0 24 24"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
                         {% endfor %}
                     </div>
+                    {% if r.comment %}
+                    <div class="pd-review-comment-text" style="margin-top: 8px; font-size: 14px; color: #333; line-height: 1.5;">{{ r.comment }}</div>
+                    {% endif %}
+                    {% if r.images %}
+                    <div class="pd-review-images-list" style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
+                        {% for img in r.images %}
+                        <img src="{{ img }}" onclick="window.open('{{ img }}', '_blank')" style="width: 80px; height: 80px; object-fit: cover; border-radius: 6px; border: 1px solid #eee; cursor: pointer;">
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>
@@ -426,7 +462,71 @@ function onYouTubeIframeAPIReady() {
     const stars = document.querySelectorAll('#pdReviewStars .pd-star-btn');
     const submitBtn = document.getElementById('pdReviewSubmitBtn');
     const msgEl = document.getElementById('pdReviewMsg');
+    const commentInput = document.getElementById('pdReviewComment');
+    const imagesInput = document.getElementById('pdReviewImages');
+    const imagesCount = document.getElementById('pdReviewImagesCount');
+    const previewContainer = document.getElementById('pdReviewPreview');
     let selectedRating = 0;
+    let selectedFiles = [];
+
+    // Xử lý preview ảnh
+    imagesInput.addEventListener('change', function() {
+        const files = Array.from(this.files);
+        if (files.length > 3) {
+            if (window.QHToast) window.QHToast.show('Tối đa 3 ảnh', 'error');
+            this.value = '';
+            selectedFiles = [];
+            updatePreview();
+            return;
+        }
+
+        // Kiểm tra kích thước mỗi ảnh
+        for (const file of files) {
+            if (file.size > 5 * 1024 * 1024) {
+                if (window.QHToast) window.QHToast.show('Ảnh ' + file.name + ' vượt quá 5MB', 'error');
+                this.value = '';
+                selectedFiles = [];
+                updatePreview();
+                return;
+            }
+        }
+
+        selectedFiles = files;
+        updatePreview();
+    });
+
+    function updatePreview() {
+        previewContainer.innerHTML = '';
+        if (selectedFiles.length === 0) {
+            imagesCount.textContent = 'Chưa chọn ảnh nào';
+            return;
+        }
+        imagesCount.textContent = selectedFiles.length + ' ảnh đã chọn';
+
+        selectedFiles.forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const div = document.createElement('div');
+                div.style.cssText = 'position: relative; width: 70px; height: 70px; border-radius: 6px; overflow: hidden; border: 1px solid #ddd;';
+                div.innerHTML = `
+                    <img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: cover;">
+                    <button type="button" onclick="removeImage(${index})" style="position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border: none; border-radius: 50%; background: rgba(0,0,0,0.6); color: white; cursor: pointer; font-size: 12px; line-height: 1;">×</button>
+                `;
+                previewContainer.appendChild(div);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // Hàm xóa ảnh (global để button có thể gọi)
+    window.removeImage = function(index) {
+        selectedFiles.splice(index, 1);
+        // Cập nhật input files
+        const dt = new DataTransfer();
+        selectedFiles.forEach(f => dt.items.add(f));
+        imagesInput.files = dt.files;
+        updatePreview();
+    };
 
     stars.forEach(star => {
         star.addEventListener('mouseenter', function() {
@@ -452,7 +552,13 @@ function onYouTubeIframeAPIReady() {
         const formData = new FormData();
         formData.append('product_id', productId);
         formData.append('rating', selectedRating);
+        formData.append('comment', commentInput ? commentInput.value : '');
         formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}');
+
+        // Thêm ảnh vào formData
+        selectedFiles.forEach(file => {
+            formData.append('images', file);
+        });
 
         fetch('{% url "store:submit_review" %}', { method: 'POST', body: formData })
             .then(r => r.json())

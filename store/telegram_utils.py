@@ -79,10 +79,11 @@ def _format_price(amount):
 
 def notify_payment_created(payment_method, order_code, username, total_amount):
     """
-    VietQR/VNPay vừa được tạo -> gửi Telegram, tự xóa sau 15 phút.
+    VietQR/VNPay/MoMo vừa được tạo -> gửi Telegram, tự xóa sau 15 phút.
     COD không gọi hàm này.
     """
-    method_label = 'VietQR' if payment_method == 'vietqr' else 'VNPay'
+    method_map = {'vietqr': 'VietQR', 'vnpay': 'VNPay', 'momo': 'MoMo'}
+    method_label = method_map.get(payment_method, 'VNPay')
     text = (
         f' <b>Thanh toán mới - {method_label}</b>\n'
         f'━━━━━━━━━━━━━━━━━\n'
@@ -101,7 +102,7 @@ def notify_order_success(order_code, payment_method, items):
     Đơn hàng thành công (COD/VietQR/VNPay) -> gửi Telegram, KHÔNG tự xóa.
     items: list of dict { product_name, quantity, storage, color_name }
     """
-    method_map = {'cod': 'COD', 'vietqr': 'VietQR', 'vnpay': 'VNPay'}
+    method_map = {'cod': 'COD', 'vietqr': 'VietQR', 'vnpay': 'VNPay', 'momo': 'MoMo'}
     method_label = method_map.get(payment_method, payment_method)
 
     product_lines = ''

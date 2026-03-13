@@ -16,6 +16,8 @@ urlpatterns = [
     path('newsletter/subscribe/', views.newsletter_subscribe, name='newsletter_subscribe'),
     # Tìm kiếm sản phẩm
     path('products/search/', views.product_search, name='product_search'),
+    # Autocomplete search
+    path('products/autocomplete/', views.product_autocomplete, name='product_autocomplete'),
     # Giỏ hàng
     path('cart/', views.cart_detail, name='cart_detail'),
     path('cart/add/', views.cart_add, name='cart_add'),
@@ -88,6 +90,9 @@ urlpatterns = [
     path('product-content/add/', views.product_content_add, name='product_content_add'),
     path('product-content/replace/', views.product_content_replace, name='product_content_replace'),
     path('product-content/delete/', views.product_content_delete, name='product_content_delete'),
+    # Review Management (Admin)
+    path('reviews/list/', views.review_list, name='review_list'),
+    path('reviews/delete/', views.review_delete, name='review_delete'),
     # Product List JSON
     path('products/list/json/', views.product_list_json, name='product_list_json'),
 
@@ -129,6 +134,11 @@ urlpatterns = [
     # VNPay Payment
     path('vnpay/create/', views.vnpay_create, name='vnpay_create'),
 
+    # MoMo Payment
+    path('momo/create/', views.momo_create, name='momo_create'),
+    path('momo/return/', views.momo_return, name='momo_return'),
+    path('momo/ipn/', views.momo_ipn, name='momo_ipn'),
+
     # Order Success
     path('order/success/<str:order_code>/', views.order_success, name='order_success'),
     
@@ -165,4 +175,7 @@ urlpatterns = [
     # Student/Teacher Verification
     path('api/send-verification-code/', views.send_verification_code, name='send_verification_code'),
     path('api/verify-code/', views.verify_code, name='verify_code'),
+
+    # Autocomplete Search
+    path('api/autocomplete/', views.product_autocomplete, name='autocomplete_search'),
 ]

@@ -129,16 +129,16 @@
                         <span class="qh-checkout-pay-check"><i class="ri-checkbox-circle-fill"></i></span>
                     </div>
 
-                    <!-- Trả góp - Bảo trì -->
-                    <div class="qh-checkout-pay-opt disabled" data-pay-label="Trả góp" data-pay-short="Trả góp" data-pay-type="installment">
+                    <!-- MoMo -->
+                    <div class="qh-checkout-pay-opt" data-pay-label="MoMo" data-pay-short="MoMo" data-pay-type="momo">
                         <div class="qh-checkout-pay-icon">
-                            <i class="ri-calendar-check-line"></i>
+                            <i class="ri-shopping-bag-3-line"></i>
                         </div>
                         <div class="qh-checkout-pay-label">
-                            Trả góp 0%
-                            <small>Trả góp qua thẻ tín dụng</small>
+                            MoMo
+                            <small>Thanh toán qua ví MoMo</small>
                         </div>
-                        <span class="qh-checkout-pay-badge">Bảo trì</span>
+                        <span class="qh-checkout-pay-check"><i class="ri-checkbox-circle-fill"></i></span>
                     </div>
                 </div>
 
@@ -221,6 +221,7 @@
     window.QH_CHECKOUT_TOTAL = {{ total }};
     window.QH_CSRF_TOKEN = '{{ csrf_token }}';
     window.QH_VNPAY_CREATE_URL = '{% url "store:vnpay_create" %}';
+    window.QH_MOMO_CREATE_URL = '{% url "store:momo_create" %}';
     window.QH_PLACE_ORDER_URL = '{% url "store:place_order" %}';
     window.QH_VIETQR_CREATE_ORDER_URL = '{% url "store:vietqr_create_order" %}';
     window.QH_CHECKOUT_ITEMS_PARAM = '{{ items_param }}';

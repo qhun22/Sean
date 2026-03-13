@@ -221,6 +221,7 @@
     <a class="da-nav-item{% if request.GET.section == 'banner-images' %} active{% endif %}" onclick="window.location.href='?section=banner-images'" data-section="banner-images">Ảnh banner</a>
     <a class="da-nav-item{% if request.GET.section == 'product-images' %} active{% endif %}" onclick="window.location.href='?section=product-images'" data-section="product-images">Ảnh SP</a>
     <a class="da-nav-item{% if request.GET.section == 'product-content' %} active{% endif %}" onclick="window.location.href='?section=product-content'" data-section="product-content">Nội dung SP</a>
+    <a class="da-nav-item{% if request.GET.section == 'reviews' %} active{% endif %}" onclick="window.location.href='?section=reviews'" data-section="reviews">Quản lý đánh giá</a>
     <!-- hidden compat elements for dashboard.js -->
     <ul id="qhSidebarMenu" style="display:none;"></ul>
     <div id="qhSidebarPagination" style="display:none;"></div>
@@ -822,6 +823,39 @@
             </div>
             <div id="productContentPagination" style="display:flex;justify-content:center;align-items:center;gap:8px;margin-top:20px;padding:16px;"></div>
             <div id="productContentGrid" style="display:none;"></div>
+        </div>
+
+        <!-- ==================== Phần quản lý đánh giá ==================== -->
+        <div id="reviews-section" style="display: none;">
+            <div class="da-toolbar">
+                <span style="font-size:15px;font-weight:700;color:#1e293b;">Quản lý đánh giá sản phẩm</span>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div style="position:relative;">
+                        <input type="text" id="reviewSearchInput" placeholder="Tìm theo sản phẩm hoặc người dùng..." onkeydown="if(event.key==='Enter')searchReviews()" style="width:280px;padding:8px 12px 8px 34px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;font-family:'Signika',sans-serif;color:#1e293b;outline:none;">
+                        <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:#94a3b8;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </div>
+                    <button onclick="resetReviewSearch()" class="da-btn da-btn-md da-btn-ghost">Reset</button>
+                </div>
+            </div>
+            <div id="reviewsTableContainer" class="da-table-wrap">
+                <table class="da-table">
+                    <thead>
+                        <tr>
+                            <th>STT</th>
+                            <th>Sản phẩm</th>
+                            <th>Người dùng</th>
+                            <th>Số sao</th>
+                            <th>Nội dung</th>
+                            <th>Ảnh</th>
+                            <th>Ngày đánh giá</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reviewsTableBody">
+                    </tbody>
+                </table>
+            </div>
+            <div id="reviewsPagination" style="display:flex;justify-content:center;align-items:center;gap:8px;margin-top:20px;padding:16px;"></div>
         </div>
 
         <!-- ==================== Phần duyệt thanh toán QR ==================== -->

@@ -550,6 +550,7 @@ class Order(models.Model):
         ('cod', 'COD'),
         ('vietqr', 'VietQR'),
         ('vnpay', 'VNPay'),
+        ('momo', 'MoMo'),
     ]
     
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='orders', verbose_name='Khách hàng')
@@ -557,6 +558,7 @@ class Order(models.Model):
     total_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0, verbose_name='Tổng tiền')
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='cod', verbose_name='Phương thức TT')
     vnpay_order_code = models.CharField(max_length=50, blank=True, null=True, verbose_name='Mã VNPay')
+    momo_order_code = models.CharField(max_length=50, blank=True, null=True, verbose_name='Mã MoMo')
     coupon_code = models.CharField(max_length=50, blank=True, default='', verbose_name='Mã giảm giá')
     discount_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0, verbose_name='Số tiền giảm')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='Trạng thái')
@@ -763,6 +765,8 @@ class ProductReview(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='reviews', verbose_name='Người dùng')
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews', verbose_name='Sản phẩm')
     rating = models.PositiveIntegerField(verbose_name='Số sao (1-5)')
+    comment = models.TextField(blank=True, verbose_name='Nội dung đánh giá')
+    images = models.JSONField(default=list, verbose_name='Ảnh đánh giá (tối đa 3)')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày đánh giá')
 
     class Meta:

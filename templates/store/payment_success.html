@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}THANH TOÁN THÀNH CÔNG - QHUN22 Mobile{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/order_success.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="qh-os-page">
+
+    <h1 class="qh-page-title">TRẠNG THÁI</h1>
+
+    <!-- Hộp bao -->
+    <div class="qh-os-wrapper" id="successCard">
+
+        <!-- Tiêu đề nổi bật -->
+        <div class="qh-os-hero">
+            <div class="qh-os-icon">
+                <svg class="qhc" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <h2>THANH TOÁN THÀNH CÔNG</h2>
+        </div>
+
+        <!-- Hai hộp bằng nhau -->
+        <div class="qh-os-grid">
+
+            <!-- Left: Thông tin đơn hàng -->
+            <div class="qh-os-info">
+                <div class="qh-os-info-title">Thông tin đơn hàng</div>
+                <div class="qh-os-row">
+                    <span class="label">Mã đơn hàng</span>
+                    <span class="value">{{ order.order_code }}</span>
+                </div>
+                <div class="qh-os-row">
+                    <span class="label">Phương thức</span>
+                    <span class="value">{{ payment_method|upper }}</span>
+                </div>
+                <div class="qh-os-row">
+                    <span class="label">Trạng thái</span>
+                    <span class="value" style="color: #059669; font-weight: 600;">Đã thanh toán</span>
+                </div>
+                <div class="qh-os-row">
+                    <span class="label">Thời gian</span>
+                    <span class="value">{{ order.created_at|date:"d/m/Y H:i" }}</span>
+                </div>
+            </div>
+
+            <!-- Phải: Các nút -->
+            <div class="qh-os-actions">
+                <button class="qh-os-btn primary" onclick="copyCode()">
+                    <i class="ri-file-copy-line"></i> Copy mã đơn
+                </button>
+                <a href="{% url 'store:order_tracking' %}" class="qh-os-btn">
+                    <i class="ri-search-line"></i> Tra cứu đơn
+                </a>
+                <a href="{% url 'store:home' %}" class="qh-os-btn">
+                    <i class="ri-home-line"></i> Trang chủ
+                </a>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+function copyCode() {
+    var code = '{{ order.order_code }}';
+    navigator.clipboard.writeText(code).then(function() {
+        alert('Đã copy mã đơn hàng: ' + code);
+    });
+}
+</script>
+{% endblock %}

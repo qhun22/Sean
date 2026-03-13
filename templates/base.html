@@ -61,13 +61,15 @@
                 </a>
 
                 <!-- Thanh tìm kiếm -->
-                <div class="qh-search">
-                    <form action="{% url 'store:product_search' %}" method="GET" class="qh-search-form">
+                <div class="qh-search" data-autocomplete-url="{% url 'store:autocomplete_search' %}">
+                    <form action="{% url 'store:product_search' %}" method="GET" class="qh-search-form" id="qh-search-form">
                         <input type="text"
                                name="q"
                                placeholder="Nhập sản phẩm mà bạn muốn tìm..."
                                class="qh-search-input"
-                               value="{{ request.GET.q|default:'' }}">
+                               value="{{ request.GET.q|default:'' }}"
+                               id="qh-search-input"
+                               autocomplete="off">
                         <button type="submit" class="qh-search-btn">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <circle cx="11" cy="11" r="8"></circle>
@@ -75,6 +77,7 @@
                             </svg>
                         </button>
                     </form>
+                    <div class="qh-autocomplete-dropdown" id="qh-autocomplete-dropdown"></div>
                 </div>
 
                 <!-- Các nút hành động trong header -->
@@ -260,10 +263,12 @@
             <div class="qh-footer-container">
                 <div class="qh-footer-bottom-inner">
                     <div class="qh-footer-copyright">
-                        <p>© CÔNG TY QHUN22 MOBILE. All rights reserved.</p>
+                        <p>©QHUN22 MOBILE. All rights reserved.</p>
                     </div>
                     <div class="qh-footer-badges" aria-hidden="true">
-                        <span class="qh-footer-badge">Đã thông báo Bộ Công Thương</span>
+                        {% if badge_banner %}
+                        <img src="{{ badge_banner.image.url }}" alt="Đã thông báo Bộ Công Thương" class="qh-footer-badge-img">
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -383,6 +388,194 @@
         <i class="ri-close-line qh-chat-fab-close"></i>
     </button>
     <script src="{% static 'js/chatbot.js' %}"></script>
+
+    <script>
+    // Autocomplete Search
+    (function() {
+        const searchWrap = document.querySelector('.qh-search');
+        const searchInput = document.getElementById('qh-search-input');
+        const dropdown = document.getElementById('qh-autocomplete-dropdown');
+        const searchForm = document.getElementById('qh-search-form');
+        const autocompleteUrl = (searchWrap && searchWrap.getAttribute('data-autocomplete-url')) || '{% url "store:autocomplete_search" %}';
+        let debounceTimer;
+        let currentQuery = '';
+
+        // Debounce function
+        function debounce(func, delay) {
+            return function(...args) {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => func.apply(this, args), delay);
+            };
+        }
+
+        // Format price
+        function formatPrice(price) {
+            if (!price) return '';
+            return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(price);
+        }
+
+        // Fetch suggestions
+        async function fetchSuggestions(query) {
+            if (!dropdown) return;
+            if (query.length < 2) {
+                dropdown.style.display = 'none';
+                return;
+            }
+
+            try {
+                const sep = autocompleteUrl.indexOf('?') !== -1 ? '&' : '?';
+                const url = autocompleteUrl + sep + 'q=' + encodeURIComponent(query);
+                const response = await fetch(url);
+                if (!response.ok) {
+                    dropdown.style.display = 'none';
+                    return;
+                }
+                const data = await response.json();
+                const list = data.suggestions || [];
+                renderSuggestions(list, query);
+            } catch (error) {
+                console.error('Autocomplete error:', error);
+                dropdown.style.display = 'none';
+            }
+        }
+
+        // Render suggestions
+        function renderSuggestions(suggestions, query) {
+            if (!dropdown) return;
+            if (suggestions.length === 0) {
+                dropdown.style.display = 'none';
+                dropdown.innerHTML = '';
+                return;
+            }
+
+            let html = '<div class="qh-autocomplete-list">';
+
+            // Sản phẩm: có slug hoặc id
+            const products = suggestions.filter(s => s.slug || s.id);
+            const keywords = suggestions.filter(s => !s.slug && !s.id);
+
+            if (products.length > 0) {
+                html += '<div class="qh-autocomplete-section">';
+                html += '<div class="qh-autocomplete-header">Sản phẩm</div>';
+                products.forEach(product => {
+                    const detailUrl = product.id ? '/product/' + product.id + '/' : '/product/' + (product.slug || '') + '/';
+                    html += `
+                        <a href="${detailUrl}" class="qh-autocomplete-item qh-autocomplete-product">
+                            ${product.image ? `<img src="${product.image}" alt="${escapeHtml(product.name)}" class="qh-autocomplete-img">` : '<div class="qh-autocomplete-img qh-autocomplete-img-placeholder"></div>'}
+                            <div class="qh-autocomplete-info">
+                                <div class="qh-autocomplete-name">${highlightMatch(product.name, query)}</div>
+                                <div class="qh-autocomplete-brand">${escapeHtml(product.brand || '')}</div>
+                            </div>
+                            ${product.price ? `<div class="qh-autocomplete-price">${formatPrice(product.price)}</div>` : ''}
+                        </a>
+                    `;
+                });
+                html += '</div>';
+            }
+
+            if (keywords.length > 0) {
+                html += '<div class="qh-autocomplete-section">';
+                html += '<div class="qh-autocomplete-header">Gợi ý tìm kiếm</div>';
+                keywords.forEach(keyword => {
+                    html += `
+                        <a href="{% url 'store:product_search' %}?q=${encodeURIComponent(keyword.name)}" class="qh-autocomplete-item qh-autocomplete-keyword">
+                            <svg class="qh-autocomplete-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <span class="qh-autocomplete-keyword-text">${highlightMatch(keyword.name, query)}</span>
+                        </a>
+                    `;
+                });
+                html += '</div>';
+            }
+
+            html += '</div>';
+            dropdown.innerHTML = html;
+            dropdown.style.display = 'block';
+        }
+
+        // Highlight matching text (escape text trước để tránh XSS)
+        function highlightMatch(text, query) {
+            const safe = escapeHtml(text);
+            const regex = new RegExp(`(${escapeRegExp(query)})`, 'gi');
+            return safe.replace(regex, '<strong>$1</strong>');
+        }
+
+        // Escape regex special characters
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        // Escape HTML để tránh XSS
+        function escapeHtml(str) {
+            if (str == null) return '';
+            var div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // Event listeners
+        if (searchInput) {
+            searchInput.addEventListener('input', debounce(function(e) {
+                const query = e.target.value.trim();
+                if (query !== currentQuery) {
+                    currentQuery = query;
+                    fetchSuggestions(query);
+                }
+            }, 300));
+
+            searchInput.addEventListener('focus', function() {
+                const q = searchInput.value.trim();
+                if (q.length >= 2) {
+                    currentQuery = q;
+                    fetchSuggestions(q);
+                }
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.style.display = 'none';
+                }
+            });
+
+            // Keyboard navigation
+            searchInput.addEventListener('keydown', function(e) {
+                const items = dropdown.querySelectorAll('.qh-autocomplete-item');
+                if (items.length === 0) return;
+
+                let activeIndex = -1;
+                items.forEach((item, index) => {
+                    if (item.classList.contains('active')) {
+                        activeIndex = index;
+                        item.classList.remove('active');
+                    }
+                });
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeIndex = Math.min(activeIndex + 1, items.length - 1);
+                    items[activeIndex].classList.add('active');
+                    items[activeIndex].scrollIntoView({ block: 'nearest' });
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeIndex = Math.max(activeIndex - 1, 0);
+                    items[activeIndex].classList.add('active');
+                    items[activeIndex].scrollIntoView({ block: 'nearest' });
+                } else if (e.key === 'Enter') {
+                    const activeItem = dropdown.querySelector('.qh-autocomplete-item.active');
+                    if (activeItem) {
+                        e.preventDefault();
+                        window.location.href = activeItem.getAttribute('href');
+                    }
+                } else if (e.key === 'Escape') {
+                    dropdown.style.display = 'none';
+                }
+            });
+        }
+    })();
+    </script>
 
     {% block extra_js %}{% endblock %}
 </body>

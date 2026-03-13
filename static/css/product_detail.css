@@ -1213,18 +1213,49 @@
     margin-left: 4px;
 }
 
+/* Form đánh giá - Layout 2 cột theo design: trái = sao + ảnh, phải = nội dung */
 .pd-review-input {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 12px;
+    flex-direction: column;
+    gap: 0;
+    max-width: 100%;
+}
+
+.pd-review-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: stretch;
+    min-height: 200px;
+}
+
+.pd-review-left {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    border-right: 1px solid #e2e8f0;
+    padding-right: 24px;
+}
+
+.pd-review-right {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pd-review-block {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .pd-review-label {
     font-size: 14px;
+    font-weight: 500;
     color: #334155;
     margin: 0;
     font-family: 'Signika', sans-serif;
+    flex-shrink: 0;
 }
 
 .pd-review-stars {
@@ -1250,8 +1281,157 @@
     fill: #f59e0b;
 }
 
+/* Cột phải: ô nhập nội dung full chiều cao */
+.pd-review-comment {
+    width: 100%;
+    flex: 1;
+    min-height: 140px;
+    padding: 12px 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    color: #334155;
+    resize: vertical;
+    transition: border-color 0.2s;
+}
+
+.pd-review-comment:focus {
+    outline: none;
+    border-color: var(--qh-primary, #dc2626);
+}
+
+.pd-review-comment::placeholder {
+    color: #94a3b8;
+}
+
+/* Block hình ảnh: bố cục cân bằng - 2 cột bằng nhau */
+.pd-review-images-block {
+    flex: 1;
+    min-height: 0;
+}
+
+.pd-review-images-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+    flex: 1;
+    min-height: 100px;
+}
+
+.pd-review-images-row input[type="file"] {
+    display: none;
+}
+
+.pd-review-images-upload-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-height: 100px;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 10px;
+    border: 1px dashed #cbd5e1;
+}
+
+.pd-review-upload-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 24px;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #475569;
+    cursor: pointer;
+    font-family: 'Signika', sans-serif;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.pd-review-upload-btn:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+.pd-review-preview-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 100px;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 10px;
+    border: 1px dashed #cbd5e1;
+}
+
+.pd-review-preview-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #475569;
+    font-family: 'Signika', sans-serif;
+}
+
+.pd-review-preview {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.pd-review-preview>div {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+}
+
+.pd-review-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.pd-review-images-count {
+    font-size: 12px;
+    color: #94a3b8;
+    font-family: 'Signika', sans-serif;
+}
+
+/* Footer: message trái, nút Gửi đánh giá phải */
+.pd-review-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.pd-review-msg {
+    font-size: 13px;
+    font-family: 'Signika', sans-serif;
+    min-height: 20px;
+    flex: 1;
+}
+
+.pd-review-msg.success {
+    color: #15803d;
+}
+
+.pd-review-msg.error {
+    color: #dc2626;
+}
+
 .pd-review-submit {
-    padding: 8px 24px;
+    padding: 10px 28px;
     background: #dc2626;
     color: #fff;
     border: none;
@@ -1270,20 +1450,6 @@
 .pd-review-submit:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-}
-
-.pd-review-msg {
-    font-size: 13px;
-    font-family: 'Signika', sans-serif;
-    min-height: 20px;
-}
-
-.pd-review-msg.success {
-    color: #15803d;
-}
-
-.pd-review-msg.error {
-    color: #dc2626;
 }
 
 /* Review List */
@@ -1315,7 +1481,7 @@
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--qh-primary, #A9CCF0), var(--qh-secondary, #D3BAFF));
+    background: #8BB8E0;
     color: #fff;
     display: flex;
     align-items: center;
@@ -1461,6 +1627,27 @@
     .pd-review-input {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .pd-review-grid {
+        grid-template-columns: 1fr;
+        min-height: auto;
+    }
+
+    .pd-review-left {
+        border-right: none;
+        padding-right: 0;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .pd-review-images-row {
+        grid-template-columns: 1fr;
+    }
+
+    .pd-review-images-upload-cell,
+    .pd-review-preview-wrap {
+        min-height: 80px;
     }
 
     .pd-review-item {

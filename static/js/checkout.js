@@ -105,6 +105,51 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     }
 
+    /* ==================== Thanh toán MoMo ==================== */
+    function initiateMoMoPayment() {
+        var submitBtn = document.getElementById('checkoutSubmitBtn');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Đang chuyển hướng đến MoMo...';
+        }
+
+        var formData = new FormData();
+        formData.append('amount', totalAmount);
+        formData.append('items_param', window.QH_CHECKOUT_ITEMS_PARAM || '');
+
+        fetch(window.QH_MOMO_CREATE_URL, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': QH_CSRF_TOKEN
+            },
+            body: formData
+        })
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                if (data.success && data.payment_url) {
+                    window.location.href = data.payment_url;
+                } else {
+                    if (window.QHToast) {
+                        QHToast.show(data.message || 'Lỗi tạo thanh toán MoMo', 'error');
+                    }
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'ĐẶT HÀNG';
+                    }
+                }
+            })
+            .catch(function (err) {
+                console.error('[MoMo Create Error]', err);
+                if (window.QHToast) {
+                    QHToast.show('Lỗi kết nối đến MoMo. Vui lòng thử lại.', 'error');
+                }
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'ĐẶT HÀNG';
+                }
+            });
+    }
+
     /* ==================== VietQR → Chuyển hướng đến trang riêng ==================== */
     function initiateVietQRPayment() {
         var submitBtn = document.getElementById('checkoutSubmitBtn');
@@ -169,6 +214,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (payType === 'vietqr') {
                 initiateVietQRPayment();
+                return;
+            }
+
+            if (payType === 'momo') {
+                initiateMoMoPayment();
                 return;
             }
 

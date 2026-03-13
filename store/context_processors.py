@@ -12,6 +12,15 @@ def qhun22_context(request):
         'CLOUDFLARE_TURNSTILE_SITE_KEY': getattr(settings, 'CLOUDFLARE_TURNSTILE_SITE_KEY', ''),
     }
 
+    # Thêm hình ảnh badge Bộ Công Thương (banner ID 667766)
+    from store.models import Banner
+    try:
+        badge_banner = Banner.objects.filter(banner_id='667766').first()
+        if badge_banner:
+            context['badge_banner'] = badge_banner
+    except Exception:
+        pass
+
     # Thêm thông tin người dùng nếu đã đăng nhập
     if request.user.is_authenticated:
         context['user_display_name'] = request.user.get_full_name()

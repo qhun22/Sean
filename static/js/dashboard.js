@@ -613,6 +613,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const skuSection = document.getElementById('sku-section');
     const bannerImagesSection = document.getElementById('banner-images-section');
     const productContentSection = document.getElementById('product-content-section');
+    const reviewsSection = document.getElementById('reviews-section');
     const qrApprovalSection = document.getElementById('qr-approval-section');
     const adminOrdersSection = document.getElementById('admin-orders-section');
     const couponsSection = document.getElementById('coupons-section');
@@ -630,6 +631,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     if (productContentSection) {
         productContentSection.style.display = (currentSection === 'product-content') ? 'block' : 'none';
+    }
+    if (reviewsSection) {
+        reviewsSection.style.display = (currentSection === 'reviews') ? 'block' : 'none';
     }
     if (qrApprovalSection) {
         qrApprovalSection.style.display = (currentSection === 'qr-approval') ? 'block' : 'none';
@@ -662,6 +666,11 @@ document.addEventListener('DOMContentLoaded', function () {
     // Tải danh sách mã giảm giá nếu đang ở phần mã giảm giá
     if (currentSection === 'coupons') {
         loadCouponList();
+    }
+
+    // Tải danh sách đánh giá nếu đang ở phần quản lý đánh giá
+    if (currentSection === 'reviews') {
+        loadReviews();
     }
 
     // Xử lý submit form thêm hãng
@@ -4279,5 +4288,182 @@ function _renderStatusButtons(footer, currentStatus, orderId) {
             btn.style.opacity = '0.85';
         }
         footer.appendChild(btn);
+    });
+}
+
+// ==================== Reviews Management ====================
+var _reviewData = [];
+var _reviewPage = 1;
+var _reviewSearch = '';
+var _reviewTotalPages = 1;
+
+function loadReviews(page) {
+    var container = document.getElementById('reviewsTableContainer');
+    var tbody = document.getElementById('reviewsTableBody');
+    if (!tbody) return;
+
+    page = page || _reviewPage;
+    var search = _reviewSearch || '';
+
+    tbody.innerHTML = '<tr><td colspan="8" style="padding:40px 16px;text-align:center;color:#94a3b8;font-size:14px;">Đang tải...</td></tr>';
+
+    fetch('/reviews/list/?page=' + page + '&search=' + encodeURIComponent(search), {
+        headers: { 'X-CSRFToken': window.csrfToken }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (!data.success) {
+            tbody.innerHTML = '<tr><td colspan="8" style="padding:40px 16px;text-align:center;color:#ef4444;font-size:14px;">Lỗi: ' + (data.message || 'Không thể tải') + '</td></tr>';
+            return;
+        }
+        _reviewData = data.reviews || [];
+        _reviewPage = data.current_page;
+        _reviewTotalPages = data.total_pages;
+        _renderReviews();
+        _renderReviewPagination();
+    })
+    .catch(function() {
+        tbody.innerHTML = '<tr><td colspan="8" style="padding:40px 16px;text-align:center;color:#ef4444;font-size:14px;">Lỗi kết nối</td></tr>';
+    });
+}
+
+function _renderReviews() {
+    var tbody = document.getElementById('reviewsTableBody');
+    if (!tbody) return;
+
+    if (_reviewData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="padding:40px 16px;text-align:center;color:#94a3b8;font-size:14px;">Chưa có đánh giá nào</td></tr>';
+        return;
+    }
+
+    var html = '';
+    _reviewData.forEach(function(r) {
+        // Stars
+        var stars = '';
+        for (var i = 1; i <= 5; i++) {
+            stars += '<svg style="width:14px;height:14px;fill:' + (i <= r.rating ? '#f59e0b' : '#e2e8f0') + ';" viewBox="0 0 24 24"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>';
+        }
+
+        // Images
+        var imagesHtml = '';
+        if (r.images && r.images.length > 0) {
+            imagesHtml = '<span style="color:#64748b;font-size:12px;">' + r.images.length + ' ảnh</span>';
+        } else {
+            imagesHtml = '<span style="color:#94a3b8;font-size:12px;">-</span>';
+        }
+
+        // Comment (truncate)
+        var comment = r.comment ? (r.comment.length > 80 ? r.comment.substring(0, 80) + '...' : r.comment) : '<span style="color:#94a3b8;font-style:italic;">Không có nội dung</span>';
+
+        html += '<tr style="border-bottom:1px solid #f1f5f9;">';
+        html += '<td style="padding:12px 8px;text-align:center;color:#64748b;font-size:13px;">' + r.stt + '</td>';
+        html += '<td style="padding:12px 8px;color:#1e293b;font-size:13px;font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (r.product_name || '') + '">' + (r.product_name || '-') + '</td>';
+        html += '<td style="padding:12px 8px;color:#334155;font-size:13px;">' + (r.user_name || 'Ẩn danh') + '<br><span style="color:#94a3b8;font-size:11px;">' + (r.user_email || '') + '</span></td>';
+        html += '<td style="padding:12px 8px;">' + stars + '</td>';
+        html += '<td style="padding:12px 8px;color:#475569;font-size:13px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (r.comment || '') + '">' + comment + '</td>';
+        html += '<td style="padding:12px 8px;text-align:center;">' + imagesHtml + '</td>';
+        html += '<td style="padding:12px 8px;color:#64748b;font-size:12px;">' + r.created_at + '</td>';
+        html += '<td style="padding:12px 8px;text-align:center;">';
+        html += '<button onclick="deleteReview(' + r.id + ')" style="padding:6px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;color:#dc2626;font-size:12px;font-weight:500;cursor:pointer;font-family:\'Signika\',sans-serif;">Xóa</button>';
+        html += '</td>';
+        html += '</tr>';
+    });
+
+    tbody.innerHTML = html;
+}
+
+function _renderReviewPagination() {
+    var pagination = document.getElementById('reviewsPagination');
+    if (!pagination) return;
+
+    if (_reviewTotalPages <= 1) {
+        pagination.innerHTML = '';
+        return;
+    }
+
+    var html = '';
+
+    // Prev button
+    if (_reviewPage > 1) {
+        html += '<button onclick="loadReviews(' + (_reviewPage - 1) + ')" style="padding:6px 12px;background:#fff;border:1px solid #e2e8f0;border-radius:6px;color:#475569;font-size:13px;cursor:pointer;font-family:\'Signika\',sans-serif;">&laquo; Trước</button>';
+    }
+
+    // Page numbers
+    var startPage = Math.max(1, _reviewPage - 2);
+    var endPage = Math.min(_reviewTotalPages, _reviewPage + 2);
+
+    if (startPage > 1) {
+        html += '<button onclick="loadReviews(1)" style="padding:6px 12px;background:#fff;border:1px solid #e2e8f0;border-radius:6px;color:#475569;font-size:13px;cursor:pointer;font-family:\'Signika\',sans-serif;">1</button>';
+        if (startPage > 2) {
+            html += '<span style="padding:6px;color:#94a3b8;">...</span>';
+        }
+    }
+
+    for (var i = startPage; i <= endPage; i++) {
+        if (i === _reviewPage) {
+            html += '<button style="padding:6px 12px;background:#dc2626;border:1px solid #dc2626;border-radius:6px;color:#fff;font-size:13px;font-weight:600;font-family:\'Signika\',sans-serif;">' + i + '</button>';
+        } else {
+            html += '<button onclick="loadReviews(' + i + ')" style="padding:6px 12px;background:#fff;border:1px solid #e2e8f0;border-radius:6px;color:#475569;font-size:13px;cursor:pointer;font-family:\'Signika\',sans-serif;">' + i + '</button>';
+        }
+    }
+
+    if (endPage < _reviewTotalPages) {
+        if (endPage < _reviewTotalPages - 1) {
+            html += '<span style="padding:6px;color:#94a3b8;">...</span>';
+        }
+        html += '<button onclick="loadReviews(' + _reviewTotalPages + ')" style="padding:6px 12px;background:#fff;border:1px solid #e2e8f0;border-radius:6px;color:#475569;font-size:13px;cursor:pointer;font-family:\'Signika\',sans-serif;">' + _reviewTotalPages + '</button>';
+    }
+
+    // Next button
+    if (_reviewPage < _reviewTotalPages) {
+        html += '<button onclick="loadReviews(' + (_reviewPage + 1) + ')" style="padding:6px 12px;background:#fff;border:1px solid #e2e8f0;border-radius:6px;color:#475569;font-size:13px;cursor:pointer;font-family:\'Signika\',sans-serif;">Sau &raquo;</button>';
+    }
+
+    pagination.innerHTML = html;
+}
+
+function searchReviews() {
+    var inp = document.getElementById('reviewSearchInput');
+    _reviewSearch = inp ? inp.value.trim() : '';
+    _reviewPage = 1;
+    loadReviews(1);
+}
+
+function resetReviewSearch() {
+    var inp = document.getElementById('reviewSearchInput');
+    if (inp) inp.value = '';
+    _reviewSearch = '';
+    _reviewPage = 1;
+    loadReviews(1);
+}
+
+function deleteReview(reviewId) {
+    if (!confirm('Bạn có chắc chắn muốn xóa đánh giá này?')) return;
+
+    var formData = new FormData();
+    formData.append('review_id', reviewId);
+
+    fetch('/reviews/delete/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': window.csrfToken },
+        body: formData
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.success) {
+            if (window.QHToast) {
+                window.QHToast.show(data.message || 'Đã xóa đánh giá', 'success');
+            }
+            loadReviews(_reviewPage);
+        } else {
+            if (window.QHToast) {
+                window.QHToast.show(data.message || 'Lỗi xóa đánh giá', 'error');
+            }
+        }
+    })
+    .catch(function() {
+        if (window.QHToast) {
+            window.QHToast.show('Lỗi kết nối', 'error');
+        }
     });
 }

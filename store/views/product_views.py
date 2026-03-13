@@ -189,7 +189,9 @@ def product_detail_view(request, product_id):
 def submit_review(request):
     """API đánh giá sản phẩm - chỉ user đã mua thành công (delivered) mới được"""
     from django.http import JsonResponse
+    from django.conf import settings
     from store.models import Product, ProductReview, OrderItem
+    import os
 
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': 'Phương thức không được phép'}, status=405)
@@ -198,6 +200,7 @@ def submit_review(request):
 
     product_id = request.POST.get('product_id')
     rating = request.POST.get('rating')
+    comment = request.POST.get('comment', '').strip()
 
     if not product_id or not rating:
         return JsonResponse({'success': False, 'message': 'Thiếu thông tin'})
@@ -225,7 +228,56 @@ def submit_review(request):
     if not has_delivered:
         return JsonResponse({'success': False, 'message': 'Bạn cần mua và nhận hàng thành công mới được đánh giá'})
 
-    ProductReview.objects.create(user=request.user, product=product, rating=rating)
+    # Xử lý upload ảnh (tối đa 3 ảnh, mỗi ảnh < 5MB)
+    # Đường dẫn: media/comment/Năm/Tháng/tên_thư_mục_email_hoặc_sdt/
+    uploaded_images = []
+    images = request.FILES.getlist('images')
+
+    if images:
+        import re
+        import uuid
+        from datetime import datetime
+
+        max_images = 3
+        max_size = 5 * 1024 * 1024  # 5MB
+
+        if len(images) > max_images:
+            return JsonResponse({'success': False, 'message': f'Tối đa {max_images} ảnh'})
+
+        now = datetime.now()
+        year = now.strftime('%Y')
+        month = now.strftime('%m')  # 01, 02, ...
+        # Tên thư mục = email hoặc SĐT người dùng (sanitize cho filesystem)
+        user_ident = (request.user.email or getattr(request.user, 'phone', None) or 'user').strip()
+        user_folder = re.sub(r'[<>:"/\\|?*\s]', '_', user_ident.replace('@', '_')).strip('_') or 'user'
+
+        upload_dir = os.path.join(settings.MEDIA_ROOT, 'comment', year, month, user_folder)
+        os.makedirs(upload_dir, exist_ok=True)
+
+        for img in images:
+            if img.size > max_size:
+                return JsonResponse({'success': False, 'message': f'Ảnh {img.name} vượt quá 5MB'})
+
+            ext = os.path.splitext(img.name)[1].lower()
+            if ext not in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+                return JsonResponse({'success': False, 'message': 'Chỉ chấp nhận ảnh jpg, jpeg, png, gif, webp'})
+
+            filename = f"{uuid.uuid4().hex}{ext}"
+            filepath = os.path.join(upload_dir, filename)
+            with open(filepath, 'wb') as f:
+                for chunk in img.chunks():
+                    f.write(chunk)
+
+            uploaded_images.append(f'/media/comment/{year}/{month}/{user_folder}/{filename}')
+
+    # Tạo đánh giá
+    ProductReview.objects.create(
+        user=request.user,
+        product=product,
+        rating=rating,
+        comment=comment,
+        images=uploaded_images
+    )
 
     reviews = ProductReview.objects.filter(product=product)
     count = reviews.count()
@@ -425,21 +477,26 @@ def home(request):
     from store.models import Brand
     context['brands'] = Brand.objects.filter(is_active=True).order_by('name')
     
-    # Lấy đúng banner id=76294 cho GỢI Ý CHO BẠN
-    suggest_banner = Banner.objects.filter(banner_id='76294').first()
-    if suggest_banner:
-        context['suggest_banner'] = suggest_banner
-    # Lấy 5 sản phẩm gợi ý (ngẫu nhiên, còn hàng)
+    # HOT SALE HÀNG NGÀY: 5 sản phẩm từ featured (products) + countdown 24h tự reset
     import random
-    all_active_products = list(Product.objects.filter(
-        is_active=True, 
-        stock__gt=0
-    ).select_related('brand', 'detail'))
-    if all_active_products:
-        random.shuffle(all_active_products)
-        context['suggest_products'] = all_active_products[:5]
+    from django.utils import timezone
+    import datetime as dt
+    # Lấy tất cả products (đã được lọc và sắp xếp - là featured products)
+    all_featured = list(products_list)  # products_list là queryset gốc trước phân trang
+    if all_featured:
+        random.seed(timezone.now().date().toordinal())  # Seed theo ngày để mỗi ngày random khác nhau
+        random.shuffle(all_featured)
+        context['hot_sale_products'] = all_featured[:5]
     else:
-        context['suggest_products'] = []
+        context['hot_sale_products'] = []
+    # Countdown đến 00:00 ngày mai (theo giờ Việt Nam ICT)
+    import zoneinfo
+    ict = zoneinfo.ZoneInfo('Asia/Ho_Chi_Minh')
+    now = datetime.datetime.now(ict)
+    # Tính thời gian đến 00:00 ngày mai
+    tomorrow = now.replace(hour=0, minute=0, second=0, microsecond=0) + datetime.timedelta(days=1)
+    # Truyền timestamp cho JavaScript
+    context['hot_sale_end_timestamp'] = int(tomorrow.timestamp())
     
     return render(request, 'store/home.html', context)
 
@@ -826,3 +883,86 @@ def newsletter_subscribe(request):
     display = email or phone
     notify_newsletter_subscribe(False, display, created_str)
     return ok('Đăng ký thành công! Cảm ơn bạn đã quan tâm.')
+
+
+def product_autocomplete(request):
+    """
+    API autocomplete search - trả về gợi ý tìm kiếm sản phẩm
+    """
+    from django.http import JsonResponse
+    from django.db.models import Q
+    from store.models import Product, Brand
+
+    query = request.GET.get('q', '').strip()
+
+    if len(query) < 2:
+        return JsonResponse({'suggestions': []})
+
+    # Tìm kiếm sản phẩm theo tên
+    products = Product.objects.select_related('brand').filter(
+        Q(name__icontains=query) | Q(brand__name__icontains=query),
+        is_active=True
+    ).order_by('-created_at')[:8]
+
+    suggestions = []
+    for product in products:
+        suggestions.append({
+            'id': product.id,
+            'name': product.name,
+            'brand': product.brand.name if product.brand else '',
+            'slug': product.slug,
+            'price': str(product.price) if product.price else '',
+            'image': product.image.url if product.image else '',
+        })
+
+    # Thêm gợi ý tìm kiếm phổ biến dựa trên từ khóa
+    keyword_suggestions = _get_keyword_suggestions(query)
+    suggestions.extend(keyword_suggestions)
+
+    return JsonResponse({'suggestions': suggestions})
+
+
+def _get_keyword_suggestions(query):
+    """
+    Trả về các gợi ý từ khóa tìm kiếm phổ biến dựa trên query
+    """
+    query_lower = query.lower()
+    suggestions = []
+
+    # Dictionary gợi ý từ khóa theo category
+    keyword_map = {
+        'iphone': ['iPhone 15', 'iPhone 16', 'iPhone 15 Pro Max', 'iPhone 13', 'iPhone 14'],
+        'samsung': ['Samsung Galaxy S24', 'Samsung Galaxy A54', 'Samsung pin trâu', 'Samsung cao cấp'],
+        'ipad': ['iPad Pro', 'iPad Air', 'iPad mini', 'iPad 10'],
+        'macbook': ['MacBook Air M3', 'MacBook Pro M3', 'MacBook Air M2'],
+        'apple': ['iPhone', 'iPad', 'MacBook', 'Apple Watch', 'AirPods'],
+        'xiaomi': ['Xiaomi 14', 'Redmi Note 13', 'Xiaomi Poco', 'Xiaomi Mi'],
+        'oppo': ['OPPO Reno11', 'OPPO Find X7', 'OPPO A78'],
+        'vivo': ['Vivo V29', 'Vivo X100', 'Vivo Y36'],
+        'realme': ['Realme GT5', 'Realme C53', 'Realme 11 Pro'],
+        'nokia': ['Nokia G42', 'Nokia X30', 'Nokia C32'],
+        'pin': ['Điện thoại pin trâu', 'Điện thoại pin 5000mAh', 'Điện thoại sạc nhanh'],
+        'gaming': ['Điện thoại gaming', '手机 chơi game', 'Rog Phone'],
+        '5g': ['Điện thoại 5G', 'Smartphone 5G giá rẻ'],
+    }
+
+    for key, values in keyword_map.items():
+        if key in query_lower:
+            for v in values:
+                if v.lower() not in [s['name'].lower() for s in suggestions]:
+                    suggestions.append({
+                        'name': v,
+                        'type': 'keyword',
+                    })
+            break
+    else:
+        # Nếu không khớp với key nào, tìm tất cả suggestions có chứa query
+        for key, values in keyword_map.items():
+            for v in values:
+                if query_lower in v.lower() and v not in [s['name'] for s in suggestions]:
+                    suggestions.append({
+                        'name': v,
+                        'type': 'keyword',
+                    })
+
+    return suggestions[:4]

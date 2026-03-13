@@ -343,14 +343,60 @@
 }
 
 /* ==================== Featured Brands Row ==================== */
-.qh-featured-brands-row {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 18px;
-    margin: 0 auto 28px auto;
-    padding: 0 0 8px 0;
+/* Infinite Carousel Container */
+.qh-carousel-container {
+    position: relative;
+    width: 100%;
     max-width: 1400px;
+    margin: 0 auto 28px auto;
+    overflow: hidden;
+    border-radius: 12px;
+}
+
+/* Fade overlay on left and right using pseudo-elements */
+.qh-carousel-container::before,
+.qh-carousel-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 12%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.qh-carousel-container::before {
+    left: 0;
+    background: linear-gradient(to right, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+.qh-carousel-container::after {
+    right: 0;
+    background: linear-gradient(to left, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+/* Carousel Track - the animated scrolling container */
+.qh-carousel-track {
+    display: flex;
+    gap: 18px;
+    padding: 0 20px;
+    animation: scrollToLeft 25s linear infinite;
+    width: fit-content;
+}
+
+/* Pause animation on hover */
+.qh-carousel-track:hover {
+    animation-play-state: paused;
+}
+
+/* Animation: Smooth infinite scroll from right to left */
+@keyframes scrollToLeft {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(-50%);
+    }
 }
 
 .qh-featured-brand {
@@ -366,11 +412,13 @@
     min-width: 110px;
     min-height: 56px;
     cursor: pointer;
+    /* Flex-shrink: 0 ensures consistent sizing in flex container */
+    flex-shrink: 0;
 }
 
 .qh-featured-brand:hover {
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.13);
-    transform: translateY(-4px) scale(1.04);
+    transform: scale(1.04);
     border-color: #e0e7ef;
 }
 
@@ -478,6 +526,65 @@
     align-items: stretch;
     border-radius: 0;
     box-shadow: none;
+}
+
+/* ==================== HOT SALE HÀNG NGÀY ==================== */
+/* Box trắng bên ngoài (container) - viền đỏ nhẹ kiểu LED */
+.qh-hotsale-section .qh-hotsale-inner {
+    border: 1px solid rgba(220, 38, 38, 0.3);
+    border-radius: 0 0 14px 14px;
+    box-shadow: inset 0 0 0 1px rgba(220, 38, 38, 0.12),
+                0 0 20px rgba(220, 38, 38, 0.1);
+    animation: qh-hotsale-led-outer 2.5s ease-in-out infinite;
+}
+@keyframes qh-hotsale-led-outer {
+    0%, 100% {
+        box-shadow: inset 0 0 0 1px rgba(220, 38, 38, 0.12), 0 0 20px rgba(220, 38, 38, 0.1);
+    }
+    50% {
+        box-shadow: inset 0 0 0 1px rgba(220, 38, 38, 0.2), 0 0 28px rgba(220, 38, 38, 0.14);
+    }
+}
+
+/* Viền đỏ nhẹ kiểu LED cho box sản phẩm Hot Sale */
+.qh-hotsale-section .qh-hotsale-card {
+    border: 1px solid rgba(220, 38, 38, 0.35);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08),
+                0 0 0 1px rgba(220, 38, 38, 0.15),
+                0 0 16px rgba(220, 38, 38, 0.12);
+    animation: qh-hotsale-led 2.5s ease-in-out infinite;
+}
+.qh-hotsale-section .qh-hotsale-card:hover {
+    border-color: rgba(220, 38, 38, 0.6);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12),
+                0 0 0 1px rgba(220, 38, 38, 0.3),
+                0 0 24px rgba(220, 38, 38, 0.2);
+}
+@keyframes qh-hotsale-led {
+    0%, 100% {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(220, 38, 38, 0.2), 0 0 14px rgba(220, 38, 38, 0.1);
+    }
+    50% {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(220, 38, 38, 0.35), 0 0 20px rgba(220, 38, 38, 0.16);
+    }
+}
+
+@media (max-width: 768px) {
+    .qh-hotsale-section > div:first-child {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 12px !important;
+    }
+    .qh-hotsale-section .qh-product-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .qh-hotsale-section h2 {
+        font-size: 1.2rem !important;
+    }
 }
 
 .qh-suggest-title {

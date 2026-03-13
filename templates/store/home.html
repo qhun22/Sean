@@ -106,43 +106,76 @@
         </div>
     </section>
 
-    <!-- Hãng sản phẩm nổi bật - 1 hàng 10 hãng, hiệu ứng chữ -->
+    <!-- Hãng sản phẩm nổi bật - Infinite Scrolling Carousel -->
     <div class="qh-featured-title-wrap">
         <span class="qh-featured-title">HÃNG NỔI BẬT</span>
     </div>
-    <div class="qh-featured-brands-row">
-        {% for brand in brands %}
-        <a class="qh-featured-brand" href="{% url 'store:product_search' %}?brand={{ brand.slug }}" title="{{ brand.name }}">
-            {% if brand.slug == 'apple' or brand.slug == 'iphone' %}<img src="{% static 'icons/logo_iphone_ngang_eac93ff477.webp' %}" alt="{{ brand.name }}">
-            {% elif brand.slug == 'samsung' %}<img src="{% static 'icons/logo_samsung_ngang_1624d75bd8.webp' %}" alt="{{ brand.name }}">
-            {% elif brand.slug == 'xiaomi' %}<img src="{% static 'icons/logo_xiaomi_ngang_0faf267234.webp' %}" alt="{{ brand.name }}">
-            {% elif brand.slug == 'oppo' %}<img src="{% static 'icons/logo_oppo_ngang_68d31fcd73.webp' %}" alt="{{ brand.name }}">
-            {% elif brand.slug == 'vivo' %}<img src="{% static 'icons/logo_vivo_ngang_45494ff733.webp' %}" alt="{{ brand.name }}">
-            {% elif brand.slug == 'realme' %}<img src="{% static 'icons/logo_realme_ngang_0185815a13.webp' %}" alt="{{ brand.name }}">
-            {% elif brand.slug == 'honor' %}<img src="{% static 'icons/logo_honor_ngang_814fca59e4.webp' %}" alt="{{ brand.name }}">
-            {% elif brand.slug == 'red-magic' or brand.slug == 'redmagic' %}<img src="{% static 'icons/logo_redmagic_ngang_505d29c537.webp' %}" alt="{{ brand.name }}">
-            {% elif brand.slug == 'tecno' %}<img src="{% static 'icons/logo_tecno_ngang_c587e5f1fa.webp' %}" alt="{{ brand.name }}">
-            {% elif brand.slug == 'benco' %}<img src="{% static 'icons/logo_benco_ngang_d31d9c3b77.webp' %}" alt="{{ brand.name }}">
-            {% else %}<span style="font-weight: 600; color: #333; font-size: 14px;">{{ brand.name }}</span>
-            {% endif %}
-        </a>
-        {% endfor %}
+    
+    <div class="qh-carousel-container">
+        <div class="qh-carousel-track">
+            {% for brand in brands %}
+            <a class="qh-featured-brand" href="{% url 'store:product_search' %}?brand={{ brand.slug }}" title="{{ brand.name }}">
+                {% if brand.slug == 'apple' or brand.slug == 'iphone' %}<img src="{% static 'icons/logo_iphone_ngang_eac93ff477.webp' %}" alt="{{ brand.name }}">
+                {% elif brand.slug == 'samsung' %}<img src="{% static 'icons/logo_samsung_ngang_1624d75bd8.webp' %}" alt="{{ brand.name }}">
+                {% elif brand.slug == 'xiaomi' %}<img src="{% static 'icons/logo_xiaomi_ngang_0faf267234.webp' %}" alt="{{ brand.name }}">
+                {% elif brand.slug == 'oppo' %}<img src="{% static 'icons/logo_oppo_ngang_68d31fcd73.webp' %}" alt="{{ brand.name }}">
+                {% elif brand.slug == 'vivo' %}<img src="{% static 'icons/logo_vivo_ngang_45494ff733.webp' %}" alt="{{ brand.name }}">
+                {% elif brand.slug == 'realme' %}<img src="{% static 'icons/logo_realme_ngang_0185815a13.webp' %}" alt="{{ brand.name }}">
+                {% elif brand.slug == 'honor' %}<img src="{% static 'icons/logo_honor_ngang_814fca59e4.webp' %}" alt="{{ brand.name }}">
+                {% elif brand.slug == 'red-magic' or brand.slug == 'redmagic' %}<img src="{% static 'icons/logo_redmagic_ngang_505d29c537.webp' %}" alt="{{ brand.name }}">
+                {% elif brand.slug == 'tecno' %}<img src="{% static 'icons/logo_tecno_ngang_c587e5f1fa.webp' %}" alt="{{ brand.name }}">
+                {% elif brand.slug == 'benco' %}<img src="{% static 'icons/logo_benco_ngang_d31d9c3b77.webp' %}" alt="{{ brand.name }}">
+                {% else %}<span style="font-weight: 600; color: #333; font-size: 14px;">{{ brand.name }}</span>
+                {% endif %}
+            </a>
+            {% endfor %}
+            
+            <!-- Duplicate logos for seamless loop -->
+            {% for brand in brands %}
+            <a class="qh-featured-brand" href="{% url 'store:product_search' %}?brand={{ brand.slug }}" title="{{ brand.name }}">
+                {% if brand.slug == 'apple' or brand.slug == 'iphone' %}<img src="{% static 'icons/logo_iphone_ngang_eac93ff477.webp' %}" alt="{{ brand.name }}">
+                {% elif brand.slug == 'samsung' %}<img src="{% static 'icons/logo_samsung_ngang_1624d75bd8.webp' %}" alt="{{ brand.name }}">
+                {% elif brand.slug == 'xiaomi' %}<img src="{% static 'icons/logo_xiaomi_ngang_0faf267234.webp' %}" alt="{{ brand.name }}">
+                {% elif brand.slug == 'oppo' %}<img src="{% static 'icons/logo_oppo_ngang_68d31fcd73.webp' %}" alt="{{ brand.name }}">
+                {% elif brand.slug == 'vivo' %}<img src="{% static 'icons/logo_vivo_ngang_45494ff733.webp' %}" alt="{{ brand.name }}">
+                {% elif brand.slug == 'realme' %}<img src="{% static 'icons/logo_realme_ngang_0185815a13.webp' %}" alt="{{ brand.name }}">
+                {% elif brand.slug == 'honor' %}<img src="{% static 'icons/logo_honor_ngang_814fca59e4.webp' %}" alt="{{ brand.name }}">
+                {% elif brand.slug == 'red-magic' or brand.slug == 'redmagic' %}<img src="{% static 'icons/logo_redmagic_ngang_505d29c537.webp' %}" alt="{{ brand.name }}">
+                {% elif brand.slug == 'tecno' %}<img src="{% static 'icons/logo_tecno_ngang_c587e5f1fa.webp' %}" alt="{{ brand.name }}">
+                {% elif brand.slug == 'benco' %}<img src="{% static 'icons/logo_benco_ngang_d31d9c3b77.webp' %}" alt="{{ brand.name }}">
+                {% else %}<span style="font-weight: 600; color: #333; font-size: 14px;">{{ brand.name }}</span>
+                {% endif %}
+            </a>
+            {% endfor %}
+        </div>
     </div>
 
-    <!-- GỢI Ý CHO BẠN Section -->
-    <div class="qh-suggest-section">
-    <div class="flash-sale-section">
-        {% if suggest_banner %}
-        <div class="flash-banner">
-            <img src="{{ suggest_banner.image.url }}" alt="Gợi ý cho bạn banner">
+    <!-- HOT SALE HÀNG NGÀY Section -->
+    <!-- HOT SALE HÀNG NGÀY Section - 24h countdown + sản phẩm từ featured -->
+    <div class="qh-hotsale-section" style="margin: 32px 0; background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); border-radius: 16px; overflow: hidden;">
+        <div style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.15);">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.25); display: flex; align-items: center; justify-content: center; font-size: 22px;"><i class="ri-fire-fill" style="color: #fff;"></i></span>
+                <h2 style="margin: 0; font-size: 1.5rem; font-weight: 800; color: #fff; letter-spacing: 0.5px; text-transform: uppercase;">Hot Sale Hàng Ngày</h2>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 0.85rem; font-weight: 600; color: rgba(255,255,255,0.95);">KẾT THÚC SAU</span>
+                <div class="qh-hotsale-countdown" id="qhHotsaleCountdown" data-end-timestamp="{{ hot_sale_end_timestamp|default:0 }}" style="display: flex; align-items: center; gap: 4px; background: rgba(0,0,0,0.35); padding: 8px 14px; border-radius: 10px; font-variant-numeric: tabular-nums;">
+                    <span class="qh-hotsale-time" data-unit="days" style="font-size: 1.1rem; font-weight: 700; color: #fff; min-width: 28px; text-align: center;">00</span>
+                    <span style="font-weight: 700; color: rgba(255,255,255,0.9);">:</span>
+                    <span class="qh-hotsale-time" data-unit="hours" style="font-size: 1.1rem; font-weight: 700; color: #fff; min-width: 28px; text-align: center;">00</span>
+                    <span style="font-weight: 700; color: rgba(255,255,255,0.9);">:</span>
+                    <span class="qh-hotsale-time" data-unit="minutes" style="font-size: 1.1rem; font-weight: 700; color: #fff; min-width: 28px; text-align: center;">00</span>
+                    <span style="font-weight: 700; color: rgba(255,255,255,0.9);">:</span>
+                    <span class="qh-hotsale-time" data-unit="seconds" style="font-size: 1.1rem; font-weight: 700; color: #fff; min-width: 28px; text-align: center;">00</span>
+                </div>
+            </div>
         </div>
-        {% endif %}
-        <div class="product-box">
-            {% if suggest_products and suggest_products|length > 0 %}
-            <div class="qh-product-grid">
-                {% for product in suggest_products %}
-                <a href="{% url 'store:product_detail' product.id %}" class="qh-product-card {% if product.stock == 0 %}out-of-stock{% endif %}" style="text-decoration: none; color: inherit; display: block;">
-                    <!-- Ảnh sản phẩm -->
+        <div class="qh-hotsale-inner" style="background: #fff; padding: 20px;">
+            <div class="qh-product-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px;">
+                {% if hot_sale_products and hot_sale_products|length > 0 %}
+                {% for product in hot_sale_products %}
+                <a href="{% url 'store:product_detail' product.id %}" class="qh-product-card qh-hotsale-card {% if product.stock == 0 %}out-of-stock{% endif %}" style="text-decoration: none; color: inherit; display: block; background: var(--qh-white); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.3s, box-shadow 0.3s;">
                     <div class="qh-product-image" style="position: relative; aspect-ratio: 1; background: #ffffff; overflow: hidden;">
                         {% if product.image %}
                         <img src="{{ product.image.url }}" alt="{{ product.name }}" style="width: 100%; height: 100%; object-fit: cover;">
@@ -153,13 +186,11 @@
                             </svg>
                         </div>
                         {% endif %}
-                        <!-- Huy hiệu giảm giá -->
                         {% if product.detail and product.detail.summary_original_price and product.detail.summary_original_price > product.detail.discounted_price and product.detail.summary_discount_percent > 0 %}
                         <div class="discount-badge">
                             -{{ product.detail.summary_discount_percent }}%
                         </div>
                         {% endif %}
-                        <!-- Nút tim danh sách yêu thích -->
                         {% if product.id in wishlist_product_ids %}
                         <button class="wishlist-btn liked" data-product-id="{{ product.id }}" onclick="toggleWishlist(this, {{ product.id }}); return false;">
                         {% else %}
@@ -169,18 +200,14 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
                             </svg>
                         </button>
-                        <!-- Lớp phủ hết hàng -->
                         {% if product.stock == 0 %}
                         <div class="out-of-stock-overlay"></div>
                         {% endif %}
                     </div>
-                    <!-- Thông tin sản phẩm -->
                     <div class="qh-product-info" style="padding: 12px 14px 14px; border-top: 1px solid #f0f0f0;">
-                        <!-- Tên sản phẩm -->
                         <h3 class="qh-product-name" style="font-size: 17px; font-weight: 600; color: var(--qh-text); margin-bottom: 4px; line-height: 1.4; min-height: 44px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
                             {{ product.name }}
                         </h3>
-                        <!-- Giá -->
                         <div class="qh-product-price" style="margin-bottom: 6px;">
                             {% if product.detail and product.detail.summary_original_price and product.detail.summary_original_price > product.detail.discounted_price and product.detail.summary_discount_percent > 0 %}
                             <span style="font-size: 13px; color: #999; text-decoration: line-through; display: block; margin-bottom: 1px;">
@@ -195,7 +222,6 @@
                             </span>
                             {% endif %}
                         </div>
-                        <!-- Hàng hiển thị trạng thái sản phẩm -->
                         <div style="display: flex; gap: 6px; margin-bottom: 10px;">
                             {% if product.stock > 0 %}
                             <span style="font-size: 11px; color: #059669; font-weight: 600; background: #d1fae5; padding: 4px 8px; border-radius: 4px; flex: 1; text-align: center;">
@@ -210,7 +236,6 @@
                             </span>
                             {% endif %}
                         </div>
-                        <!-- Các nút hành động -->
                         <div style="display: flex; gap: 6px;">
                             <button class="qh-btn qh-btn-outline qh-compare-btn"
                                     data-product-id="{{ product.id }}"
@@ -225,13 +250,13 @@
                     </div>
                 </a>
                 {% endfor %}
+                {% else %}
+                <div style="grid-column: 1/-1; padding: 40px 0; text-align: center; color: #888; font-size: 1.1rem; font-weight: 500;">Chưa có sản phẩm hot sale.</div>
+                {% endif %}
             </div>
-            {% else %}
-            <div style="padding: 40px 0; text-align: center; color: #888; font-size: 1.1rem; font-weight: 500;">Chưa có sản phẩm gợi ý phù hợp.</div>
-            {% endif %}
         </div>
     </div>
-    
+
     <!-- SẢN PHẨM BÁN CHẠY Section -->
     {% if best_sellers %}
     
@@ -802,6 +827,41 @@ function toggleWishlist(button, productId) {
 <!-- Liên kết đến file JS hero slider ngoài -->
 {% block extra_js %}
 <script src="{% static 'js/home.js' %}"></script>
+<script>
+(function() {
+    // Countdown 24h
+    var endEl = document.getElementById('qhHotsaleCountdown');
+    if (!endEl) return;
+    var endEl = document.getElementById('qhHotsaleCountdown');
+    if (!endEl) return;
+    var endTimestamp = parseInt(endEl.getAttribute('data-end-timestamp'));
+    if (!endTimestamp || endTimestamp <= 0) return;
+    function pad(n) { return (n < 10 ? '0' : '') + n; }
+    function tick() {
+        var end = new Date(endTimestamp * 1000); // Convert seconds to milliseconds
+        var now = new Date();
+        var diff = Math.max(0, Math.floor((end - now) / 1000));
+        if (diff <= 0) {
+            // Reset countdown - reload để lấy products mới cho ngày mới
+            location.reload();
+            return;
+        }
+        var d = Math.floor(diff / 86400);
+        var h = Math.floor((diff % 86400) / 3600);
+        var m = Math.floor((diff % 3600) / 60);
+        var s = diff % 60;
+        var spans = endEl.querySelectorAll('.qh-hotsale-time');
+        if (spans.length >= 4) {
+            spans[0].textContent = pad(d);
+            spans[1].textContent = pad(h);
+            spans[2].textContent = pad(m);
+            spans[3].textContent = pad(s);
+        }
+    }
+    tick();
+    setInterval(tick, 1000);
+})();
+</script>
 {% endblock %}
 
 <!-- Phần USP -->

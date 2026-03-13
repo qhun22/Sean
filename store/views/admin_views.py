@@ -2895,8 +2895,110 @@ def admin_order_update_status(request):
         order.save()
         
         return JsonResponse({'success': True, 'message': f'Đã cập nhật đơn {order.order_code}'})
-    
+
     except Order.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Không tìm thấy đơn hàng'})
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
+
+
+# ==================== Review Management (Admin) ====================
+
+@csrf_exempt
+@login_required
+def review_list(request):
+    """Lấy danh sách đánh giá (phân trang, tìm kiếm) - chỉ admin"""
+    from django.http import JsonResponse
+    from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+    from store.models import ProductReview
+    from django.db import models
+
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Bạn không có quyền truy cập!'}, status=403)
+
+    # Lấy tham số
+    page = int(request.GET.get('page', 1))
+    search = request.GET.get('search', '').strip()
+    per_page = 15
+
+    # Query base
+    reviews = ProductReview.objects.select_related('user', 'product').order_by('-created_at')
+
+    # Tìm kiếm theo tên sản phẩm hoặc email người dùng
+    if search:
+        reviews = reviews.filter(
+            models.Q(product__name__icontains=search) |
+            models.Q(user__email__icontains=search) |
+            models.Q(user__last_name__icontains=search)
+        )
+
+    # Phân trang
+    paginator = Paginator(reviews, per_page)
+    try:
+        reviews_page = paginator.page(page)
+    except PageNotAnInteger:
+        reviews_page = paginator.page(1)
+    except EmptyPage:
+        reviews_page = paginator.page(paginator.num_pages)
+
+    # Build response
+    data = []
+    for idx, r in enumerate(reviews_page.object_list, start=(reviews_page.number - 1) * per_page + 1):
+        # Lấy tên người dùng (ưu tiên last_name, fallback email)
+        user_name = r.user.last_name or r.user.email.split('@')[0] if r.user.email else 'Ẩn danh'
+        # Lấy ảnh (nếu có)
+        images = r.images if isinstance(r.images, list) else []
+        data.append({
+            'stt': idx,
+            'id': r.id,
+            'product_name': r.product.name,
+            'product_id': r.product.id,
+            'user_name': user_name,
+            'user_email': r.user.email,
+            'rating': r.rating,
+            'comment': r.comment or '',
+            'images': images,
+            'created_at': r.created_at.strftime('%d/%m/%Y %H:%M'),
+        })
+
+    return JsonResponse({
+        'success': True,
+        'reviews': data,
+        'total': paginator.count,
+        'total_pages': paginator.num_pages,
+        'current_page': reviews_page.number,
+    })
+
+
+@csrf_exempt
+@login_required
+def review_delete(request):
+    """Xóa đánh giá - chỉ admin"""
+    from django.http import JsonResponse
+    from store.models import ProductReview
+
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Bạn không có quyền truy cập!'}, status=403)
+
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Phương thức không hợp lệ!'}, status=400)
+
+    review_id = request.POST.get('review_id')
+
+    if not review_id:
+        return JsonResponse({'success': False, 'message': 'Vui lòng cung cấp ID đánh giá!'}, status=400)
+
+    try:
+        review_id = int(review_id)
+        review = ProductReview.objects.get(id=review_id)
+    except (ValueError, ProductReview.DoesNotExist):
+        return JsonResponse({'success': False, 'message': 'Đánh giá không tồn tại!'}, status=404)
+
+    product_name = review.product.name
+    user_email = review.user.email
+    review.delete()
+
+    return JsonResponse({
+        'success': True,
+        'message': f'Đã xóa đánh giá của {user_email} cho sản phẩm {product_name}'
+    })

@@ -688,6 +688,213 @@ def vnpay_ipn(request):
             vnpay_payment.status = 'failed'
             vnpay_payment.save()
             return JsonResponse({'RspCode': '02', 'Message': f'Payment failed: {message}'})
-            
+
+    except Exception as e:
+        return JsonResponse({'RspCode': '99', 'Message': str(e)})
+
+
+# ==================== MoMo Payment ====================
+
+@login_required
+def momo_create(request):
+    from django.http import JsonResponse
+    from django.utils import timezone
+
+    try:
+        amount = float(request.POST.get('amount', 0))
+        items_param = request.POST.get('items_param', '')
+
+        if amount <= 0:
+            return JsonResponse({'success': False, 'message': 'Số tiền không hợp lệ'}, status=400)
+
+        # Tạo order code (sẽ dùng để tạo Order sau khi thanh toán thành công)
+        order_code = f"MO{timezone.now().strftime('%Y%m%d%H%M%S')}{random.randint(100, 999)}"
+
+        order_id = f"QHUN22_{order_code}"
+        # Dung ASCII cho order_info (moi voi signature)
+        order_info = f"Pay QHUN22 order {order_code}"
+
+        from store.momo_utils import MoMoUtil
+        momo = MoMoUtil()
+        result = momo.create_payment(int(amount), order_id, order_info)
+
+        if result.get('error'):
+            return JsonResponse({'success': False, 'message': result.get('message', 'Lỗi kết nối MoMo')})
+
+        pay_url = result.get('payUrl')
+        print(f"[MoMo] payUrl: {pay_url}")  # Debug
+        if pay_url:
+            # Lưu vào session để lấy lại khi MoMo redirect về
+            request.session['momo_order_code'] = order_code
+            request.session['momo_amount'] = int(amount)
+            request.session['momo_items_param'] = items_param
+
+            # Gửi Telegram thông báo có đơn MoMo mới
+            from store.telegram_utils import notify_payment_created
+            notify_payment_created('momo', order_code, request.user.username, int(amount))
+
+            return JsonResponse({'success': True, 'payment_url': pay_url})
+        else:
+            # Log full response for debugging
+            print(f"[MoMo] Full response: {result}")
+            return JsonResponse({'success': False, 'message': 'Không thể tạo link thanh toán MoMo', 'debug': result})
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'message': str(e)})
+
+
+@login_required
+def momo_return(request):
+    from django.shortcuts import render, redirect
+    from django.contrib import messages
+    from django.views.decorators.csrf import csrf_exempt
+    from store.models import Cart, Order, OrderItem, ProductDetail, FolderColorImage
+
+    try:
+        result_code = request.GET.get('resultCode') or (request.POST.get('resultCode') if request.method == 'POST' else None)
+        order_id = request.GET.get('orderId') or (request.POST.get('orderId') if request.method == 'POST' else None)
+        message = request.GET.get('message') or (request.POST.get('message') if request.method == 'POST' else None)
+        amount = request.GET.get('amount') or (request.POST.get('amount') if request.method == 'POST' else None)
+
+        # Lấy thông tin từ session
+        order_code = request.session.get('momo_order_code')
+        session_amount = request.session.get('momo_amount', 0)
+        items_param = request.session.get('momo_items_param', '')
+
+        if not order_code:
+            if order_id:
+                order_code = order_id.replace('QHUN22_', '') if order_id.startswith('QHUN22_') else order_id
+            else:
+                return render(request, 'store/payment_error.html', {
+                    'message': 'Không nhận được thông tin đơn hàng'
+                })
+
+        if result_code == '0':
+            # Mã giao dịch MoMo để kiểm tra trùng
+            momo_order_code = order_code
+
+            # Đã xử lý đơn này rồi (user refresh hoặc MoMo redirect 2 lần) -> chỉ hiển thị success
+            existing = Order.objects.filter(momo_order_code=momo_order_code, user=request.user).first()
+            if existing:
+                request.session.pop('momo_order_code', None)
+                request.session.pop('momo_amount', None)
+                request.session.pop('momo_items_param', None)
+                return render(request, 'store/payment_success.html', {
+                    'order': existing,
+                    'payment_method': 'MoMo'
+                })
+
+            # Tạo mã đơn hàng QHUN + 5 số ngẫu nhiên
+            tracking_code = 'QHUN' + str(random.randint(10000, 99999))
+
+            # Xóa session sau khi đã lấy xong
+            request.session.pop('momo_order_code', None)
+            request.session.pop('momo_amount', None)
+            request.session.pop('momo_items_param', None)
+
+            # Tạo Order mới
+            order = Order.objects.create(
+                user=request.user,
+                order_code=tracking_code,
+                momo_order_code=momo_order_code,
+                total_amount=Decimal(session_amount) if session_amount else Decimal(0),
+                payment_method='momo',
+                status='processing'
+            )
+
+            # Lưu sản phẩm vào OrderItem trước khi xóa cart (giống VNPay)
+            if items_param:
+                try:
+                    item_ids = [int(x) for x in items_param.split(',') if x.strip()]
+                    cart = Cart.get_or_create_for_user(request.user)
+                    if cart:
+                        cart_items = cart.items.filter(id__in=item_ids).select_related('product', 'product__brand')
+                        for ci in cart_items:
+                            # Tìm thumbnail
+                            thumb_url = ''
+                            try:
+                                if ci.product and ci.product.brand_id:
+                                    detail = ProductDetail.objects.get(product=ci.product)
+                                    variant = detail.variants.filter(
+                                        is_active=True, color_name=ci.color_name
+                                    ).first()
+                                    if variant and variant.sku:
+                                        img = FolderColorImage.objects.filter(
+                                            brand_id=ci.product.brand_id,
+                                            sku=variant.sku
+                                        ).order_by('order').first()
+                                        if img:
+                                            thumb_url = img.image.url
+                                if not thumb_url and ci.product and ci.product.image:
+                                    thumb_url = ci.product.image.url
+                            except Exception:
+                                pass
+
+                            OrderItem.objects.create(
+                                order=order,
+                                product=ci.product,
+                                product_name=ci.product.name if ci.product else 'Sản phẩm',
+                                color_name=ci.color_name,
+                                storage=ci.storage,
+                                quantity=ci.quantity,
+                                price=ci.price_at_add,
+                                thumbnail=thumb_url,
+                            )
+                        # Xóa cart items sau khi đã lưu
+                        cart_items.delete()
+                except (ValueError, TypeError):
+                    pass
+
+            from store.telegram_utils import notify_order_success
+            momo_items = list(order.items.values('product_name', 'quantity', 'storage', 'color_name'))
+            notify_order_success(tracking_code, 'momo', momo_items)
+
+            return render(request, 'store/payment_success.html', {
+                'order': order,
+                'payment_method': 'MoMo'
+            })
+        else:
+            return render(request, 'store/payment_error.html', {
+                'message': message or 'Thanh toán MoMo thất bại'
+            })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return render(request, 'store/payment_error.html', {
+            'message': str(e)
+        })
+
+
+@csrf_exempt
+def momo_ipn(request):
+    from django.http import JsonResponse
+    from django.views.decorators.csrf import csrf_exempt
+    from store.models import Order
+
+    try:
+        result_code = request.POST.get('resultCode')
+        order_id = request.POST.get('orderId')
+        message = request.POST.get('message')
+
+        if not order_id:
+            return JsonResponse({'RspCode': '01', 'Message': 'Missing orderId'})
+
+        try:
+            order = Order.objects.get(momo_order_code=order_id)
+        except Order.DoesNotExist:
+            return JsonResponse({'RspCode': '01', 'Message': 'Order not found'})
+
+        if result_code == '0':
+            order.status = 'processing'
+            order.save()
+            return JsonResponse({'RspCode': '0', 'Message': 'Success'})
+        else:
+            order.status = 'cancelled'
+            order.save()
+            return JsonResponse({'RspCode': result_code, 'Message': message or 'Payment failed'})
+
     except Exception as e:
         return JsonResponse({'RspCode': '99', 'Message': str(e)})
