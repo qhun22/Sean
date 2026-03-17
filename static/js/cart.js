@@ -166,6 +166,7 @@ function changeColor(btn, itemId, colorName) {
                     var label = dropdown.querySelector('.qh-cart-color-selected span');
                     var displayColor = data.new_color;
                     if (displayColor && displayColor.indexOf(' - ') !== -1) displayColor = displayColor.split(' - ').slice(1).join(' - ');
+                    if (!displayColor || !displayColor.trim()) displayColor = 'Mặc định';
                     if (label) label.textContent = 'Màu: ' + displayColor;
                 }
 
@@ -189,14 +190,13 @@ function changeColor(btn, itemId, colorName) {
                     }
                 }
 
-                // Cập nhật tổng tiền
-                updateSummaryPrices(data.total_price);
+                // Luôn tính lại theo checkbox đã chọn, không lấy tổng toàn giỏ
+                updateSelectedCount();
                 updateCartBadge(data.total_items);
 
                 if (window.QHToast) QHToast.show(data.message, 'success');
 
-                // Tải lại sau một khoảng ngắn để lấy dữ liệu mới
-                setTimeout(function () { location.reload(); }, 800);
+                // Không reload trang – đã cập nhật đủ từ API, reload gây nhảy về "Mặc định"
             } else {
                 if (window.QHToast) QHToast.show(data.message, 'error');
             }
@@ -249,7 +249,9 @@ function changeStorage(btn, itemId, storage) {
                 var dropdown = document.querySelector('.qh-cart-storage-dropdown[data-item-id="' + itemId + '"]');
                 if (dropdown) {
                     var label = dropdown.querySelector('.qh-cart-storage-selected span');
-                    if (label) label.textContent = 'Dung lượng: ' + data.new_storage;
+                    var displayStorage = data.new_storage;
+                    if (!displayStorage || !String(displayStorage).trim()) displayStorage = 'Mặc định';
+                    if (label) label.textContent = 'Dung lượng: ' + displayStorage;
                 }
 
                 // Cập nhật giá
@@ -266,14 +268,13 @@ function changeStorage(btn, itemId, storage) {
                     }
                 }
 
-                // Cập nhật tổng tiền
-                updateSummaryPrices(data.total_price);
+                // Luôn tính lại theo checkbox đã chọn, không lấy tổng toàn giỏ
+                updateSelectedCount();
                 updateCartBadge(data.total_items);
 
                 if (window.QHToast) QHToast.show(data.message, 'success');
 
-                // Tải lại sau một khoảng ngắn để lấy dữ liệu mới
-                setTimeout(function () { location.reload(); }, 800);
+                // Không reload trang – đã cập nhật đủ từ API, reload gây nhảy về "Mặc định"
             } else {
                 if (window.QHToast) QHToast.show(data.message, 'error');
             }
