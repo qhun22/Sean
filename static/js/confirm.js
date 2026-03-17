@@ -10,7 +10,7 @@ const QHConfirm = {
      * @param {function} onConfirm - Hàm callback khi người dùng xác nhận
      * @param {function} onCancel - Hàm callback khi người dùng hủy
      */
-    show: function(message, onConfirm, onCancel = null) {
+    show: function (message, onConfirm, onCancel = null) {
         // Tạo modal container
         const modal = document.createElement('div');
         modal.className = 'qh-modal active';
