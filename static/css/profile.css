@@ -219,7 +219,7 @@
     background: var(--qh-white);
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    padding: 0 16px;
+    padding: 0;
     display: flex;
     align-items: center;
     gap: 0;
@@ -288,6 +288,7 @@
 .qh-pf-tab {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     padding: 18px 24px;
     font-size: 15px;
@@ -298,6 +299,18 @@
     border-bottom: 3px solid transparent;
     transition: all 0.2s;
     cursor: pointer;
+}
+
+@media (min-width: 992px) {
+    .qh-pf-tabs {
+        overflow-x: hidden;
+    }
+
+    .qh-pf-tab {
+        flex: 1 1 0;
+        min-width: 0;
+        text-align: center;
+    }
 }
 
 .qh-pf-tab:hover {
@@ -579,43 +592,60 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    margin-top: 16px;
-    padding-top: 12px;
-    border-top: 1px solid var(--qh-border);
+    gap: 10px;
+    margin-top: 24px;
+    flex-wrap: wrap;
 }
 
-.qh-pf-pw-page-btn {
-    width: 32px;
-    height: 32px;
-    border: 1px solid var(--qh-border);
-    border-radius: 6px;
-    background: white;
-    cursor: pointer;
+.qh-pf-coupon-pagination,
+.qh-pf-order-pagination {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--qh-text);
-    font-family: 'Signika', sans-serif;
-    transition: all 0.2s;
+    gap: 10px;
+    margin-top: 24px;
+    flex-wrap: wrap;
 }
 
-.qh-pf-pw-page-btn:hover {
+.qh-pf-pw-page-btn {
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--qh-border);
+    border-radius: 50%;
+    background: white;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--qh-text);
+    font-family: 'Signika', sans-serif;
+    transition: all 0.2s ease;
+}
+
+.qh-pf-pw-page-btn i {
+    font-size: 16px;
+    line-height: 1;
+}
+
+.qh-pf-pw-page-btn:not(:disabled):hover {
     border-color: var(--qh-primary);
     color: var(--qh-primary);
+    transform: translateY(-1px);
 }
 
 .qh-pf-pw-page-btn.active {
-    background: var(--qh-primary);
-    border-color: var(--qh-primary);
+    border-color: transparent;
+    background: linear-gradient(135deg, var(--qh-price) 0%, var(--qh-primary) 100%);
     color: white;
+    box-shadow: 0 6px 16px rgba(185, 28, 28, 0.28);
 }
 
 .qh-pf-pw-page-btn:disabled {
-    opacity: 0.4;
+    opacity: 0.45;
     cursor: not-allowed;
+    transform: none;
 }
 
 .qh-pf-pw-page-btn:disabled:hover {
@@ -793,44 +823,6 @@
     border: 1px solid #e2e8f0;
 }
 
-.qh-pf-coupon-pagination .qh-pf-pw-page-btn {
-    width: 32px;
-    height: 32px;
-    border: 1px solid var(--qh-border);
-    border-radius: 6px;
-    background: white;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--qh-text);
-    font-family: 'Signika', sans-serif;
-    transition: all 0.2s;
-}
-
-.qh-pf-coupon-pagination .qh-pf-pw-page-btn:hover {
-    border-color: var(--qh-primary);
-    color: var(--qh-primary);
-}
-
-.qh-pf-coupon-pagination .qh-pf-pw-page-btn.active {
-    background: var(--qh-primary);
-    border-color: var(--qh-primary);
-    color: white;
-}
-
-.qh-pf-coupon-pagination .qh-pf-pw-page-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-
-.qh-pf-coupon-pagination .qh-pf-pw-page-btn:disabled:hover {
-    border-color: var(--qh-border);
-    color: var(--qh-text);
-}
-
 /* Responsive Coupon Grid */
 @media (max-width: 1024px) {
     .qh-pf-coupon-grid {
@@ -911,54 +903,6 @@
     color: #dc2626;
 }
 
-.qh-pf-order-pagination {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    margin-top: 24px;
-    padding-top: 16px;
-    border-top: 1px solid var(--qh-border);
-}
-
-.qh-pf-order-pagination .qh-pf-pw-page-btn {
-    width: 32px;
-    height: 32px;
-    border: 1px solid var(--qh-border);
-    border-radius: 6px;
-    background: white;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--qh-text);
-    font-family: 'Signika', sans-serif;
-    transition: all 0.2s;
-}
-
-.qh-pf-order-pagination .qh-pf-pw-page-btn:hover {
-    border-color: var(--qh-primary);
-    color: var(--qh-primary);
-}
-
-.qh-pf-order-pagination .qh-pf-pw-page-btn.active {
-    background: var(--qh-primary);
-    border-color: var(--qh-primary);
-    color: white;
-}
-
-.qh-pf-order-pagination .qh-pf-pw-page-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-
-.qh-pf-order-pagination .qh-pf-pw-page-btn:disabled:hover {
-    border-color: var(--qh-border);
-    color: var(--qh-text);
-}
-
 /* Responsive Order Grid */
 @media (max-width: 1024px) {
     .qh-pf-order-grid {
@@ -1020,7 +964,14 @@
         border-bottom: 1px solid var(--qh-border);
     }
 
+    .qh-pf-tabs {
+        padding: 0 8px;
+        overflow-x: auto;
+    }
+
     .qh-pf-tab {
+        flex: 0 0 auto;
+        justify-content: flex-start;
         padding: 14px 16px;
         font-size: 14px;
     }
@@ -1348,5 +1299,5 @@
 }
 
 .qh-btn-primary:hover {
-    background: #2563eb;
+    background: #991b1b;
 }
