@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.db import models
+from django.utils.text import slugify
 
 
 class CustomUserManager(UserManager):
@@ -105,14 +106,267 @@ class Category(models.Model):
         return self.name
 
 
+class Brand(models.Model):
+    """Hãng sản phẩm (Apple, Samsung, Xiaomi, etc.)"""
+    name = models.CharField(max_length=100, unique=True, verbose_name='Tên hãng')
+    slug = models.SlugField(max_length=100, unique=True, verbose_name='Slug')
+    description = models.TextField(blank=True, verbose_name='Mô tả')
+    logo = models.ImageField(upload_to='brands/', blank=True, null=True, verbose_name='Logo')
+    is_active = models.BooleanField(default=True, verbose_name='Hoạt động')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Hãng sản phẩm'
+        verbose_name_plural = 'Hãng sản phẩm'
+        ordering = ['name']
+    
+    def __str__(self):
+        return self.name
+
+
+class HangingProduct(models.Model):
+    """Sản phẩm treo (hiển trang chủ thị trên)"""
+    brand = models.ForeignKey(Brand, on_delete=models.SET_NULL, related_name='hanging_products', verbose_name='Hãng sản xuất', null=True, blank=True)
+    name = models.CharField(max_length=200, verbose_name='Tên sản phẩm')
+    image_url = models.URLField(blank=True, null=True, verbose_name='URL Ảnh bên ngoài')
+    image_local = models.ImageField(upload_to='hanging_products/', blank=True, null=True, verbose_name='Ảnh sản phẩm')
+    original_price = models.DecimalField(max_digits=15, decimal_places=0, verbose_name='Giá gốc (VNĐ)')
+    discount_percent = models.PositiveIntegerField(default=0, verbose_name='% Giảm giá')
+    stock_quantity = models.PositiveIntegerField(default=0, verbose_name='Số lượng trong kho')
+    installment_0_percent = models.BooleanField(default=False, verbose_name='Trả góp 0%')
+    is_active = models.BooleanField(default=True, verbose_name='Hiển thị')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Sản phẩm treo'
+        verbose_name_plural = 'Sản phẩm treo'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.name
+
+
+class ProductDetail(models.Model):
+    """Chi tiết sản phẩm - giá, SKU, biến thể (màu, dung lượng)"""
+    product = models.OneToOneField('Product', on_delete=models.CASCADE, related_name='detail', verbose_name='Sản phẩm')
+    
+    # Giá
+    original_price = models.DecimalField(max_digits=15, decimal_places=0, default=0, verbose_name='Giá gốc (VNĐ)')
+    discount_percent = models.PositiveIntegerField(default=0, verbose_name='% Giảm giá')
+    
+    @property
+    def discounted_price(self):
+        """Giá sau giảm - tính từ giá gốc và % giảm"""
+        if self.original_price and self.discount_percent > 0:
+            discounted = self.original_price - (self.original_price * self.discount_percent / 100)
+            # Round to nearest 5000
+            if discounted >= 5000:
+                discounted = round(discounted / 5000) * 5000
+            return int(discounted)
+        # If no discount, get min variant price
+        min_price = self.get_min_price()
+        if min_price > 0:
+            return min_price
+        return self.original_price if self.original_price else 0
+
+    @property
+    def summary_original_price(self):
+        """
+        Giá gốc hiển thị trên dashboard:
+        - Nếu đã nhập giá gốc tổng thì dùng luôn
+        - Nếu không, lấy original_price nhỏ nhất từ các biến thể
+        """
+        if self.original_price:
+            return int(self.original_price)
+        agg = self.variants.aggregate(models.Min('original_price'))
+        value = agg.get('original_price__min') if agg else None
+        return int(value) if value else 0
+
+    @property
+    def summary_discount_percent(self):
+        """
+        % giảm giá hiển thị trên dashboard:
+        - Nếu đã nhập % giảm tổng thì dùng luôn
+        - Nếu không, lấy % giảm của biến thể có giá sau giảm nhỏ nhất
+        """
+        if self.discount_percent:
+            return int(self.discount_percent)
+        cheapest = self.variants.order_by('price').first()
+        return int(cheapest.discount_percent) if cheapest and cheapest.discount_percent else 0
+    
+    def get_min_price(self):
+        """Lấy giá nhỏ nhất từ các biến thể"""
+        min_price = self.variants.aggregate(models.Min('price'))['price__min']
+        return min_price if min_price else 0
+    
+    # SKU tổng
+    sku = models.CharField(max_length=100, blank=True, verbose_name='SKU chung')
+    
+    # YouTube Video ID
+    youtube_id = models.CharField(max_length=50, blank=True, default='', verbose_name='YouTube Video ID')
+    
+    # Mô tả
+    description = models.TextField(blank=True, verbose_name='Mô tả')
+    
+    is_active = models.BooleanField(default=True, verbose_name='Hiển thị')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Chi tiết sản phẩm'
+        verbose_name_plural = 'Chi tiết sản phẩm'
+
+    def __str__(self):
+        return f"Chi tiết: {self.product.name}"
+
+
+class ProductVariant(models.Model):
+    """Biến thể sản phẩm theo màu sắc và dung lượng"""
+    detail = models.ForeignKey(ProductDetail, on_delete=models.CASCADE, related_name='variants', verbose_name='Chi tiết sản phẩm')
+    
+    # Thông tin biến thể
+    color_name = models.CharField(max_length=50, verbose_name='Tên màu')
+    color_hex = models.CharField(max_length=7, blank=True, verbose_name='Mã màu (hex)')
+    storage = models.CharField(max_length=20, verbose_name='Dung lượng')  # ví dụ: 64GB, 128GB
+    
+    # Giá và SKU
+    original_price = models.DecimalField(max_digits=15, decimal_places=0, default=0, verbose_name='Giá gốc (VNĐ)')
+    discount_percent = models.PositiveIntegerField(default=0, verbose_name='% Giảm giá')
+    price = models.DecimalField(max_digits=15, decimal_places=0, default=0, verbose_name='Giá sau giảm (VNĐ)')
+    sku = models.CharField(max_length=100, blank=True, verbose_name='SKU biến thể')
+    stock_quantity = models.PositiveIntegerField(default=0, verbose_name='Số lượng trong kho')
+    
+    is_active = models.BooleanField(default=True, verbose_name='Còn hàng')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Biến thể sản phẩm'
+        verbose_name_plural = 'Biến thể sản phẩm'
+        unique_together = ['detail', 'color_name', 'storage']
+
+    def __str__(self):
+        return f"{self.detail.product.name} - {self.color_name} - {self.storage}"
+
+
+class ProductSpecification(models.Model):
+    """Thông số kỹ thuật sản phẩm - lưu JSON"""
+    detail = models.OneToOneField(ProductDetail, on_delete=models.CASCADE, related_name='specification', verbose_name='Chi tiết sản phẩm')
+    
+    # Lưu JSON dạng text
+    spec_json = models.JSONField(default=dict, blank=True, verbose_name='Thông số kỹ thuật (JSON)')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Thông số kỹ thuật sản phẩm'
+        verbose_name_plural = 'Thông số kỹ thuật sản phẩm'
+    
+    def __str__(self):
+        return f"Specs: {self.detail.product.name}"
+
+
+class ProductImage(models.Model):
+    """Hình ảnh sản phẩm"""
+    IMAGE_TYPES = [
+        ('cover', 'Ảnh đại diện'),
+        ('marketing', 'Ảnh marketing/banner'),
+        ('variant_thumbnail', 'Ảnh màu (thumbnail)'),
+        ('variant_main', 'Ảnh màu (chính)'),
+        ('variant_gallery', 'Ảnh màu (gallery)'),
+        ('variant_detail', 'Ảnh màu (chi tiết)'),
+    ]
+    
+    detail = models.ForeignKey(ProductDetail, on_delete=models.CASCADE, related_name='images', verbose_name='Chi tiết sản phẩm', null=True, blank=True)
+    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, related_name='images', verbose_name='Biến thể', null=True, blank=True)
+    
+    image_type = models.CharField(max_length=20, choices=IMAGE_TYPES, default='cover', verbose_name='Loại ảnh')
+    image = models.ImageField(upload_to='products/', verbose_name='Ảnh')
+    order = models.PositiveIntegerField(default=0, verbose_name='Thứ tự')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Hình ảnh sản phẩm'
+        verbose_name_plural = 'Hình ảnh sản phẩm'
+        ordering = ['order']
+
+    def __str__(self):
+        return f"{self.image_type} - {self.detail.product.name if self.detail else self.variant.detail.product.name}"
+
+
+def image_folder_upload_path(instance, filename):
+    """
+    Đường dẫn lưu ảnh thư mục riêng:
+    media/products/YYYY/MM/<folder_slug>/filename
+    """
+    from datetime import datetime
+    import os
+
+    now = datetime.now()
+    year = now.year
+    month = now.strftime('%m')
+    folder_slug = instance.folder.slug
+    return os.path.join('products', str(year), month, folder_slug, filename)
+
+
+class ImageFolder(models.Model):
+    """Thư mục ảnh riêng để quản lý ảnh sản phẩm theo thư mục"""
+    name = models.CharField(max_length=150, unique=True, verbose_name='Thư mục ảnh')
+    slug = models.SlugField(max_length=150, unique=True, verbose_name='Slug thư mục')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'store_imagefolder'
+        verbose_name = 'Thư mục ảnh'
+        verbose_name_plural = 'Thư mục ảnh'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
+
+class FolderColorImage(models.Model):
+    """
+    Ảnh màu theo thư mục:
+    - Mỗi bản ghi là 1 ảnh thuộc 1 màu + SKU trong 1 thư mục
+    """
+    folder = models.ForeignKey(ImageFolder, on_delete=models.CASCADE, related_name='images', verbose_name='Thư mục ảnh')
+    brand = models.ForeignKey(Brand, on_delete=models.SET_NULL, null=True, blank=True, related_name='folder_images', verbose_name='Hãng')
+    sku = models.CharField(max_length=100, verbose_name='SKU')
+    color_name = models.CharField(max_length=100, verbose_name='Màu sản phẩm')
+    image = models.ImageField(upload_to=image_folder_upload_path, verbose_name='Ảnh')
+    order = models.PositiveIntegerField(default=0, verbose_name='Thứ tự')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'store_foldercolorimage'
+        verbose_name = 'Ảnh màu theo thư mục'
+        verbose_name_plural = 'Ảnh màu theo thư mục'
+        ordering = ['folder__name', 'color_name', 'order']
+
+    def __str__(self):
+        return f"{self.folder.name} - {self.color_name} - {self.sku}"
+
+
 class Product(models.Model):
     """Sản phẩm điện thoại"""
     name = models.CharField(max_length=200, verbose_name='Tên sản phẩm')
     slug = models.SlugField(max_length=200, unique=True, verbose_name='Slug')
+    brand = models.ForeignKey(Brand, on_delete=models.SET_NULL, null=True, blank=True, related_name='products', verbose_name='Hãng')
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='products', verbose_name='Danh mục')
-    description = models.TextField(verbose_name='Mô tả')
-    price = models.DecimalField(max_digits=15, decimal_places=0, verbose_name='Giá (VNĐ)')
+    description = models.TextField(blank=True, default='', verbose_name='Mô tả')
+    price = models.DecimalField(max_digits=15, decimal_places=0, default=0, verbose_name='Giá (VNĐ)')
     original_price = models.DecimalField(max_digits=15, decimal_places=0, null=True, blank=True, verbose_name='Giá gốc')
+    discount_percent = models.PositiveIntegerField(default=0, verbose_name='% Giảm giá')
     image = models.ImageField(upload_to='products/%Y/%m/', blank=True, null=True, verbose_name='Hình ảnh')
     stock = models.PositiveIntegerField(default=0, verbose_name='Số lượng trong kho')
     is_featured = models.BooleanField(default=False, verbose_name='Sản phẩm nổi bật')
@@ -135,6 +389,119 @@ class Product(models.Model):
         return 0
 
 
+class Wishlist(models.Model):
+    """
+    Danh sách yêu thích của người dùng
+    Lưu trữ các sản phẩm mà người dùng đã thích (trái tim đỏ)
+    """
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='wishlists', verbose_name='Người dùng')
+    products = models.ManyToManyField(Product, related_name='wishlisted_by', verbose_name='Sản phẩm yêu thích')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Ngày cập nhật')
+
+    class Meta:
+        db_table = 'store_wishlist'
+        verbose_name = 'Danh sách yêu thích'
+        verbose_name_plural = 'Danh sách yêu thích'
+
+    def __str__(self):
+        return f"Wishlist của {self.user.email}"
+
+    @classmethod
+    def get_or_create_for_user(cls, user):
+        """Lấy hoặc tạo wishlist cho user"""
+        if not user.is_authenticated:
+            return None
+        wishlist, created = cls.objects.get_or_create(user=user)
+        return wishlist
+
+    def add_product(self, product):
+        """Thêm sản phẩm vào wishlist"""
+        if not self.products.filter(id=product.id).exists():
+            self.products.add(product)
+            return True
+        return False
+
+    def remove_product(self, product):
+        """Xóa sản phẩm khỏi wishlist"""
+        if self.products.filter(id=product.id).exists():
+            self.products.remove(product)
+            return True
+        return False
+
+    def has_product(self, product):
+        """Kiểm tra sản phẩm có trong wishlist không"""
+        return self.products.filter(id=product.id).exists()
+
+
+class Cart(models.Model):
+    """
+    Giỏ hàng của người dùng
+    Lưu trữ các sản phẩm mà người dùng đã thêm vào giỏ hàng
+    """
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='carts', verbose_name='Người dùng')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Ngày cập nhật')
+
+    class Meta:
+        db_table = 'store_cart'
+        verbose_name = 'Giỏ hàng'
+        verbose_name_plural = 'Giỏ hàng'
+
+    def __str__(self):
+        return f"Giỏ hàng của {self.user.email}"
+
+    @classmethod
+    def get_or_create_for_user(cls, user):
+        """Lấy hoặc tạo giỏ hàng cho user"""
+        if not user.is_authenticated:
+            return None
+        cart, created = cls.objects.get_or_create(user=user)
+        return cart
+
+    def get_total_price(self):
+        """Tính tổng tiền giỏ hàng"""
+        total = 0
+        for item in self.items.all():
+            total += item.get_total_price()
+        return total
+
+    def get_total_items(self):
+        """Tính tổng số sản phẩm trong giỏ"""
+        total = 0
+        for item in self.items.all():
+            total += item.quantity
+        return total
+
+
+class CartItem(models.Model):
+    """
+    Item trong giỏ hàng - lưu sản phẩm, màu, số lượng và giá tại thời điểm thêm
+    """
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items', verbose_name='Giỏ hàng')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='cart_items', verbose_name='Sản phẩm')
+    quantity = models.PositiveIntegerField(default=1, verbose_name='Số lượng')
+    color_name = models.CharField(max_length=50, blank=True, verbose_name='Tên màu')
+    color_code = models.CharField(max_length=20, blank=True, verbose_name='Mã màu')
+    storage = models.CharField(max_length=20, blank=True, verbose_name='Dung lượng')
+    price_at_add = models.DecimalField(max_digits=15, decimal_places=0, default=0, verbose_name='Giá khi thêm')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày thêm')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Ngày cập nhật')
+
+    class Meta:
+        db_table = 'store_cartitem'
+        verbose_name = 'Item giỏ hàng'
+        verbose_name_plural = 'Items giỏ hàng'
+        unique_together = ['cart', 'product', 'color_name', 'storage']
+
+    def __str__(self):
+        return f"{self.product.name} x {self.quantity}"
+
+    def get_total_price(self):
+        """Tính thành tiền = giá x số lượng"""
+        return self.price_at_add * self.quantity
+
+
 class SiteVisit(models.Model):
     """
     Model theo dõi lượt truy cập website
@@ -151,3 +518,67 @@ class SiteVisit(models.Model):
     
     def __str__(self):
         return f"Visit at {self.visit_time.strftime('%Y-%m-%d %H:%M')}"
+
+
+class Order(models.Model):
+    """
+    Model đơn hàng để theo dõi doanh thu
+    """
+    STATUS_CHOICES = [
+        ('pending', 'Chờ xử lý'),
+        ('processing', 'Đang xử lý'),
+        ('shipped', 'Đang giao hàng'),
+        ('delivered', 'Đã giao hàng'),
+        ('cancelled', 'Đã hủy'),
+    ]
+    
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='orders', verbose_name='Khách hàng')
+    total_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0, verbose_name='Tổng tiền')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='Trạng thái')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Ngày cập nhật')
+    
+    class Meta:
+        verbose_name = 'Đơn hàng'
+        verbose_name_plural = 'Đơn hàng'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Order #{self.id}"
+
+
+class Banner(models.Model):
+    """
+    Model lưu trữ ảnh banner với ID riêng
+    """
+    banner_id = models.CharField(max_length=50, verbose_name='ID Banner')
+    image = models.ImageField(upload_to='banner/%Y/%m/', verbose_name='Ảnh Banner')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
+    
+    class Meta:
+        verbose_name = 'Banner'
+        verbose_name_plural = 'Banner'
+        ordering = ['banner_id', '-created_at']
+    
+    def __str__(self):
+        return f"Banner {self.banner_id}"
+
+
+class ProductContent(models.Model):
+    """
+    Model lưu trữ nội dung sản phẩm theo hãng và sản phẩm
+    """
+    brand = models.ForeignKey('store.Brand', on_delete=models.CASCADE, related_name='product_contents', verbose_name='Hãng')
+    product = models.ForeignKey('store.Product', on_delete=models.CASCADE, related_name='product_contents', verbose_name='Sản phẩm')
+    content_text = models.TextField(blank=True, verbose_name='Nội dung text')
+    image = models.ImageField(upload_to='product_content/%Y/%m/', blank=True, verbose_name='Ảnh minh họa')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
+    
+    class Meta:
+        verbose_name = 'Nội dung sản phẩm'
+        verbose_name_plural = 'Nội dung sản phẩm'
+        ordering = ['-created_at']
+        unique_together = ['brand', 'product']
+    
+    def __str__(self):
+        return f"Nội dung - {self.product.name}"
