@@ -89,13 +89,18 @@ function openOtDetail(code) {
     html += '<div class="qh-ot-info-grid">';
     html += otInfoRow('Mã đơn hàng', '<span style="color:#3b82f6;font-weight:600;font-family:monospace;">' + escOtHtml(o.order_code) + '</span>');
     html += otInfoRow('Ngày đặt', escOtHtml(o.created_at));
-    html += otInfoRow('Hình thức TT', otPayBadge(o.payment_method, o.payment_display));
 
-    // Mã giảm giá
+    var discountAmount = parseInt(o.discount_amount || 0, 10);
+    if (isNaN(discountAmount) || discountAmount < 0) discountAmount = 0;
+    html += otInfoRow('Chiết khấu', '<span class="qh-ot-discount-value">-' + fmtOtVND(discountAmount) + '</span>');
+
     if (o.coupon_code) {
-        html += otInfoRow('Voucher đã dùng', '<span style="background:#dbeafe; color:#1e40af; padding:2px 8px; border-radius:4px; font-weight:600; font-size:12px; letter-spacing:0.5px;">' + escOtHtml(o.coupon_code) + '</span>');
-        html += otInfoRow('Chiết khấu', '<span style="color:#dc2626; font-weight:600;">-' + fmtOtVND(o.discount_amount) + '</span>');
+        html += otInfoRow('Voucher đã dùng', '<span class="qh-ot-badge voucher-used">' + escOtHtml(o.coupon_code) + '</span>');
+    } else {
+        html += otInfoRow('Voucher đã dùng', '<span class="qh-ot-badge voucher-none">Không có</span>');
     }
+
+    html += otInfoRow('Hình thức TT', otPayBadge(o.payment_method, o.payment_display));
 
     // Trạng thái
     var statusHtml = '';

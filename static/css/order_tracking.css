@@ -164,6 +164,16 @@
     color: #9d174d;
 }
 
+.qh-ot-badge.voucher-used {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.qh-ot-badge.voucher-none {
+    background: #e2e8f0;
+    color: #475569;
+}
+
 /* ========== Pagination ========== */
 .qh-ot-pagination {
     display: flex;
@@ -474,6 +484,20 @@
 .qh-ot-info-value {
     color: #1e293b;
     text-align: right;
+}
+
+/* Đồng bộ chiều rộng badge trong modal chi tiết đơn hàng */
+.qh-ot-info-value .qh-ot-badge {
+    width: 136px;
+    min-width: 136px;
+    max-width: 136px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.qh-ot-discount-value {
+    color: #dc2626;
+    font-weight: 700;
 }
 
 .qh-ot-total-row {
