@@ -261,17 +261,19 @@
         </div>
     </div>
 
-    <!-- SẢN PHẨM BÁN CHẠY Section (style giống Hot Sale) -->
+    <!-- SẢN PHẨM BÁN CHẠY: banner ảnh + box đỏ liền mạch -->
     {% if best_sellers %}
-    <section class="qh-bestseller-section">
-        <div class="qh-bestseller-header">
-            <div class="qh-bestseller-header-left">
-                <span class="qh-bestseller-icon"><i class="ri-star-smile-fill"></i></span>
-                <h2 class="qh-bestseller-title">Sản Phẩm Bán Chạy</h2>
+    <section class="qh-bestseller-section" aria-labelledby="qh-bestseller-heading">
+        <div class="qh-bestseller-shell">
+            {% if best_seller_banner and best_seller_banner.image %}
+            <div class="qh-bestseller-banner-wrap" aria-hidden="true">
+                <img src="{{ best_seller_banner.image.url }}" alt="" class="qh-bestseller-banner-img" loading="lazy">
             </div>
-        </div>
-        <div class="qh-bestseller-inner">
-        <div class="qh-bestseller-grid">
+            {% endif %}
+
+            <div class="qh-bestseller-box">
+
+                <div class="qh-bestseller-grid">
         {% for item in best_sellers %}
         {% with product=item.product %}
         <a href="{% url 'store:product_detail' product.id %}" class="qh-product-card {% if product.stock == 0 %}out-of-stock{% endif %}" style="text-decoration: none; color: inherit; display: block; background: var(--qh-white); border: 1px solid #e5e5e5; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.3s, box-shadow 0.3s;">
@@ -373,7 +375,8 @@
         </a>
         {% endwith %}
         {% endfor %}
-        </div>
+                </div>
+            </div>
         </div>
     </section>
     {% endif %}

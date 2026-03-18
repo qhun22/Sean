@@ -827,57 +827,40 @@
     }
 }
 
-/* ==================== SẢN PHẨM BÁN CHẠY (style trắng + viền đỏ nhẹ như TGDD/CellphoneS) ==================== */
+/* ==================== SẢN PHẨM BÁN CHẠY (banner ảnh + box đỏ liền mạch) ==================== */
 .qh-bestseller-section {
     margin: 32px 0;
-    background: #fff;
-    border: 1px solid #ffdddd;
-    border-radius: 16px;
-    overflow: hidden;
 }
 
-.qh-bestseller-header {
-    padding: 16px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 12px;
-    border-bottom: 1px solid #ffdddd;
-    background: linear-gradient(135deg, #fff5f5 0%, #fff 100%);
+.qh-bestseller-shell {
+    max-width: 100%;
 }
 
-.qh-bestseller-header-left {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+.qh-bestseller-banner-wrap {
+    background: transparent;
+    line-height: 0;
 }
 
-.qh-bestseller-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--qh-price) 0%, var(--qh-primary) 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-    color: #fff;
+.qh-bestseller-banner-img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.qh-bestseller-box {
+    background: #B61B17;
+    border-radius: 0 0 14px 14px;
+    padding: 18px 16px 20px;
 }
 
 .qh-bestseller-title {
-    margin: 0;
-    font-size: 1.25rem;
+    margin: 0 0 14px;
+    font-size: 1.15rem;
     font-weight: 800;
-    color: var(--qh-price);
+    color: #ffffff;
     letter-spacing: 0.5px;
     text-transform: uppercase;
     font-family: 'Signika', sans-serif;
-}
-
-.qh-bestseller-inner {
-    background: #fff;
-    padding: 20px;
 }
 
 .qh-bestseller-grid {
@@ -912,12 +895,8 @@
 }
 
 @media (max-width: 768px) {
-    .qh-bestseller-header {
-        padding: 12px 16px;
-    }
-
-    .qh-bestseller-inner {
-        padding: 16px;
+    .qh-bestseller-box {
+        padding: 16px 12px 18px;
     }
 
     .qh-bestseller-grid {
@@ -926,13 +905,8 @@
     }
 
     .qh-bestseller-title {
-        font-size: 1.25rem;
-    }
-
-    .qh-bestseller-icon {
-        width: 32px;
-        height: 32px;
-        font-size: 18px;
+        font-size: 1.05rem;
+        margin-bottom: 12px;
     }
 }
 

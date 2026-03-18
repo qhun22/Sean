@@ -709,6 +709,9 @@ def home(request):
         'selected_sort_price': selected_sort_price,
         'selected_advanced_filters': selected_advanced_filters,
     }
+
+    # Banner section "Giờ vàng - Sản phẩm bán chạy" (ID cấu hình từ dashboard)
+    context['best_seller_banner'] = Banner.objects.filter(banner_id='667788').order_by('-created_at').first()
     
     # Lấy danh sách brands cho header và featured brands
     from store.models import Brand
