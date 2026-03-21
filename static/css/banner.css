@@ -216,13 +216,7 @@
     /* Small gap inside container */
 }
 
-.qh-banner-item:first-child {
-    padding-left: 0;
-}
-
-.qh-banner-item:last-child {
-    padding-right: 0;
-}
+/* Edge padding is handled by JS moveToSlide() for correct clone support */
 
 .qh-banner-item a {
     display: block;
@@ -237,40 +231,21 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-/* Banner sử dụng .slider-nav */
+/* Banner: override vị trí tuyệt đối, phần còn lại kế thừa .qh-slider-nav */
 .qh-banner-nav {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    background: rgba(255, 255, 255, 0.95);
-    border: none;
-    border-radius: 50%;
-    width: 44px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
     z-index: 100;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
-    color: #374151;
-    -webkit-tap-highlight-color: transparent;
 }
 
 .qh-banner-nav:hover {
-    background: #fff;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
     transform: translateY(-50%) scale(1.08);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
 }
 
 .qh-banner-nav:active {
     transform: translateY(-50%) scale(0.95);
-}
-
-.qh-banner-nav svg {
-    width: 20px;
-    height: 20px;
 }
 
 .qh-banner-nav.prev {
@@ -282,22 +257,12 @@
 }
 
 @media (max-width: 768px) {
-    .qh-banner-nav {
-        width: 36px;
-        height: 36px;
-    }
-
     .qh-banner-nav.prev {
         left: 10px;
     }
 
     .qh-banner-nav.next {
         right: 10px;
-    }
-
-    .qh-banner-nav svg {
-        width: 18px;
-        height: 18px;
     }
 }
 

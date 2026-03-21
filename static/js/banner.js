@@ -85,6 +85,18 @@
         }
 
         track.style.transform = `translateX(-${translateX}%)`;
+
+        // Fix edge gaps: remove padding from the first and last VISIBLE items
+        // so banner images reach flush to both edges of the container.
+        // (CSS :first-child/:last-child can't target visible items with cloned DOM)
+        const items = track.querySelectorAll('.qh-banner-item');
+        items.forEach(item => {
+            item.style.paddingLeft = '';
+            item.style.paddingRight = '';
+        });
+        if (items[slideIndex]) items[slideIndex].style.paddingLeft = '0';
+        const lastVisible = slideIndex + slidesPerView - 1;
+        if (items[lastVisible]) items[lastVisible].style.paddingRight = '0';
     }
 
     /**
