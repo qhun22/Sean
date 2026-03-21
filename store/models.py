@@ -533,6 +533,47 @@ class SiteVisit(models.Model):
         return f"Visit at {self.visit_time.strftime('%Y-%m-%d %H:%M')}"
 
 
+class UserBrowseLog(models.Model):
+    """
+    Ghi log hành vi xem sản phẩm của user/IP.
+    Dùng để cá nhân hoá Hot Sale hàng ngày:
+      - User đăng nhập   → 70% sản phẩm từ brand/category xem nhiều + 30% random từ toàn site
+      - Guest (chưa login) → 100% random
+    """
+    user = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='browse_logs',
+        verbose_name='Người dùng',
+    )
+    ip_address = models.GenericIPAddressField(null=True, blank=True, verbose_name='Địa chỉ IP')
+    product = models.ForeignKey(
+        'Product', on_delete=models.CASCADE,
+        related_name='browse_logs',
+        verbose_name='Sản phẩm',
+    )
+    brand = models.ForeignKey(
+        'Brand', on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='browse_logs',
+        verbose_name='Hãng',
+    )
+    viewed_at = models.DateTimeField(auto_now_add=True, verbose_name='Thời gian xem')
+
+    class Meta:
+        verbose_name = 'Log xem sản phẩm'
+        verbose_name_plural = 'Log xem sản phẩm'
+        ordering = ['-viewed_at']
+        indexes = [
+            models.Index(fields=['user', 'brand']),
+            models.Index(fields=['ip_address', 'brand']),
+        ]
+
+    def __str__(self):
+        who = self.user.email if self.user_id else self.ip_address
+        return f"{who} → {self.product.name}"
+
+
 class Order(models.Model):
     """
     Model đơn hàng để theo dõi doanh thu
