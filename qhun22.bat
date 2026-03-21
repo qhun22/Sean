@@ -29,8 +29,8 @@ echo  [2] Khởi động Server (Port tùy chọn)
 echo  [3] Chạy Migration
 echo  [4] Tạo tài khoản Admin
 echo  [5] Thử nghiệm gửi Email
-echo  [6] Xem Log Server
-echo  [7] Xóa Log cũ
+echo  [6] Xem Log Chatbot
+echo  [7] Xóa Log Chatbot
 echo  [8] Xuất requirements.txt từ venv hiện tại
 echo  [9] Thoát
 echo.
@@ -154,13 +154,13 @@ echo.
 echo [OK] Database sẵn sàng!
 echo.
 echo [i] Đang khởi động server tại http://127.0.0.1:8000/
-echo [i] Log tổng: logs\server.log
+echo [i] Log server se hien thi truc tiep tren terminal
 echo [i] Log chatbot: logs\chatbot.log
 echo [i] Bấm Ctrl+C để dừng server
 echo.
 set "DJANGO_LOG_LEVEL=INFO"
 set "QH_CHATBOT_LOG_LEVEL=INFO"
-powershell -NoProfile -Command "& { python manage.py runserver 2>&1 | Tee-Object -FilePath 'logs\server.log' -Append }"
+python manage.py runserver
 goto main_menu
 
 
@@ -178,13 +178,13 @@ if errorlevel 1 goto main_menu
 
 echo.
 echo [i] Đang khởi động server tại http://127.0.0.1:%port%/
-echo [i] Log tổng: logs\server.log
+echo [i] Log server se hien thi truc tiep tren terminal
 echo [i] Log chatbot: logs\chatbot.log
 echo [i] Bấm Ctrl+C để dừng server
 echo.
 set "DJANGO_LOG_LEVEL=INFO"
 set "QH_CHATBOT_LOG_LEVEL=INFO"
-powershell -NoProfile -Command "& { python manage.py runserver %port% 2>&1 | Tee-Object -FilePath 'logs\server.log' -Append }"
+python manage.py runserver %port%
 goto main_menu
 
 
@@ -293,25 +293,19 @@ goto main_menu
 :view_log
 cls
 echo ========================================
-echo   Xem Log Server
+echo   Xem Log Chatbot
 echo ========================================
 echo.
-if not exist "logs\server.log" (
-    echo [!] File log không tồn tại!
+if not exist "logs\chatbot.log" (
+    echo [!] Chua co file logs\chatbot.log !
     timeout /t 2 >nul
     goto main_menu
 )
 
-echo [i] Nội dung file log server:
+echo [i] Log server dang hien thi truc tiep tren terminal khi ban chay [1] hoac [2].
+echo [i] Noi dung file log chatbot:
 echo.
-type logs\server.log
-echo.
-if exist "logs\chatbot.log" (
-    echo ========================================
-    echo [i] Nội dung file log chatbot:
-    echo.
-    type logs\chatbot.log
-)
+type logs\chatbot.log
 echo.
 pause
 goto main_menu
@@ -320,16 +314,15 @@ goto main_menu
 :clear_log
 cls
 echo ========================================
-echo   Xóa Log
+echo   Xóa Log Chatbot
 echo ========================================
 echo.
-if exist "logs\server.log" (
-    del logs\server.log
-    echo [OK] Đã xóa log!
+if exist "logs\chatbot.log" (
+    del logs\chatbot.log
+    echo [OK] Da xoa logs\chatbot.log !
 ) else (
-    echo [!] File log không tồn tại!
+    echo [!] Chua co file logs\chatbot.log !
 )
-if exist "logs\chatbot.log" del logs\chatbot.log
 echo.
 timeout /t 2 >nul
 goto main_menu

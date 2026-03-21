@@ -175,7 +175,6 @@ BANK_ACCOUNT_NAME = os.getenv('BANK_ACCOUNT_NAME', '')
 # ==================== CONTACT CHANNELS ====================
 ZALO_CHAT_URL = os.getenv('ZALO_CHAT_URL', 'https://zalo.me/0327221005')
 
-
 # ==================== LOGGING ====================
 LOG_LEVEL = os.getenv('DJANGO_LOG_LEVEL', 'INFO').upper()
 CHATBOT_LOG_LEVEL = os.getenv('QH_CHATBOT_LOG_LEVEL', 'INFO').upper()
@@ -194,13 +193,7 @@ LOGGING = {
             'formatter': 'standard',
             'level': LOG_LEVEL,
         },
-        'server_file': {
-            'class': 'logging.FileHandler',
-            'filename': str(LOG_DIR / 'server.log'),
-            'formatter': 'standard',
-            'level': LOG_LEVEL,
-            'encoding': 'utf-8',
-        },
+
         'chatbot_file': {
             'class': 'logging.FileHandler',
             'filename': str(LOG_DIR / 'chatbot.log'),
@@ -211,43 +204,44 @@ LOGGING = {
     },
     'loggers': {
         'django': {
-            'handlers': ['console', 'server_file'],
+            'handlers': ['console'],
             'level': LOG_LEVEL,
             'propagate': False,
         },
         'store.chatbot.api': {
-            'handlers': ['console', 'server_file', 'chatbot_file'],
+            'handlers': ['console', 'chatbot_file'],
             'level': CHATBOT_LOG_LEVEL,
             'propagate': False,
         },
         'store.chatbot_orchestrator': {
-            'handlers': ['console', 'server_file', 'chatbot_file'],
+            'handlers': ['console', 'chatbot_file'],
             'level': CHATBOT_LOG_LEVEL,
             'propagate': False,
         },
         'store.chatbot_service': {
-            'handlers': ['console', 'server_file', 'chatbot_file'],
+            'handlers': ['console', 'chatbot_file'],
             'level': CHATBOT_LOG_LEVEL,
             'propagate': False,
         },
         'ai.rag_pipeline': {
-            'handlers': ['console', 'server_file', 'chatbot_file'],
+            'handlers': ['console', 'chatbot_file'],
             'level': CHATBOT_LOG_LEVEL,
             'propagate': False,
         },
         'ai.trainer': {
-            'handlers': ['console', 'server_file', 'chatbot_file'],
+            'handlers': ['console', 'chatbot_file'],
             'level': CHATBOT_LOG_LEVEL,
             'propagate': False,
         },
         'ai.vector_store': {
-            'handlers': ['console', 'server_file', 'chatbot_file'],
+            'handlers': ['console', 'chatbot_file'],
             'level': CHATBOT_LOG_LEVEL,
             'propagate': False,
         },
     },
     'root': {
-        'handlers': ['console', 'server_file'],
+        'handlers': ['console'],
         'level': 'WARNING',
     },
 }
+
