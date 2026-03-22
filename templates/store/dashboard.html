@@ -288,14 +288,45 @@
             <div class="da-group-hd">
                 <span class="da-group-title">DOANH THU &amp; ĐƠN HÀNG</span>
                 <div style="display:flex;gap:6px;">
-                    <a href="/export/month/" class="da-export-btn" title="Xuất thống kê tháng này">
+                    <button class="da-export-btn" onclick="openExportModal('month')" title="Xuất báo cáo tháng">
                         <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                         Xuất tháng
-                    </a>
-                    <a href="/export/year/" class="da-export-btn" title="Xuất thống kê năm này">
+                    </button>
+                    <button class="da-export-btn" onclick="openExportModal('year')" title="Xuất báo cáo năm">
                         <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                         Xuất năm
-                    </a>
+                    </button>
+                </div>
+
+                <!-- Export date-picker modal -->
+                <div id="exportModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
+                    <div style="background:#fff;border-radius:12px;padding:28px 32px;min-width:320px;box-shadow:0 8px 32px rgba(0,0,0,.18);position:relative;">
+                        <button onclick="closeExportModal()" style="position:absolute;top:10px;right:14px;background:none;border:none;font-size:20px;cursor:pointer;color:#64748b;">&times;</button>
+                        <h3 id="exportModalTitle" style="margin:0 0 18px;font-size:15px;font-weight:700;color:#1e293b;">Xuất báo cáo tháng</h3>
+                        <div id="exportMonthRow" style="margin-bottom:12px;">
+                            <label style="font-size:13px;color:#475569;font-weight:600;">Tháng</label>
+                            <select id="exportMonth" style="display:block;width:100%;margin-top:4px;padding:7px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:14px;">
+                                {% for m in "123456789101112"|make_list %}{% endfor %}
+                                <option value="1">Tháng 01</option><option value="2">Tháng 02</option>
+                                <option value="3">Tháng 03</option><option value="4">Tháng 04</option>
+                                <option value="5">Tháng 05</option><option value="6">Tháng 06</option>
+                                <option value="7">Tháng 07</option><option value="8">Tháng 08</option>
+                                <option value="9">Tháng 09</option><option value="10">Tháng 10</option>
+                                <option value="11">Tháng 11</option><option value="12">Tháng 12</option>
+                            </select>
+                        </div>
+                        <div style="margin-bottom:20px;">
+                            <label style="font-size:13px;color:#475569;font-weight:600;">Năm</label>
+                            <input id="exportYear" type="number" min="2000" max="2100" style="display:block;width:100%;margin-top:4px;padding:7px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:14px;box-sizing:border-box;" />
+                        </div>
+                        <div style="display:flex;gap:10px;justify-content:flex-end;">
+                            <button onclick="closeExportModal()" style="padding:8px 18px;border:1px solid #cbd5e1;border-radius:7px;background:#f8fafc;cursor:pointer;font-size:13px;">Hủy</button>
+                            <button onclick="doExport()" style="padding:8px 18px;border:none;border-radius:7px;background:#2563eb;color:#fff;cursor:pointer;font-size:13px;font-weight:600;">
+                                <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:4px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                Tải xuống
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="da-row da-c5">
@@ -311,6 +342,55 @@
                 <div class="da-stat"><div class="da-stat-label">Đơn hàng đang giao</div><div class="da-stat-val">{{ orders_shipped|default:0 }}</div><button class="da-stat-btn" onclick="openStatDetailBox('order','shipped')">Chi tiết</button></div>
                 <div class="da-stat"><div class="da-stat-label">Đã giao hàng</div><div class="da-stat-val">{{ orders_delivered|default:0 }}</div><button class="da-stat-btn" onclick="openStatDetailBox('order','delivered')">Chi tiết</button></div>
                 <div class="da-stat"><div class="da-stat-label">Đơn đã hủy</div><div class="da-stat-val">{{ orders_cancelled|default:0 }}</div><button class="da-stat-btn" onclick="openStatDetailBox('order','cancelled')">Chi tiết</button></div>
+            </div>
+
+            <!-- Modal nhập giá vốn sản phẩm -->
+            <div id="costPriceModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9100;align-items:center;justify-content:center;" onclick="if(event.target===this)closeCostPriceModal()">
+                <div style="background:#fff;border-radius:12px;width:880px;max-width:97vw;max-height:94vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid #e2e8f0;flex-shrink:0;gap:12px;">
+                        <h3 style="font-size:14px;font-weight:700;color:#1e293b;font-family:'Signika',sans-serif;margin:0;">Nhập giá vốn sản phẩm</h3>
+                        <div style="font-size:12px;color:#64748b;">Giá vốn × tồn kho = tổng chi phí nhập hàng</div>
+                        <button onclick="closeCostPriceModal()" style="padding:6px 14px;background:#f1f5f9;color:#334155;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-family:'Signika',sans-serif;">Đóng</button>
+                    </div>
+                    <div style="padding:10px 20px;background:#f8fafc;border-bottom:1px solid #e2e8f0;flex-shrink:0;display:flex;align-items:center;gap:12px;">
+                        <input id="cpSearchInput" type="text" placeholder="Tìm sản phẩm..." oninput="filterCpTable()" style="flex:1;padding:7px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;font-family:'Signika',sans-serif;outline:none;">
+                        <span id="cpSummary" style="font-size:12px;color:#64748b;white-space:nowrap;"></span>
+                    </div>
+                    <div style="overflow-y:auto;flex:1;min-height:0;">
+                        <table style="width:100%;border-collapse:collapse;font-size:13px;font-family:'Signika',sans-serif;">
+                            <thead style="position:sticky;top:0;background:#f8fafc;z-index:1;">
+                                <tr>
+                                    <th style="padding:10px 12px;text-align:left;border-bottom:2px solid #e2e8f0;color:#64748b;font-weight:600;">Tên sản phẩm</th>
+                                    <th style="padding:10px 12px;text-align:center;border-bottom:2px solid #e2e8f0;color:#64748b;font-weight:600;width:80px;">Tồn kho</th>
+                                    <th style="padding:10px 12px;text-align:right;border-bottom:2px solid #e2e8f0;color:#64748b;font-weight:600;width:180px;">Giá vốn/SP (VNĐ)</th>
+                                    <th style="padding:10px 12px;text-align:right;border-bottom:2px solid #e2e8f0;color:#64748b;font-weight:600;width:160px;">Thành tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cpTableBody">
+                                {% for p in cost_price_products %}
+                                <tr class="cp-row" data-id="{{ p.id }}" data-name="{{ p.name|lower }}">
+                                    <td style="padding:9px 12px;border-bottom:1px solid #f1f5f9;color:#1e293b;">{{ p.name }}</td>
+                                    <td style="padding:9px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#64748b;">{{ p.stock }}</td>
+                                    <td style="padding:9px 12px;border-bottom:1px solid #f1f5f9;text-align:right;">
+                                        <input type="number" class="cp-input" data-id="{{ p.id }}" data-stock="{{ p.stock }}"
+                                            value="{{ p.cost_price|default:'' }}"
+                                            placeholder="Nhập giá vốn"
+                                            oninput="updateCpRow(this)"
+                                            style="width:150px;padding:5px 8px;border:1px solid #e2e8f0;border-radius:4px;font-size:13px;text-align:right;font-family:'Signika',sans-serif;outline:none;">
+                                    </td>
+                                    <td class="cp-subtotal" data-id="{{ p.id }}" style="padding:9px 12px;border-bottom:1px solid #f1f5f9;text-align:right;color:#0f766e;font-weight:600;">
+                                        {% if p.subtotal %}{{ p.subtotal|format_price_with_unit }}{% else %}&mdash;{% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="padding:12px 20px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;align-items:center;gap:10px;flex-shrink:0;">
+                        <span id="cpTotalLabel" style="font-size:13px;color:#64748b;"></span>
+                        <button onclick="saveCostPrices()" id="cpSaveBtn" style="padding:8px 22px;background:#0f766e;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-family:'Signika',sans-serif;font-weight:600;">Lưu giá vốn</button>
+                    </div>
+                </div>
             </div>
 
             <!-- Modal chi tiết thống kê (đơn hàng + sản phẩm) -->
@@ -343,7 +423,17 @@
             <!-- LỢI NHUẬN -->
             <div class="da-group-title">LỢI NHUẬN</div>
             <div class="da-row da-c3">
-                <div class="da-stat"><div class="da-stat-label">Tổng chi phí nhập hàng</div><div class="da-stat-val">NO DATA</div><div style="font-size:11px;color:#94a3b8;margin-top:2px;">Chưa có dữ liệu giá vốn</div></div>
+                <div class="da-stat">
+                    <div class="da-stat-label">Tổng chi phí nhập hàng</div>
+                    {% if has_cost_data %}
+                        <div class="da-stat-val">{{ total_import_cost|format_price_with_unit }}</div>
+                        <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Giá vốn × tồn kho hiện tại</div>
+                    {% else %}
+                        <div class="da-stat-val" style="font-size:14px;color:#94a3b8;">NO DATA</div>
+                        <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Chưa có dữ liệu giá vốn</div>
+                    {% endif %}
+                    <button class="da-stat-btn" onclick="openCostPriceModal()">Chi tiết</button>
+                </div>
                 <div class="da-stat"><div class="da-stat-label">Doanh thu hôm nay</div><div class="da-stat-val">{{ revenue_today|format_price_with_unit }}</div><div style="font-size:11px;color:#94a3b8;margin-top:2px;">Đơn đã giao hôm nay</div></div>
                 <div class="da-stat"><div class="da-stat-label">Doanh thu tháng này</div><div class="da-stat-val">{{ revenue_this_month|format_price_with_unit }}</div><div style="font-size:11px;color:#94a3b8;margin-top:2px;">Đơn đã giao trong tháng</div></div>
             </div>
@@ -1921,6 +2011,108 @@
     window.userAddUrl      = '{% url "store:user_add" %}';
     window.userEditUrl     = '{% url "store:user_edit" %}';
     window.userDeleteUrl   = '{% url "store:user_delete" %}';
+    window.saveCostPriceUrl = '{% url "store:dashboard_save_cost_price" %}';
+</script>
+<script>
+    /* ── Modal giá vốn ── */
+    function openCostPriceModal() {
+        document.getElementById('costPriceModal').style.display = 'flex';
+        recalcCpTotal();
+    }
+    function closeCostPriceModal() {
+        document.getElementById('costPriceModal').style.display = 'none';
+    }
+    function filterCpTable() {
+        const q = document.getElementById('cpSearchInput').value.toLowerCase();
+        document.querySelectorAll('#cpTableBody .cp-row').forEach(function(tr) {
+            tr.style.display = (tr.dataset.name || '').includes(q) ? '' : 'none';
+        });
+    }
+    function fmtVnd(n) {
+        if (!n && n !== 0) return '—';
+        return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' đ';
+    }
+    function updateCpRow(input) {
+        const tid = input.dataset.id;
+        const stock = parseInt(input.dataset.stock) || 0;
+        const val = parseInt(input.value.replace(/[^0-9]/g, '')) || 0;
+        const cell = document.querySelector('.cp-subtotal[data-id="' + tid + '"]');
+        if (cell) cell.textContent = val > 0 ? fmtVnd(val * stock) : '—';
+        recalcCpTotal();
+    }
+    function recalcCpTotal() {
+        let total = 0;
+        document.querySelectorAll('.cp-input').forEach(function(inp) {
+            const v = parseInt(inp.value.replace(/[^0-9]/g, '')) || 0;
+            const s = parseInt(inp.dataset.stock) || 0;
+            total += v * s;
+        });
+        document.getElementById('cpTotalLabel').textContent = 'Tổng chi phí: ' + fmtVnd(total);
+        const sum = document.getElementById('cpSummary');
+        if (sum) sum.textContent = 'Tổng: ' + fmtVnd(total);
+    }
+    function saveCostPrices() {
+        const btn = document.getElementById('cpSaveBtn');
+        const items = [];
+        document.querySelectorAll('.cp-input').forEach(function(inp) {
+            const raw = inp.value.replace(/[^0-9]/g, '');
+            items.push({ id: parseInt(inp.dataset.id), cost_price: raw === '' ? null : parseInt(raw) });
+        });
+        btn.disabled = true; btn.textContent = 'Đang lưu...';
+        fetch(window.saveCostPriceUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': window.csrfToken },
+            body: JSON.stringify({ items: items })
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            if (d.success) {
+                btn.textContent = 'Đã lưu ✓';
+                btn.style.background = '#16a34a';
+                setTimeout(function() { location.reload(); }, 800);
+            } else {
+                btn.textContent = 'Lỗi! Thử lại';
+                btn.disabled = false;
+                btn.style.background = '#dc2626';
+            }
+        }).catch(function() {
+            btn.textContent = 'Lỗi kết nối';
+            btn.disabled = false;
+        });
+    }
+</script>
+<script>
+    /* ── Export date-picker modal ── */
+    var _exportType = 'month';
+    function openExportModal(type) {
+        _exportType = type;
+        var now = new Date();
+        document.getElementById('exportYear').value = now.getFullYear();
+        var selMonth = document.getElementById('exportMonth');
+        selMonth.value = String(now.getMonth() + 1);
+        document.getElementById('exportMonthRow').style.display = (type === 'month') ? 'block' : 'none';
+        document.getElementById('exportModalTitle').textContent = (type === 'month') ? 'Xuất báo cáo tháng' : 'Xuất báo cáo năm';
+        var m = document.getElementById('exportModal');
+        m.style.display = 'flex';
+    }
+    function closeExportModal() {
+        document.getElementById('exportModal').style.display = 'none';
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('exportModal').addEventListener('click', function(e) {
+            if (e.target === this) closeExportModal();
+        });
+    });
+    function doExport() {
+        var year  = parseInt(document.getElementById('exportYear').value) || new Date().getFullYear();
+        var month = parseInt(document.getElementById('exportMonth').value) || (new Date().getMonth() + 1);
+        var url;
+        if (_exportType === 'month') {
+            url = '/export/month/?month=' + month + '&year=' + year;
+        } else {
+            url = '/export/year/?year=' + year;
+        }
+        window.location.href = url;
+        closeExportModal();
+    }
 </script>
 <script>
     function openAddUserModal() {
