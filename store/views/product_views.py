@@ -22,7 +22,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods, require_POST
 from django.db import models
 from django.db.models import Q, Count, Sum, Max
-from django.db.models.functions import Cast
+from django.db.models.functions import Cast, Coalesce
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from django.urls import reverse
@@ -290,7 +290,7 @@ def product_detail_view(request, product_id):
 
     product = get_object_or_404(Product, id=product_id)
 
-    # -- Ghi log hành vi xem sản phẩm (dùng cho Hot Sale cá nhân hoá) --
+    # -- Ghi log hành vi xem sản phẩm (dùng cho GỢI Ý cá nhân hoá) --
     if request.user.is_authenticated:
         from store.models import UserBrowseLog
         x_fwd = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -700,7 +700,7 @@ def home(request):
              'product__original_price', 'product__discount_percent', 'product__stock',
              'product__slug', 'product__brand__name').annotate(
         total_sold=Sum('quantity')
-    ).order_by('-total_sold')[:5]
+    ).order_by('-total_sold')[:10]
 
     # Chuyển đổi queryset thành list với thông tin đầy đủ
     best_sellers = []
@@ -729,27 +729,24 @@ def home(request):
     from store.models import Brand
     context['brands'] = Brand.objects.filter(is_active=True).order_by('name')
     
-    # HOT SALE HÀNG NGÀY — cá nhân hoá theo lịch sử xem (chỉ user đăng nhập)
+    # ── GỢI Ý cá nhân hoá — dựa theo lịch sử xem sản phẩm (UserBrowseLog) ──
     import random
-    from django.utils import timezone
     import datetime as dt
     import zoneinfo
+    from django.db.models import Sum as _Sum, Value, Case, When, IntegerField as _IntField
 
     ict = zoneinfo.ZoneInfo('Asia/Ho_Chi_Minh')
     now_ict = dt.datetime.now(ict)
-    today_seed = now_ict.date().toordinal()   # seed ổn định trong ngày
+    today_seed = now_ict.date().toordinal()
 
     all_active_ids = list(
         Product.objects.filter(is_active=True, stock__gt=0).values_list('id', flat=True)
     )
-
-    HOT_SALE_COUNT = 10  # tổng số SP hiển thị hot sale
+    SUGGEST_COUNT = 10
 
     if request.user.is_authenticated and all_active_ids:
         from store.models import UserBrowseLog
         from django.db.models import Count
-
-        # Lấy top brand user xem nhiều nhất (không giới hạn thời gian)
         top_brands = (
             UserBrowseLog.objects
             .filter(user=request.user, brand__isnull=False)
@@ -758,48 +755,59 @@ def home(request):
             .order_by('-cnt')[:5]
         )
         top_brand_ids = [r['brand_id'] for r in top_brands]
-
         if top_brand_ids:
-            # 70% (~7 slot) từ sản phẩm của brand user xem nhiều
             personal_ids = list(
                 Product.objects.filter(
                     is_active=True, stock__gt=0,
                     brand_id__in=top_brand_ids
                 ).values_list('id', flat=True)
             )
-            # 30% (~3 slot) random toàn bộ SP có hàng (ngoài personal)
             other_ids = [i for i in all_active_ids if i not in personal_ids]
-
             rng = random.Random(today_seed)
             rng.shuffle(personal_ids)
             rng.shuffle(other_ids)
-
-            personal_count = min(7, len(personal_ids), HOT_SALE_COUNT)
-            other_count = min(HOT_SALE_COUNT - personal_count, len(other_ids))
-
+            personal_count = min(7, len(personal_ids), SUGGEST_COUNT)
+            other_count = min(SUGGEST_COUNT - personal_count, len(other_ids))
             chosen_ids = personal_ids[:personal_count] + other_ids[:other_count]
-            # Nếu chưa đủ 10, bù thêm từ personal còn lại
-            if len(chosen_ids) < HOT_SALE_COUNT:
+            if len(chosen_ids) < SUGGEST_COUNT:
                 extra = [i for i in personal_ids[personal_count:] if i not in chosen_ids]
-                chosen_ids += extra[:HOT_SALE_COUNT - len(chosen_ids)]
+                chosen_ids += extra[:SUGGEST_COUNT - len(chosen_ids)]
         else:
-            # User chưa có lịch sử → random toàn bộ
             rng = random.Random(today_seed)
             rng.shuffle(all_active_ids)
-            chosen_ids = all_active_ids[:HOT_SALE_COUNT]
+            chosen_ids = all_active_ids[:SUGGEST_COUNT]
     else:
-        # Guest → 100% random, seed theo ngày
         rng = random.Random(today_seed)
         rng.shuffle(all_active_ids)
-        chosen_ids = all_active_ids[:HOT_SALE_COUNT]
+        chosen_ids = all_active_ids[:SUGGEST_COUNT]
 
     if chosen_ids:
-        from django.db.models import Case, When, IntegerField as _IntField
         _order = Case(*[When(id=i, then=pos) for pos, i in enumerate(chosen_ids)], output_field=_IntField())
-        context['hot_sale_products'] = list(
+        context['suggested_products'] = list(
             Product.objects.filter(id__in=chosen_ids)
             .select_related('brand', 'detail')
-            .annotate(_hs_order=_order)
+            .annotate(_sg_order=_order)
+            .order_by('_sg_order')
+        )
+    else:
+        context['suggested_products'] = []
+
+    # ── HOT SALE — admin thêm sản phẩm từ trang quản trị ──
+    from store.models import HotSaleProduct
+    hs_entries = HotSaleProduct.objects.filter(is_active=True).select_related('product__brand', 'product__detail')[:10]
+    hs_product_ids = [e.product_id for e in hs_entries]
+    if hs_product_ids:
+        _hs_order = Case(*[When(id=i, then=pos) for pos, i in enumerate(hs_product_ids)], output_field=_IntField())
+        context['hot_sale_products'] = list(
+            Product.objects.filter(id__in=hs_product_ids)
+            .select_related('brand', 'detail')
+            .annotate(
+                _hs_order=_hs_order,
+                sold_count=Coalesce(
+                    _Sum('order_items__quantity', filter=Q(order_items__order__status='delivered')),
+                    Value(0),
+                ),
+            )
             .order_by('_hs_order')
         )
     else:
