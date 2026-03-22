@@ -275,15 +275,15 @@
 }
 
 .qh-wishlist-page .qh-card .qh-btn-primary {
-    background: var(--qh-primary-light);
-    color: var(--qh-primary);
-    border: 1.5px solid var(--qh-primary);
+    background: var(--qh-primary);
+    color: #ffffff;
+    border: none;
 }
 
 .qh-wishlist-page .qh-card .qh-btn-primary:hover {
-    background: var(--qh-primary);
+    background: #b91c1c;
     color: #ffffff;
-    border-color: var(--qh-primary);
+    border-color: #b91c1c;
     box-shadow: 0 8px 18px rgba(185, 28, 28, 0.3);
 }
 

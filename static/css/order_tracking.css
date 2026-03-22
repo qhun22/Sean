@@ -556,9 +556,9 @@
 }
 
 .qh-ot-empty .qh-btn-primary {
-    background: #fee2e2;
-    color: #b91c1c;
-    border: 1.5px solid #b91c1c;
+    background: var(--qh-primary);
+    color: #ffffff;
+    border: none;
 }
 
 .qh-ot-empty .qh-btn-primary:hover {

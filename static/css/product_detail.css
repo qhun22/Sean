@@ -529,8 +529,8 @@
     max-height: 55vh;
     object-fit: contain;
     -webkit-user-select: none;
+    -moz-user-select: none;
     user-select: none;
-    -webkit-user-drag: none;
     transition: opacity 0.4s ease, transform 0.4s ease;
 }
 
@@ -581,7 +581,6 @@
     padding: 14px 20px 18px;
     overflow-x: auto;
     border-top: 1px solid #eeeeee;
-    scrollbar-width: none;
     -ms-overflow-style: none;
     justify-content: center;
 }
@@ -619,7 +618,6 @@
     height: 100%;
     object-fit: cover;
     pointer-events: none;
-    -webkit-user-drag: none;
 }
 
 /* ========== Spec Panel (slide from right) ========== */
@@ -705,7 +703,6 @@
     padding: 0 22px;
     border-bottom: 1px solid #e2e8f0;
     overflow-x: auto;
-    scrollbar-width: none;
     -ms-overflow-style: none;
     flex-shrink: 0;
     position: sticky;
@@ -1698,7 +1695,8 @@
 
     .pd-review-grid {
         grid-template-columns: 1fr;
-        min-height: auto;
+        min-height: 0;
+        /* 'auto' not supported in Firefox 22+; use 0 */
     }
 
     .pd-review-left {

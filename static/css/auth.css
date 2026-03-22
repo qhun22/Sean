@@ -178,6 +178,8 @@
     gap: 6px;
     color: var(--qh-text-light);
     cursor: pointer;
+    -webkit-user-select: none;
+    -moz-user-select: none;
     user-select: none;
 }
 
