@@ -89,6 +89,191 @@ def _battery_match(selected_battery_filters, spec_text):
     return False
 
 
+def _get_spec_filters_dict(product):
+    """Lấy dict `filters` từ spec_json của sản phẩm."""
+    try:
+        spec_json = product.detail.specification.spec_json or {}
+        return spec_json.get('filters', {})
+    except (AttributeError, ObjectDoesNotExist):
+        return {}
+
+
+def _spec_json_matches(product, selected):
+    """Kiểm tra sản phẩm có khớp với tất cả bộ lọc spec_json hay không."""
+    f = _get_spec_filters_dict(product)
+
+    # OS
+    if selected['os']:
+        os_val = str(f.get('os', '')).lower()
+        matched = any(
+            ('ios' in os_val if s == 'ios' else 'android' in os_val)
+            for s in selected['os']
+        )
+        if not matched:
+            return False
+
+    # RAM (filters.ram là số nguyên, VD: 12)
+    if selected['ram']:
+        ram_val = f.get('ram')
+        matched = False
+        if ram_val is not None:
+            try:
+                for s in selected['ram']:
+                    if int(s) == int(ram_val):
+                        matched = True
+                        break
+            except (ValueError, TypeError):
+                pass
+        if not matched:
+            return False
+
+    # Network (filters.network là list, VD: ["5G"])
+    if selected['network']:
+        network_list = [str(n).lower() for n in (f.get('network') or [])]
+        matched = any(
+            ('5g' in network_list if s == '5g' else '4g' in network_list or 'lte' in network_list)
+            for s in selected['network']
+        )
+        if not matched:
+            return False
+
+    # Connections (filters.connectivity là list, VD: ["NFC", "Bluetooth"])
+    if selected['connections']:
+        connectivity = [str(c).lower() for c in (f.get('connectivity') or [])]
+        conn_text = ' '.join(connectivity)
+        conn_key_map = {
+            'nfc': 'nfc',
+            'bluetooth': 'bluetooth',
+            'infrared': 'infrared',
+        }
+        matched = any(conn_key_map.get(s, s) in conn_text for s in selected['connections'])
+        if not matched:
+            return False
+
+    # Battery (filters.battery là số nguyên, VD: 4700)
+    if selected['battery'] and 'all' not in selected['battery']:
+        battery_val = f.get('battery')
+        matched = False
+        if battery_val is not None:
+            try:
+                bv = int(battery_val)
+                for s in selected['battery']:
+                    if s == 'lt3000' and bv < 3000:
+                        matched = True; break
+                    if s == '3000_4000' and 3000 <= bv <= 4000:
+                        matched = True; break
+                    if s == '4000_5500' and 4000 <= bv <= 5500:
+                        matched = True; break
+                    if s == 'gt5500' and bv > 5500:
+                        matched = True; break
+            except (ValueError, TypeError):
+                pass
+        if not matched:
+            return False
+
+    # Memory card (filters.memory_card là string, VD: "none" / "microsd")
+    if selected['memory_card'] and 'all' not in selected['memory_card']:
+        mem_val = str(f.get('memory_card', '')).lower()
+        matched = any(
+            (s == 'none' and mem_val in ('none', 'no', ''))
+            or (s == 'microsd' and 'microsd' in mem_val)
+            for s in selected['memory_card']
+        )
+        if not matched:
+            return False
+
+    # Screen size (filters.screen_size_range là enum, VD: "above_6.8")
+    if selected['screen_size'] and 'all' not in selected['screen_size']:
+        size_range = str(f.get('screen_size_range', '')).lower()
+        size_val = f.get('screen_size')
+        range_map = {
+            'small': lambda r, v: 'below_5' in r or (v is not None and float(v) < 5.0),
+            '5_65': lambda r, v: '5.0-6.5' in r or '5_6.5' in r or (v is not None and 5.0 <= float(v) <= 6.5),
+            '65_68': lambda r, v: '6.5-6.8' in r or '6.5_6.8' in r or (v is not None and 6.5 < float(v) <= 6.8),
+            'gt68': lambda r, v: 'above_6.8' in r or (v is not None and float(v) > 6.8),
+        }
+        matched = False
+        for s in selected['screen_size']:
+            fn = range_map.get(s)
+            if fn:
+                try:
+                    if fn(size_range, size_val):
+                        matched = True; break
+                except (ValueError, TypeError):
+                    pass
+        if not matched:
+            return False
+
+    # Screen standard (filters.screen_standard + filters.resolution)
+    # VD: screen_standard="Retina", resolution="FHD+"
+    if selected['screen_standard']:
+        screen_std = str(f.get('screen_standard', '')).lower()
+        resolution = str(f.get('resolution', '')).lower()
+        std_check = {
+            'retina': lambda: 'retina' in screen_std,
+            '2k': lambda: '2k' in resolution,
+            '1_5k': lambda: '1.5k' in resolution or '1,5k' in resolution,
+            'fhd': lambda: 'fhd' in resolution,
+            'hd': lambda: resolution.startswith('hd'),
+            'qxga': lambda: 'qxga' in resolution,
+            'qvga': lambda: 'qvga' in resolution,
+        }
+        matched = any(std_check.get(s, lambda: False)() for s in selected['screen_standard'])
+        if not matched:
+            return False
+
+    # Refresh rate (filters.refresh_rate là số nguyên, VD: 120)
+    if selected['refresh_rate']:
+        rate_val = f.get('refresh_rate')
+        matched = False
+        if rate_val is not None:
+            try:
+                rv = int(rate_val)
+                for s in selected['refresh_rate']:
+                    if s == 'gt144' and rv >= 144:
+                        matched = True; break
+                    if s == '120' and rv == 120:
+                        matched = True; break
+                    if s == '90' and rv == 90:
+                        matched = True; break
+                    if s == '60' and rv == 60:
+                        matched = True; break
+            except (ValueError, TypeError):
+                pass
+        if not matched:
+            return False
+
+    # Camera features (filters.camera_features là list, VD: ["slow_motion", "ois", ...])
+    if selected['camera'] and 'all' not in selected['camera']:
+        camera_feats = [str(c).lower() for c in (f.get('camera_features') or [])]
+        camera_key_map = {
+            'slowmo': 'slow_motion',
+            'ai_camera': 'ai_camera',
+            'beauty': 'beauty',
+            'optical_zoom': 'zoom',
+            'ois': 'ois',
+            'macro': 'macro',
+            'wide': 'wide',
+            'portrait': 'portrait',
+        }
+        matched = any(camera_key_map.get(s, s) in camera_feats for s in selected['camera'])
+        if not matched:
+            return False
+
+    # Special features (filters.special_features là list, VD: ["wireless_charging", ...])
+    if selected['special'] and 'all' not in selected['special']:
+        special_feats = [str(s_feat).lower() for s_feat in (f.get('special_features') or [])]
+        special_key_map = {
+            'wireless_charge': 'wireless_charging',
+            'reverse_charge': 'reverse_charging',
+        }
+        matched = any(special_key_map.get(s, s) in special_feats for s in selected['special'])
+        if not matched:
+            return False
+
+    return True
+
+
 def _apply_advanced_product_filters(products_qs, request):
     """Áp dụng bộ lọc nâng cao từ panel filter (query string)."""
     selected = {
@@ -106,30 +291,7 @@ def _apply_advanced_product_filters(products_qs, request):
         'special': _parse_multi_values(request.GET.get('special', '').strip()),
     }
 
-    need_spec_text = any([
-        selected['os'],
-        selected['connections'],
-        selected['battery'],
-        selected['network'],
-        selected['ram'],
-        selected['memory_card'],
-        selected['screen_size'],
-        selected['screen_standard'],
-        selected['refresh_rate'],
-        selected['camera'],
-        selected['special'],
-    ])
-
-    if need_spec_text:
-        products_qs = products_qs.annotate(_spec_text=Cast('detail__specification__spec_json', models.TextField()))
-
-    if selected['os']:
-        os_token_map = {
-            'ios': ['ios', 'iphone'],
-            'android': ['android'],
-        }
-        products_qs = products_qs.filter(_build_spec_token_q(os_token_map, selected['os']))
-
+    # ROM filter: dùng variants.storage (ORM-level, nhanh hơn)
     if selected['rom']:
         rom_q = Q()
         for rom in selected['rom']:
@@ -147,110 +309,25 @@ def _apply_advanced_product_filters(products_qs, request):
         if rom_q:
             products_qs = products_qs.filter(rom_q)
 
-    if selected['connections']:
-        connection_map = {
-            'nfc': ['nfc'],
-            'bluetooth': ['bluetooth'],
-            'infrared': ['hồng ngoại', 'hong ngoai', 'infrared', 'ir'],
-        }
-        products_qs = products_qs.filter(_build_spec_token_q(connection_map, selected['connections']))
+    # Các filter còn lại: đọc trực tiếp từ filters dict trong spec_json
+    spec_filters_active = any([
+        selected['os'],
+        selected['connections'],
+        selected['battery'],
+        selected['network'],
+        selected['ram'],
+        selected['memory_card'],
+        selected['screen_size'],
+        selected['screen_standard'],
+        selected['refresh_rate'],
+        selected['camera'],
+        selected['special'],
+    ])
 
-    if selected['battery'] and 'all' not in selected['battery']:
-        battery_candidate_ids = []
-        battery_candidates = products_qs.select_related('detail__specification')
-        for product in battery_candidates:
-            spec_json = {}
-            detail = getattr(product, 'detail', None)
-            if detail:
-                try:
-                    specification = detail.specification
-                    spec_json = specification.spec_json or {}
-                except ObjectDoesNotExist:
-                    spec_json = {}
-
-            spec_text = json.dumps(spec_json, ensure_ascii=False)
-            if _battery_match(selected['battery'], spec_text):
-                battery_candidate_ids.append(product.id)
-
-        if not battery_candidate_ids:
-            return products_qs.none(), selected
-
-        products_qs = products_qs.filter(id__in=battery_candidate_ids)
-
-    if selected['network']:
-        network_map = {
-            '5g': ['5g'],
-            '4g': ['4g'],
-        }
-        products_qs = products_qs.filter(_build_spec_token_q(network_map, selected['network']))
-
-    if selected['ram']:
-        ram_map = {
-            '16': ['16 gb', '16gb'],
-            '12': ['12 gb', '12gb'],
-            '8': ['8 gb', '8gb'],
-            '6': ['6 gb', '6gb'],
-            '4': ['4 gb', '4gb'],
-            '3': ['3 gb', '3gb'],
-        }
-        products_qs = products_qs.filter(_build_spec_token_q(ram_map, selected['ram']))
-
-    if selected['memory_card'] and 'all' not in selected['memory_card']:
-        memory_map = {
-            'microsd': ['microsd', 'micro sd', 'thẻ nhớ'],
-            'none': ['không hỗ trợ thẻ nhớ', 'khong ho tro the nho', 'không có khe thẻ nhớ'],
-        }
-        products_qs = products_qs.filter(_build_spec_token_q(memory_map, selected['memory_card']))
-
-    if selected['screen_size'] and 'all' not in selected['screen_size']:
-        screen_size_map = {
-            'small': ['4.7', '5.0', '5.4', '5.5', '5.8', '6.0'],
-            '5_65': ['5.0', '5.5', '5.8', '6.1', '6.2', '6.3', '6.4', '6.5'],
-            '65_68': ['6.5', '6.6', '6.7', '6.8'],
-            'gt68': ['6.9', '7.0'],
-        }
-        products_qs = products_qs.filter(_build_spec_token_q(screen_size_map, selected['screen_size']))
-
-    if selected['screen_standard']:
-        screen_standard_map = {
-            'retina': ['retina'],
-            '2k': ['2k', '2k+'],
-            '1_5k': ['1.5k', '1,5k'],
-            'fhd': ['fhd', 'fhd+'],
-            'hd': ['hd', 'hd+'],
-            'qxga': ['qxga'],
-            'qvga': ['qqvga', 'qvga'],
-        }
-        products_qs = products_qs.filter(_build_spec_token_q(screen_standard_map, selected['screen_standard']))
-
-    if selected['refresh_rate']:
-        refresh_map = {
-            'gt144': ['144hz', '165hz', '240hz'],
-            '120': ['120hz'],
-            '90': ['90hz'],
-            '60': ['60hz'],
-        }
-        products_qs = products_qs.filter(_build_spec_token_q(refresh_map, selected['refresh_rate']))
-
-    if selected['camera'] and 'all' not in selected['camera']:
-        camera_map = {
-            'slowmo': ['slow motion', 'slowmo', 'quay chậm'],
-            'ai_camera': ['ai camera'],
-            'beauty': ['làm đẹp', 'lam dep', 'beauty'],
-            'optical_zoom': ['zoom quang', 'optical zoom'],
-            'ois': ['ois', 'chống rung quang học'],
-            'macro': ['macro'],
-            'wide': ['góc rộng', 'goc rong', 'ultrawide', 'wide'],
-            'portrait': ['xóa phông', 'xoa phong', 'portrait'],
-        }
-        products_qs = products_qs.filter(_build_spec_token_q(camera_map, selected['camera']))
-
-    if selected['special'] and 'all' not in selected['special']:
-        special_map = {
-            'wireless_charge': ['sạc không dây', 'sac khong day', 'wireless charge'],
-            'reverse_charge': ['sạc ngược', 'sac nguoc', 'reverse charge'],
-        }
-        products_qs = products_qs.filter(_build_spec_token_q(special_map, selected['special']))
+    if spec_filters_active:
+        candidates = products_qs.select_related('detail__specification')
+        matching_ids = [p.id for p in candidates if _spec_json_matches(p, selected)]
+        products_qs = products_qs.filter(id__in=matching_ids)
 
     return products_qs.distinct(), selected
 

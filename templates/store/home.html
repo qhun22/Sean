@@ -254,12 +254,7 @@
                             <span class="qh-hotsale-price-old">{{ product.detail.summary_original_price|format_price_with_unit }}</span>
                             {% endif %}
                         </div>
-                        <div class="qh-hotsale-card-sold">
-                            <div class="qh-hotsale-sold-bar">
-                                <div class="qh-hotsale-sold-fill" style="width: {% if product.stock > 0 %}{% widthratio product.sold_count product.stock 100 %}{% else %}0{% endif %}%"></div>
-                            </div>
-                            <span class="qh-hotsale-sold-text"><i class="ri-fire-fill"></i> Đã bán {{ product.sold_count|default:0 }}/{{ product.stock }} suất</span>
-                        </div>
+
                     </div>
                 </a>
                 {% endfor %}
@@ -305,7 +300,6 @@
                             {% endif %}
                         </div>
                         <div class="qh-hotsale-card-sold">
-                            <span class="qh-hotsale-sold-text"><i class="ri-fire-fill"></i> Đã bán {{ item.total_sold }} sp</span>
                         </div>
                     </div>
                 </a>
