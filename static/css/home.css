@@ -1038,7 +1038,7 @@
     overflow: hidden;
     cursor: pointer;
     white-space: nowrap;
-    transition: opacity 0.18s;
+    transition: filter 0.2s ease, transform 0.2s ease;
 }
 
 /* ── Điều chỉnh vị trí chữ: thay đổi --hs-tab-txt-x / --hs-tab-txt-y ── */
@@ -1059,13 +1059,15 @@
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
-/* Tab không active – mờ đi, hạ thấp hơn chút */
+/* Tab không active – tối nhẹ, không mờ như disabled */
 .qh-hotsale-tab:not(.active) {
-    opacity: 0.55;
+    filter: brightness(0.72) saturate(0.6);
+    --hs-tab-y: -12px;
 }
 
 .qh-hotsale-tab:not(.active):hover {
-    opacity: 0.82;
+    filter: brightness(0.9) saturate(0.85);
+    --hs-tab-y: -16px;
 }
 
 /* Countdown (phải, trong header) */
