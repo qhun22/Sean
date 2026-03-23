@@ -131,7 +131,7 @@ def dashboard_view(request):
     ).aggregate(total=Sum('total_amount'))['total'] or 0
 
     # Thống kê đơn hàng
-    from datetime import datetime
+    from datetime import datetime, timedelta
     now = timezone.now()
     current_year = now.year
     current_month = now.month
@@ -143,7 +143,15 @@ def dashboard_view(request):
     orders_processing_count = Order.objects.filter(status='processing').count()
     orders_shipped_count = Order.objects.filter(status='shipped').count()
     orders_delivered_count = Order.objects.filter(status='delivered').count()
+    # W1 FIX: "Đã hủy" chỉ đếm đơn bị hủy thật (order.status = 'cancelled')
+    # payment_expired = hết hạn VietQR — không phải hủy đơn
     orders_cancelled_count = Order.objects.filter(status='cancelled').count()
+    orders_payment_expired_count = Order.objects.filter(status='payment_expired').count()
+
+    # VietQR fail rate (expired + cancelled payments)
+    vietqr_total = Order.objects.filter(payment_method='vietqr').count()
+    vietqr_failed = Order.objects.filter(payment_method='vietqr', payment_status__in=['cancelled', 'expired']).count()
+    vietqr_fail_rate = round(vietqr_failed / vietqr_total * 100, 1) if vietqr_total > 0 else 0
 
     total_orders_all = Order.objects.count()
     total_revenue_all = Order.objects.filter(status='delivered').aggregate(t=Sum('total_amount'))['t'] or 0
@@ -155,6 +163,19 @@ def dashboard_view(request):
     revenue_this_month = Order.objects.filter(
         created_at__year=current_year,
         created_at__month=current_month,
+        status='delivered'
+    ).aggregate(total=Sum('total_amount'))['total'] or 0
+
+    # Doanh thu hôm qua & 7 ngày gần nhất
+    yesterday = today - timedelta(days=1)
+    revenue_yesterday = Order.objects.filter(
+        created_at__date=yesterday,
+        status='delivered'
+    ).aggregate(total=Sum('total_amount'))['total'] or 0
+
+    seven_days_ago = today - timedelta(days=6)
+    revenue_7days = Order.objects.filter(
+        created_at__date__gte=seven_days_ago,
         status='delivered'
     ).aggregate(total=Sum('total_amount'))['total'] or 0
     
@@ -222,6 +243,8 @@ def dashboard_view(request):
         'total_visits': total_visits,
         'low_stock_products_count': low_stock_products_count,
         'revenue_today': revenue_today,
+        'revenue_yesterday': revenue_yesterday,
+        'revenue_7days': revenue_7days,
         'revenue_this_month': revenue_this_month,
         'months': month_data,
         'chart_year': current_year,
@@ -247,6 +270,10 @@ def dashboard_view(request):
         'orders_shipped': orders_shipped_count,
         'orders_delivered': orders_delivered_count,
         'orders_cancelled': orders_cancelled_count,
+        'orders_payment_expired': orders_payment_expired_count,
+        'vietqr_total': vietqr_total,
+        'vietqr_failed': vietqr_failed,
+        'vietqr_fail_rate': vietqr_fail_rate,
         'avg_order_value': avg_order_value,
         'conversion_rate': conversion_rate,
         # Product stats
@@ -259,7 +286,7 @@ def dashboard_view(request):
         'cost_price_products': cost_price_products,
         'has_cost_data': has_cost_data,
     }
-    return render(request, 'store/dashboard.html', context)
+    return render(request, 'store/admin/dashboard.html', context)
 
 
 @login_required
@@ -312,13 +339,14 @@ def dashboard_order_detail(request):
         base_qs = base_qs.filter(created_at__year=now.year, created_at__month=now.month)
     elif filter_type == 'year':
         base_qs = base_qs.filter(created_at__year=now.year)
-    elif filter_type in ('pending', 'processing', 'shipped', 'delivered', 'cancelled'):
+    elif filter_type in ('pending', 'processing', 'shipped', 'delivered', 'cancelled', 'payment_expired'):
         base_qs = base_qs.filter(status=filter_type)
 
     # --- Stats từ base_qs (trước khi lọc thêm) ---
     total_base = base_qs.count()
     total_value_base = base_qs.aggregate(s=Sum('total_amount'))['s'] or 0
     total_revenue_base = base_qs.filter(status='delivered').aggregate(s=Sum('total_amount'))['s'] or 0
+    # W1 FIX: tỷ lệ hủy chỉ tính đơn hủy thật
     total_cancelled_base = base_qs.filter(status='cancelled').count()
 
     # Tổng SP bán (chỉ đơn delivered)
@@ -615,6 +643,7 @@ def _build_export_workbook(orders_qs, period_label, period_type):
         'shipped': 'Đang giao',
         'delivered': 'Đã giao hàng',
         'cancelled': 'Đã hủy',
+        'payment_expired': 'Hết hạn thanh toán',  # W4 FIX
     }
     PAYMENT_VN = {
         'cod': 'COD (Tiền mặt)',
@@ -811,7 +840,8 @@ def _build_export_workbook(orders_qs, period_label, period_type):
     total_qty     = sum(it.quantity for it in all_items)
     total_revenue = sum(int(o.total_amount) for o in orders_list if o.status == 'delivered')
     delivered_cnt = sum(1 for o in orders_list if o.status == 'delivered')
-    cancelled_cnt = sum(1 for o in orders_list if o.status == 'cancelled')
+    # W2 FIX: Excel báo cáo cancelled_cnt cần bao gồm cả payment_expired (không thanh toán)
+    cancelled_cnt = sum(1 for o in orders_list if o.status in ('cancelled', 'payment_expired'))
 
     r = kv_row(ws2, r, 'Tổng số đơn hàng',   total_orders)
     r = kv_row(ws2, r, 'Tổng sản phẩm đã bán', total_qty)
@@ -872,7 +902,8 @@ def _build_export_workbook(orders_qs, period_label, period_type):
     r += 1
     product_stats = {}
     for it in all_items:
-        if it.order.status == 'cancelled':
+    # W3 FIX: loại trừ cả 'cancelled' và 'payment_expired' khỏi top products
+        if it.order.status in ('cancelled', 'payment_expired'):
             continue
         key = it.product_name
         if key not in product_stats:
@@ -1024,7 +1055,7 @@ def brand_list(request):
         'brands_paginated': brands_paginated,
         'search': search,
     }
-    return render(request, 'store/brand_list.html', context)
+    return render(request, 'store/admin/brand_list.html', context)
 
 
 
@@ -2945,7 +2976,7 @@ def best_sellers_admin(request):
         'best_sellers': best_sellers,
         'total_sold_all': total_sold_all,
     }
-    return render(request, 'store/best_sellers_admin.html', context)
+    return render(request, 'store/admin/best_sellers_admin.html', context)
 
 
 

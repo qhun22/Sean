@@ -68,9 +68,420 @@ def qr_payment_create(request):
 @require_POST
 def vietqr_create_order(request):
     """
-    Tạo đơn hàng VietQR (awaiting_payment) + PendingQRPayment,
-    trả về URL trang thanh toán VietQR riêng.
+    Tạo đơn hàng VietQR:
+    - Sinh payment_code, ghi vào Order.payment_code
+    - Set Order.expires_at = now + 15 phút
+    - Tạo PendingQRPayment liên kết qua transfer_code
+    - Trả về redirect_url dạng /vietqr-payment/<order_id>/
     """
+    from store.models import Cart, Order, OrderItem, ProductDetail, FolderColorImage, PendingQRPayment
+    from datetime import timedelta
+    import json
+    import random as _rand
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Dữ liệu không hợp lệ'}, status=400)
+
+    items_param = data.get('items_param', '')
+
+    if not items_param:
+        return JsonResponse({'success': False, 'message': 'Không có sản phẩm'}, status=400)
+
+    try:
+        item_ids = [int(x) for x in items_param.split(',') if x.strip()]
+    except (ValueError, TypeError):
+        return JsonResponse({'success': False, 'message': 'Danh sách sản phẩm không hợp lệ'}, status=400)
+
+    cart = Cart.get_or_create_for_user(request.user)
+    if not cart:
+        return JsonResponse({'success': False, 'message': 'Không tìm thấy giỏ hàng'}, status=400)
+
+    cart_items = list(cart.items.filter(id__in=item_ids).select_related('product', 'product__brand'))
+    if not cart_items:
+        return JsonResponse({'success': False, 'message': 'Không tìm thấy sản phẩm trong giỏ'}, status=400)
+
+    total_amount = sum(item.price_at_add * item.quantity for item in cart_items)
+
+    def _unique_order_code(max_attempts=20):
+        for _ in range(max_attempts):
+            code = 'QHUN' + str(_rand.randint(10000, 99999))
+            if not Order.objects.filter(order_code=code).exists():
+                return code
+        return None
+
+    def _unique_payment_code(max_attempts=20):
+        """payment_code = QHUN + 5 chữ số random, dùng cho cả order.payment_code và PendingQRPayment.transfer_code"""
+        for _ in range(max_attempts):
+            code = 'QHUN' + ''.join(str(_rand.randint(0, 9)) for _ in range(5))
+            already_in_order = Order.objects.filter(payment_code=code).exists()
+            already_in_qr = PendingQRPayment.objects.filter(transfer_code=code).exists()
+            if not already_in_order and not already_in_qr:
+                return code
+        return None
+
+    order_code = _unique_order_code()
+    payment_code = _unique_payment_code()
+
+    if not order_code or not payment_code:
+        return JsonResponse({
+            'success': False,
+            'message': 'Hệ thống đang bận tạo mã thanh toán. Vui lòng thử lại sau vài giây.'
+        }, status=503)
+
+    expires_at = timezone.now() + timedelta(minutes=15)
+
+    try:
+        with transaction.atomic():
+            order = Order.objects.create(
+                user=request.user,
+                order_code=order_code,
+                total_amount=total_amount,
+                payment_method='vietqr',
+                status='awaiting_payment',
+                payment_code=payment_code,
+                expires_at=expires_at,
+            )
+
+            for ci in cart_items:
+                thumb_url = ''
+                try:
+                    if ci.product and ci.product.brand_id:
+                        detail = ProductDetail.objects.get(product=ci.product)
+                        variant = detail.variants.filter(
+                            is_active=True, color_name=ci.color_name
+                        ).first()
+                        if variant and variant.sku:
+                            img = FolderColorImage.objects.filter(
+                                brand_id=ci.product.brand_id,
+                                sku=variant.sku
+                            ).order_by('order').first()
+                            if img:
+                                thumb_url = img.image.url
+                    if not thumb_url and ci.product and ci.product.image:
+                        thumb_url = ci.product.image.url
+                except Exception:
+                    pass
+
+                OrderItem.objects.create(
+                    order=order,
+                    product=ci.product,
+                    product_name=ci.product.name if ci.product else 'Sản phẩm',
+                    color_name=ci.color_name,
+                    storage=ci.storage,
+                    quantity=ci.quantity,
+                    price=ci.price_at_add,
+                    thumbnail=thumb_url,
+                )
+
+            # PendingQRPayment dùng cùng payment_code làm transfer_code
+            PendingQRPayment.objects.create(
+                user=request.user,
+                amount=total_amount,
+                transfer_code=payment_code,
+            )
+
+            cart.items.filter(id__in=item_ids).delete()
+
+    except IntegrityError:
+        logger.warning('VietQR create order integrity error for user=%s', request.user.id, exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'message': 'Mã giao dịch vừa trùng, vui lòng bấm đặt hàng lại.'
+        }, status=409)
+    except Exception:
+        logger.exception('VietQR create order unexpected error for user=%s', request.user.id)
+        return JsonResponse({
+            'success': False,
+            'message': 'Lỗi hệ thống khi tạo đơn VietQR. Vui lòng thử lại.'
+        }, status=500)
+
+    from store.telegram_utils import notify_payment_created
+    notify_payment_created('vietqr', order_code, request.user.username, total_amount)
+
+    # URL dạng /vietqr-payment/<order_id>/ — không lộ code hoặc amount qua query string
+    return JsonResponse({
+        'success': True,
+        'redirect_url': reverse('store:vietqr_payment_page', kwargs={'order_id': order.id}),
+    })
+
+
+@login_required
+def vietqr_payment_page(request, order_id):
+    """
+    Trang thanh toán VietQR — URL: /vietqr-payment/<order_id>/
+    Toàn bộ dữ liệu nhạy cảm lấy từ DB, không đọc query string.
+    """
+    from store.models import Order
+
+    # Ownership check: chỉ đúng chủ đơn mới xem được
+    try:
+        order = Order.objects.get(id=order_id, user=request.user)
+    except Order.DoesNotExist:
+        messages.error(request, 'Đơn hàng không tồn tại hoặc không thuộc về bạn.')
+        return redirect('store:order_tracking')
+
+    # Đơn không phải VietQR → redirect trang theo dõi
+    if order.payment_method != 'vietqr':
+        messages.info(request, 'Đơn hàng này không sử dụng phương thức VietQR.')
+        return redirect('store:order_success', order_code=order.order_code)
+
+    # Đơn đã hoàn tất → redirect trang thành công
+    if order.status in ('processing', 'pending', 'shipped', 'delivered'):
+        messages.info(request, 'Đơn hàng đã được thanh toán trước đó.')
+        return redirect('store:order_success', order_code=order.order_code)
+
+    # Đơn đã hết hạn thanh toán hoặc đã bị hủy thanh toán (VietQR)
+    if order.status == 'payment_expired':
+        if order.payment_status == 'cancelled':
+            messages.warning(request, 'Đơn hàng đã hủy thanh toán VietQR.')
+        else:
+            messages.warning(request, 'Đơn hàng đã hết hạn thanh toán.')
+        return redirect('store:order_tracking')
+
+    # Đơn đã bị hủy thủ công → thông báo + redirect
+    if order.status == 'cancelled':
+        messages.warning(request, 'Đơn hàng đã bị hủy.')
+        return redirect('store:order_tracking')
+
+    # Tính thời gian còn lại từ expires_at trên DB
+    timeout_seconds = 0
+    if order.expires_at:
+        remaining = (order.expires_at - timezone.now()).total_seconds()
+        timeout_seconds = max(0, int(remaining))
+
+    # Hết hạn → ghi cả order.status và payment_status
+    if timeout_seconds <= 0 and order.status == 'awaiting_payment':
+        order.status = 'payment_expired'
+        order.payment_status = 'expired'
+        order.save(update_fields=['status', 'payment_status', 'updated_at'])
+
+    context = {
+        'order': order,
+        'order_status': order.status,
+        'payment_status': order.payment_status,
+        'timeout_seconds': timeout_seconds,
+        'bank_id': settings.BANK_ID,
+        'bank_account_no': settings.BANK_ACCOUNT_NO,
+        'bank_account_name': settings.BANK_ACCOUNT_NAME,
+    }
+    return render(request, 'store/payment/vietqr_payment.html', context)
+
+
+@login_required
+def vietqr_page_status(request):
+    """
+    Polling API: GET ?order_id=<id>
+    So sánh dữ liệu từ DB, không tin bất kỳ input nào ngoài order_id.
+    """
+    from store.models import PendingQRPayment, Order
+
+    try:
+        order_id = int(request.GET.get('order_id', ''))
+    except (ValueError, TypeError):
+        return JsonResponse({'success': False, 'status': 'error'}, status=400)
+
+    try:
+        order = Order.objects.get(id=order_id, user=request.user)
+    except Order.DoesNotExist:
+        return JsonResponse({'success': False, 'status': 'error'}, status=404)
+
+    if order.status == 'payment_expired':
+        return JsonResponse({'success': True, 'status': 'expired'})
+
+    if order.status == 'cancelled':
+        return JsonResponse({'success': True, 'status': 'cancelled'})
+
+    if order.status in ('processing', 'pending', 'shipped', 'delivered'):
+        return JsonResponse({'success': True, 'status': 'approved'})
+
+    # Đơn vẫn awaiting_payment — kiểm tra PendingQRPayment
+    if not order.payment_code:
+        return JsonResponse({'success': True, 'status': 'error'})
+
+    # Kiểm tra hết hạn theo DB
+    if order.is_payment_expired:
+        if order.status == 'awaiting_payment':
+            order.status = 'payment_expired'
+            order.payment_status = 'expired'
+            order.save(update_fields=['status', 'payment_status', 'updated_at'])
+        return JsonResponse({'success': True, 'status': 'expired'})
+
+    try:
+        qr = PendingQRPayment.objects.get(transfer_code=order.payment_code, user=request.user)
+    except PendingQRPayment.DoesNotExist:
+        return JsonResponse({'success': True, 'status': 'expired'})
+
+    if qr.status == 'approved':
+        if order.status == 'awaiting_payment':
+            order.status = 'processing'
+            order.payment_status = 'paid'
+            order.save(update_fields=['status', 'payment_status', 'updated_at'])
+
+            from store.telegram_utils import notify_order_success
+            from store.email_utils import send_order_invoice_email
+            items = list(order.items.values('product_name', 'quantity', 'storage', 'color_name'))
+            notify_order_success(order.order_code, 'vietqr', items)
+            send_order_invoice_email(order, base_url=request.build_absolute_uri('/'))
+
+        return JsonResponse({'success': True, 'status': 'approved'})
+
+    if qr.status == 'cancelled':
+        return JsonResponse({'success': True, 'status': 'cancelled'})
+
+    return JsonResponse({'success': True, 'status': 'pending'})
+
+
+@csrf_exempt
+@login_required
+@require_POST
+def vietqr_expire(request):
+    """
+    Client báo hết giờ → huỷ đơn theo order_id từ POST body.
+    POST body: { "order_id": <int> }
+    """
+    from store.models import Order, PendingQRPayment
+    import json
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False})
+
+    try:
+        order_id = int(data.get('order_id', ''))
+    except (ValueError, TypeError):
+        return JsonResponse({'success': False, 'message': 'order_id không hợp lệ'}, status=400)
+
+    try:
+        order = Order.objects.get(id=order_id, user=request.user)
+    except Order.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Không tìm thấy đơn hàng'}, status=404)
+
+    if order.status == 'awaiting_payment':
+        # Phân biệt hết hạn timer (expired) vs khách chủ động hủy (cancelled)
+        # Cả hai đều set order.status = 'payment_expired' — KHÔNG dùng 'cancelled'
+        reason = data.get('reason', 'cancelled')
+        order.status = 'payment_expired'
+        order.payment_status = 'expired' if reason == 'expired' else 'cancelled'
+        order.save(update_fields=['status', 'payment_status', 'updated_at'])
+
+    # Xoá PendingQRPayment pending nếu còn
+    if order.payment_code:
+        PendingQRPayment.objects.filter(
+            transfer_code=order.payment_code,
+            user=request.user,
+            status='pending',
+        ).delete()
+
+    return JsonResponse({'success': True})
+
+
+@csrf_exempt
+@login_required
+@require_POST
+def vietqr_mark_paid(request):
+    """
+    Người dùng tự báo đã chuyển khoản.
+    POST body: { "order_id": <int> }
+    → Chuyển order.status sang 'processing' để admin xem xét.
+    """
+    from store.models import Order
+    import json
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Dữ liệu không hợp lệ'}, status=400)
+
+    try:
+        order_id = int(data.get('order_id', ''))
+    except (ValueError, TypeError):
+        return JsonResponse({'success': False, 'message': 'order_id không hợp lệ'}, status=400)
+
+    try:
+        order = Order.objects.get(id=order_id, user=request.user, payment_method='vietqr')
+    except Order.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Không tìm thấy đơn hàng'}, status=404)
+
+    if order.status == 'awaiting_payment':
+        order.status = 'processing'
+        order.payment_status = 'paid'
+        order.save(update_fields=['status', 'payment_status', 'updated_at'])
+        logger.info('User %s self-reported payment for order %s', request.user.id, order.order_code)
+        return JsonResponse({'success': True, 'message': 'Đã ghi nhận. Chúng tôi sẽ xác nhận trong vài phút.'})
+
+    if order.status == 'processing':
+        return JsonResponse({'success': True, 'message': 'Đơn hàng đang được xử lý.'})
+
+    return JsonResponse({'success': False, 'message': f'Trạng thái đơn hàng không hợp lệ: {order.status}'}, status=422)
+
+
+@csrf_exempt
+def vietqr_callback(request):
+    """
+    Fake callback endpoint mô phỏng ngân hàng gọi về sau khi thanh toán.
+    /vietqr/callback/?order_id=<id>&status=success&token=<secret>
+
+    Trong thực tế đây sẽ là HMAC-SHA256 verify.
+    Demo: dùng VIETQR_CALLBACK_TOKEN trong settings (mặc định 'dev-secret').
+    """
+    from store.models import Order, PendingQRPayment
+
+    expected_token = getattr(settings, 'VIETQR_CALLBACK_TOKEN', 'dev-secret')
+    received_token = request.GET.get('token', '') or request.POST.get('token', '')
+
+    # Luôn trả về 200 để tránh lộ thông tin (timing attack / enumeration)
+    if received_token != expected_token:
+        logger.warning('VietQR callback: invalid token from %s', request.META.get('REMOTE_ADDR'))
+        return JsonResponse({'success': False, 'message': 'Unauthorised'}, status=401)
+
+    try:
+        order_id = int(request.GET.get('order_id', '') or request.POST.get('order_id', ''))
+    except (ValueError, TypeError):
+        return JsonResponse({'success': False, 'message': 'order_id không hợp lệ'}, status=400)
+
+    status_param = (request.GET.get('status', '') or request.POST.get('status', '')).lower()
+    if status_param not in ('success', 'failed'):
+        return JsonResponse({'success': False, 'message': 'status phải là success hoặc failed'}, status=400)
+
+    try:
+        order = Order.objects.get(id=order_id, payment_method='vietqr')
+    except Order.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Không tìm thấy đơn hàng'}, status=404)
+
+    if status_param == 'success':
+        if order.status == 'awaiting_payment':
+            with transaction.atomic():
+                order.status = 'processing'
+                order.payment_status = 'paid'
+                order.save(update_fields=['status', 'payment_status', 'updated_at'])
+
+                if order.payment_code:
+                    PendingQRPayment.objects.filter(
+                        transfer_code=order.payment_code
+                    ).update(status='approved')
+
+            from store.telegram_utils import notify_order_success
+            from store.email_utils import send_order_invoice_email
+            items = list(order.items.values('product_name', 'quantity', 'storage', 'color_name'))
+            notify_order_success(order.order_code, 'vietqr', items)
+            send_order_invoice_email(order, base_url=f'{request.scheme}://{request.get_host()}/')
+            logger.info('VietQR callback: order %s marked as processing', order.order_code)
+
+        return JsonResponse({'success': True, 'order_code': order.order_code, 'status': order.status})
+
+    # status_param == 'failed'
+    # C1 FIX: KHÔNG set order.status = 'cancelled' cho VietQR payment failure
+    # Dùng payment_expired + payment_status = 'cancelled' thay thế
+    if order.status == 'awaiting_payment':
+        order.status = 'payment_expired'
+        order.payment_status = 'cancelled'
+        order.save(update_fields=['status', 'payment_status', 'updated_at'])
+    return JsonResponse({'success': True, 'order_code': order.order_code, 'status': order.status})
+
+
     from store.models import Cart, Order, OrderItem, ProductDetail, FolderColorImage, PendingQRPayment
     import json
     import random as _rand
@@ -192,169 +603,6 @@ def vietqr_create_order(request):
         'success': True,
         'redirect_url': '/vietqr-payment/?order=' + tracking_code + '&code=' + transfer_code,
     })
-
-
-
-@login_required
-def vietqr_payment_page(request):
-    """
-    Trang thanh toán VietQR riêng - hiển thị QR, timer, polling admin duyệt.
-    """
-    from store.models import Order, PendingQRPayment
-    
-    order_code = request.GET.get('order', '')
-    transfer_code = request.GET.get('code', '')
-    
-    if not order_code or not transfer_code:
-        messages.error(request, 'Thiếu thông tin thanh toán')
-        return redirect('store:cart_detail')
-    
-    try:
-        order = Order.objects.get(order_code=order_code, user=request.user)
-    except Order.DoesNotExist:
-        messages.error(request, 'Không tìm thấy đơn hàng')
-        return redirect('store:cart_detail')
-    
-    if order.status not in ('awaiting_payment', 'processing', 'cancelled'):
-        return redirect('store:order_success', order_code=order_code)
-    
-    qr = PendingQRPayment.objects.filter(
-        transfer_code=transfer_code, user=request.user
-    ).first()
-    
-    timeout_seconds = 15 * 60
-    if qr and qr.created_at:
-        elapsed = (timezone.now() - qr.created_at).total_seconds()
-        timeout_seconds = max(0, int(15 * 60 - elapsed))
-    
-    if timeout_seconds <= 0 and order.status == 'awaiting_payment':
-        order.status = 'cancelled'
-        order.save()
-        # Không xóa PendingQRPayment — giữ lại lịch sử
-
-    # Nếu đơn đã hủy thì luôn khởi tạo trang ở trạng thái hết hạn,
-    # tránh hiện tượng F5 quay về luồng thành công.
-    if order.status == 'cancelled':
-        timeout_seconds = 0
-    
-    context = {
-        'order': order,
-        'order_status': order.status,
-        'transfer_code': transfer_code,
-        'timeout_seconds': timeout_seconds,
-        'bank_id': settings.BANK_ID,
-        'bank_account_no': settings.BANK_ACCOUNT_NO,
-        'bank_account_name': settings.BANK_ACCOUNT_NAME,
-    }
-    return render(request, 'store/vietqr_payment.html', context)
-
-
-
-@login_required
-def vietqr_page_status(request):
-    """
-    Polling API cho trang VietQR riêng.
-    GET: code, order_code
-    """
-    from store.models import PendingQRPayment, Order
-    
-    code = request.GET.get('code', '')
-    order_code = request.GET.get('order_code', '')
-    
-    if not code:
-        return JsonResponse({'success': False, 'status': 'error'})
-    
-    try:
-        order = Order.objects.get(order_code=order_code, user=request.user)
-        if order.status == 'cancelled':
-            return JsonResponse({'success': True, 'status': 'cancelled'})
-    except Order.DoesNotExist:
-        order = None
-
-    try:
-        qr = PendingQRPayment.objects.get(transfer_code=code, user=request.user)
-    except PendingQRPayment.DoesNotExist:
-        try:
-            if order is None:
-                order = Order.objects.get(order_code=order_code, user=request.user)
-            if order.status in ('processing', 'pending', 'delivered'):
-                return JsonResponse({'success': True, 'status': 'approved'})
-            if order.status == 'cancelled':
-                return JsonResponse({'success': True, 'status': 'cancelled'})
-        except Order.DoesNotExist:
-            pass
-        return JsonResponse({'success': True, 'status': 'expired'})
-    
-    if qr.is_expired:
-        # Không xóa trực tiếp, để cleanup_expired() xử lý theo lịch
-        return JsonResponse({'success': True, 'status': 'expired'})
-
-    if qr.status == 'approved':
-        try:
-            if order is None:
-                order = Order.objects.get(order_code=order_code, user=request.user)
-
-            if order.status == 'cancelled':
-                return JsonResponse({'success': True, 'status': 'cancelled'})
-
-            if order.status == 'awaiting_payment':
-                order.status = 'processing'
-                order.save(update_fields=['status', 'updated_at'])
-
-                from store.telegram_utils import notify_order_success
-                from store.email_utils import send_order_invoice_email
-                vqr_items = list(order.items.values('product_name', 'quantity', 'storage', 'color_name'))
-                notify_order_success(order_code, 'vietqr', vqr_items)
-                send_order_invoice_email(order, base_url=request.build_absolute_uri('/'))
-        except Order.DoesNotExist:
-            pass
-
-        if order is not None and order.status == 'cancelled':
-            return JsonResponse({'success': True, 'status': 'cancelled'})
-
-        return JsonResponse({'success': True, 'status': 'approved'})
-    
-    if qr.status == 'cancelled':
-        return JsonResponse({'success': True, 'status': 'cancelled'})
-    
-    return JsonResponse({'success': True, 'status': 'pending'})
-
-
-
-@csrf_exempt
-@login_required
-@require_POST
-def vietqr_expire(request):
-    """
-    Client báo hết thời gian → huỷ đơn + xoá QR pending.
-    """
-    from store.models import Order, PendingQRPayment
-    import json
-    
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False})
-    
-    order_code = data.get('order_code', '')
-    transfer_code = data.get('transfer_code', '')
-    
-    if order_code:
-        try:
-            order = Order.objects.get(order_code=order_code, user=request.user)
-            if order.status == 'awaiting_payment':
-                order.status = 'cancelled'
-                order.save()
-        except Order.DoesNotExist:
-            pass
-    
-    if transfer_code:
-        # Chỉ xóa nếu vẫn còn pending — không xóa approved/cancelled để giữ lịch sử
-        PendingQRPayment.objects.filter(
-            transfer_code=transfer_code, user=request.user, status='pending'
-        ).delete()
-    
-    return JsonResponse({'success': True})
 
 
 
@@ -831,7 +1079,7 @@ def momo_return(request):
             if order_id:
                 order_code = order_id.replace('QHUN22_', '') if order_id.startswith('QHUN22_') else order_id
             else:
-                return render(request, 'store/payment_error.html', {
+                return render(request, 'store/payment/payment_error.html', {
                     'message': 'Không nhận được thông tin đơn hàng'
                 })
 
@@ -845,7 +1093,7 @@ def momo_return(request):
                 request.session.pop('momo_order_code', None)
                 request.session.pop('momo_amount', None)
                 request.session.pop('momo_items_param', None)
-                return render(request, 'store/payment_success.html', {
+                return render(request, 'store/payment/payment_success.html', {
                     'order': existing,
                     'payment_method': 'MoMo'
                 })
@@ -917,19 +1165,19 @@ def momo_return(request):
             notify_order_success(tracking_code, 'momo', momo_items)
             send_order_invoice_email(order, base_url=request.build_absolute_uri('/'))
 
-            return render(request, 'store/payment_success.html', {
+            return render(request, 'store/payment/payment_success.html', {
                 'order': order,
                 'payment_method': 'MoMo'
             })
         else:
-            return render(request, 'store/payment_error.html', {
+            return render(request, 'store/payment/payment_error.html', {
                 'message': message or 'Thanh toán MoMo thất bại'
             })
 
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return render(request, 'store/payment_error.html', {
+        return render(request, 'store/payment/payment_error.html', {
             'message': str(e)
         })
 

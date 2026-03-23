@@ -173,7 +173,7 @@ def cart_detail(request):
         'cart': cart,
         'cart_items': cart_items,
     }
-    return render(request, 'store/cart.html', context)
+    return render(request, 'store/cart/cart.html', context)
 
 
 

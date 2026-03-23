@@ -3,8 +3,24 @@ Blog Posts Views
 """
 import os
 from django.http import JsonResponse
+from django.shortcuts import render, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
+
+
+def blog_page_list(request):
+    """Trang danh sách bài viết blog - public"""
+    from store.models import BlogPost
+    posts = BlogPost.objects.filter(is_active=True).order_by('-created_at')
+    return render(request, 'store/pages/blog_list.html', {'posts': posts})
+
+
+def blog_page_detail(request, post_id):
+    """Trang chi tiết bài viết blog - public"""
+    from store.models import BlogPost
+    post = get_object_or_404(BlogPost, id=post_id, is_active=True)
+    recent_posts = BlogPost.objects.filter(is_active=True).exclude(id=post_id).order_by('-created_at')[:3]
+    return render(request, 'store/pages/blog_detail.html', {'post': post, 'recent_posts': recent_posts})
 
 
 @csrf_exempt

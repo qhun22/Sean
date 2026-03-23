@@ -69,8 +69,9 @@ def order_tracking(request):
                     pending_qr.status = 'cancelled'
                     pending_qr.save()
             
-            # Hủy các đơn hàng
-            expired_orders.update(status='cancelled')
+            # Đơn hết hạn thanh toán — ghi payment_expired + payment_status = 'expired'
+            # KHÔNG ghi 'cancelled' — đó là huỷ đơn thật do khách/admin
+            expired_orders.update(status='payment_expired', payment_status='expired')
         
         # Lấy tất cả đơn hàng (bao gồm cả đã tất toán)
         orders = Order.objects.filter(
@@ -90,7 +91,7 @@ def order_tracking(request):
         
         context['orders'] = orders
     
-    return render(request, 'store/order_tracking.html', context)
+    return render(request, 'store/user/order_tracking.html', context)
 
 
 
@@ -138,7 +139,9 @@ def cancel_order(request):
 
 def refund_pending(request):
     """
-    API lấy danh sách đơn cần hoàn tiền (đã hủy + thanh toán VNPay/VietQR + chờ hoàn tiền)
+    API lấy danh sách đơn cần hoàn tiền (đã hủy + thanh toán online + chờ hoàn tiền)
+    VNPay/MoMo luôn đã thanh toán trước khi đơn được tạo, nên không cần kiểm tra payment_status.
+    VietQR chỉ hoàn tiền khi payment_status='paid'.
     """
     from store.models import Order
     
@@ -148,8 +151,10 @@ def refund_pending(request):
     orders = Order.objects.filter(
         user=request.user,
         status='cancelled',
-        payment_method__in=['vietqr', 'vnpay'],
+        payment_method__in=['vietqr', 'vnpay', 'momo'],
         refund_status='pending'
+    ).exclude(
+        payment_method='vietqr', payment_status__in=['pending', 'cancelled', 'expired']
     ).prefetch_related('items')
     
     orders_data = []
@@ -192,7 +197,10 @@ def refund_history(request):
     orders = Order.objects.filter(
         user=request.user,
         status='cancelled',
+        payment_method__in=['vietqr', 'vnpay', 'momo'],
         refund_status='completed'
+    ).exclude(
+        payment_method='vietqr', payment_status__in=['pending', 'cancelled', 'expired']
     ).prefetch_related('items')
     
     orders_data = []
@@ -291,7 +299,7 @@ def wishlist(request):
         'products': products,
         'wishlist': wishlist,
     }
-    return render(request, 'store/wishlist.html', context)
+    return render(request, 'store/user/wishlist.html', context)
 
 
 
@@ -432,7 +440,7 @@ def checkout_view(request):
         'total': subtotal,
         'items_param': items_param,
     }
-    return render(request, 'store/checkout.html', context)
+    return render(request, 'store/cart/checkout.html', context)
 
 
 
@@ -736,7 +744,7 @@ def order_success(request, order_code):
         messages.error(request, 'Không tìm thấy đơn hàng')
         return redirect('store:home')
     
-    return render(request, 'store/order_success.html', {
+    return render(request, 'store/user/order_success.html', {
         'order': order,
         'order_items': order.items.all(),
     })

@@ -359,13 +359,24 @@ def _annotate_effective_price(products_qs):
 
 
 
-def product_detail_view(request, product_id):
+def product_detail_id_redirect(request, product_id):
+    """Redirect cũ /product/<id>/ → /product/<slug>/ với HTTP 301"""
+    from django.shortcuts import get_object_or_404
+    from django.http import HttpResponsePermanentRedirect
+    from store.models import Product
+    product = get_object_or_404(Product, id=product_id, is_active=True)
+    return HttpResponsePermanentRedirect(
+        reverse('store:product_detail', kwargs={'slug': product.slug})
+    )
+
+
+def product_detail_view(request, slug):
     """Trang chi tiết sản phẩm"""
     from store.models import Product, ProductDetail, ProductVariant, FolderColorImage, ProductSpecification, ProductContent
     from django.shortcuts import get_object_or_404
     import json
 
-    product = get_object_or_404(Product, id=product_id)
+    product = get_object_or_404(Product, slug=slug, is_active=True)
 
     # -- Ghi log hành vi xem sản phẩm (dùng cho GỢI Ý cá nhân hoá) --
     if request.user.is_authenticated:
@@ -526,7 +537,7 @@ def product_detail_view(request, product_id):
         'related_products': related_products,
     }
     
-    return render(request, 'store/product_detail.html', context)
+    return render(request, 'store/pages/product_detail.html', context)
 
 
 
@@ -900,7 +911,7 @@ def home(request):
     # Blog trang chủ: tối đa 4 bài (1 box)
     context['blog_posts'] = BlogPost.objects.filter(is_active=True).order_by('-created_at')[:4]
 
-    return render(request, 'store/home.html', context)
+    return render(request, 'store/pages/home.html', context)
 
 
 
@@ -958,7 +969,7 @@ def product_search(request):
         'products': products_paginated,
         'wishlist_product_ids': wishlist_product_ids,
     }
-    return render(request, 'store/search.html', context)
+    return render(request, 'store/pages/search.html', context)
 
 
 
@@ -1084,13 +1095,13 @@ def product_filter_json(request):
             wishlist_product_ids = list(wishlist.products.values_list('id', flat=True))
 
     # Render HTML cho danh sách sản phẩm
-    products_html = render_to_string('store/products_fragment.html', {
+    products_html = render_to_string('store/fragments/products_fragment.html', {
         'products': products,
         'wishlist_product_ids': wishlist_product_ids,
     })
 
     # Render HTML cho phân trang
-    pagination_html = render_to_string('store/pagination_fragment.html', {
+    pagination_html = render_to_string('store/fragments/pagination_fragment.html', {
         'page_obj': products,
         'paginator': paginator,
     })
@@ -1179,7 +1190,7 @@ def compare_view(request):
         'products': products,
         'compare_data': compare_data,
     }
-    return render(request, 'store/compare.html', context)
+    return render(request, 'store/pages/compare.html', context)
 
 
 def _newsletter_parse_contact(contact):
@@ -1349,3 +1360,44 @@ def _get_keyword_suggestions(query):
                     })
 
     return suggestions[:4]
+
+
+def robots_txt(request):
+    """Serve robots.txt động với Sitemap URL đúng domain"""
+    from django.http import HttpResponse
+    lines = [
+        "User-agent: *",
+        "Allow: /",
+        "Allow: /products/search/",
+        "Allow: /product/",
+        "Allow: /blog/",
+        "Allow: /compare/",
+        "Allow: /order-tracking/",
+        "",
+        "Disallow: /admin/",
+        "Disallow: /dashboard/",
+        "Disallow: /cart/",
+        "Disallow: /checkout/",
+        "Disallow: /order/",
+        "Disallow: /profile/",
+        "Disallow: /wishlist/",
+        "Disallow: /login/",
+        "Disallow: /register/",
+        "Disallow: /forgot-password/",
+        "Disallow: /api/",
+        "Disallow: /accounts/",
+        "Disallow: /vnpay/",
+        "Disallow: /momo/",
+        "Disallow: /vietqr/",
+        "Disallow: /qr-payment/",
+        "Disallow: /export/",
+        "Disallow: /blog-posts/",
+        "Disallow: /hot-sale/",
+        "Disallow: /product-content/",
+        "Disallow: /reviews/",
+        "Disallow: /banner-images/",
+        "Disallow: /product-images/",
+        "",
+        f"Sitemap: {request.scheme}://{request.get_host()}/sitemap.xml",
+    ]
+    return HttpResponse("\n".join(lines), content_type="text/plain")
