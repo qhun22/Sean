@@ -13,31 +13,44 @@ set "TARGET_PYTHON_MINOR=10"
 set "TARGET_PYTHON_DISPLAY=3.10"
 set "IMPORTANT_PKGS=django allauth requests openpyxl dotenv"
 set "AI_PKGS=numpy sklearn sentence_transformers faiss fastapi uvicorn pydantic"
+set "VENV_DIR=.venv"
 
 :: Tạo thư mục logs nếu chưa tồn tại
 if not exist "logs" mkdir logs
 
+:: ========================================
+:: Tự động xin quyền Admin nếu chưa có
+:: ========================================
+net session >nul 2>&1
+if errorlevel 1 (
+    echo [i] Đang yêu cầu quyền Administrator...
+    powershell -Command "Start-Process cmd -ArgumentList '/c cd /d \"%~dp0\" && \"%~f0\" %*' -Verb RunAs" >nul 2>&1
+    exit /b
+)
+
 :main_menu
 cls
-echo ========================================
-echo   QHUN22 - Menu Quản Lý
-echo ========================================
+echo ╔════════════════════════════════════════╗
+echo ║       QHUN22 - Menu Quản Lý           ║
+echo ╠════════════════════════════════════════╣
+echo ║                                        ║
+echo ║  [0] Setup Full Tự Động (máy mới)     ║
+echo ║  ─────────────────────────────────     ║
+echo ║  [1] Khởi động Server                  ║
+echo ║  [2] Khởi động Server (Port tùy chọn) ║
+echo ║  [3] Chạy Migration                    ║
+echo ║  [4] Tạo tài khoản Admin               ║
+echo ║  [5] Thử nghiệm gửi Email              ║
+echo ║  [6] Xem Log Chatbot                   ║
+echo ║  [7] Xóa Log Chatbot                   ║
+echo ║  [8] Xuất requirements.txt              ║
+echo ║  [9] Thoát                              ║
+echo ║                                        ║
+echo ╚════════════════════════════════════════╝
 echo.
-echo  [0] Cài đặt lần đầu (tạo venv + cài thư viện)
-echo  [1] Khởi động Server
-echo  [2] Khởi động Server (Port tùy chọn)
-echo  [3] Chạy Migration
-echo  [4] Tạo tài khoản Admin
-echo  [5] Thử nghiệm gửi Email
-echo  [6] Xem Log Chatbot
-echo  [7] Xóa Log Chatbot
-echo  [8] Xuất requirements.txt từ venv hiện tại
-echo  [9] Thoát
-echo.
-echo ========================================
 set /p choice="Chọn chức năng [0-9]: "
 
-if "%choice%"=="0" goto setup_install
+if "%choice%"=="0" goto setup_full_auto
 if "%choice%"=="1" goto start_server
 if "%choice%"=="2" goto start_server_port
 if "%choice%"=="3" goto run_migrate
@@ -107,16 +120,25 @@ goto :eof
 
 
 :activate_venv
-if not exist "venv\Scripts\activate.bat" (
-    echo [!] Không tìm thấy venv! Hãy chạy [0] Cài đặt lần đầu trước.
-    exit /b 1
+:: Thử .venv trước, rồi venv
+if exist "%VENV_DIR%\Scripts\activate.bat" (
+    call %VENV_DIR%\Scripts\activate.bat >nul 2>&1
+    if errorlevel 1 goto activate_venv_fail
+    exit /b 0
 )
-call venv\Scripts\activate.bat >nul 2>&1
-if errorlevel 1 (
-    echo [!] Không thể kích hoạt Virtual Environment.
-    exit /b 1
+if exist "venv\Scripts\activate.bat" (
+    set "VENV_DIR=venv"
+    call venv\Scripts\activate.bat >nul 2>&1
+    if errorlevel 1 goto activate_venv_fail
+    exit /b 0
 )
-exit /b 0
+echo [!] Không tìm thấy venv! Hãy chạy [0] Setup Full trước.
+exit /b 1
+
+:activate_venv_fail
+echo [!] Không thể kích hoạt Virtual Environment.
+echo     Venv có thể bị lỗi. Chạy [0] Setup Full để tạo lại.
+exit /b 1
 
 
 :verify_package
@@ -328,22 +350,31 @@ timeout /t 2 >nul
 goto main_menu
 
 
-:setup_install
+:setup_full_auto
 cls
-echo ========================================
-echo   Cài Đặt Tự Động - QHUN22
-echo ========================================
-echo.
-echo  Quy trình sẽ tự động chạy, không cần thao tác thêm.
-echo  Vui lòng chờ đến khi hoàn tất...
-echo.
-echo ========================================
+echo ╔════════════════════════════════════════╗
+echo ║   SETUP FULL TỰ ĐỘNG - QHUN22         ║
+echo ╠════════════════════════════════════════╣
+echo ║                                        ║
+echo ║  Script sẽ tự động:                    ║
+echo ║  1. Kiểm tra Python                    ║
+echo ║  2. Xóa venv lỗi + tạo venv mới       ║
+echo ║  3. Cài tất cả thư viện                ║
+echo ║  4. Chạy database migration             ║
+echo ║  5. Kiểm tra .env                       ║
+echo ║                                        ║
+echo ║  Không cần thao tác thêm — chờ xong!   ║
+echo ║                                        ║
+echo ╚════════════════════════════════════════╝
 echo.
 
 set "MISSING_COUNT=0"
+set "SETUP_ERRORS=0"
 
-:: ---- BUOC 1: Kiem tra Python ----
-echo [1/5] Kiểm tra Python...
+:: ──── BƯỚC 1: Kiểm tra Python ────
+echo ────────────────────────────────────────
+echo  [1/6] Kiểm tra Python...
+echo ────────────────────────────────────────
 call :detect_python
 if "%PYTHON_EXE%"=="" (
     echo.
@@ -352,151 +383,227 @@ if "%PYTHON_EXE%"=="" (
     echo  Vui lòng cài Python 3.10+ từ:
     echo     https://www.python.org/downloads/
     echo.
-    echo  Sau khi cài xong, mở lại file bat này và chọn [0].
+    echo  QUAN TRỌNG: Khi cài, tick ☑ "Add Python to PATH"
+    echo             và tick ☑ "Install py launcher"
+    echo.
+    echo  Sau khi cài xong, đóng cửa sổ này và chạy lại bat.
     echo.
     pause
     goto main_menu
 )
-for /f "tokens=*" %%v in ('%PYTHON_EXE% --version 2^>^&1') do echo        Phiên bản: %%v
+for /f "tokens=*" %%v in ('%PYTHON_EXE% --version 2^>^&1') do echo  Phiên bản: %%v
 echo  [OK] Python hợp lệ!
 if not "%PY_MINOR%"=="%TARGET_PYTHON_MINOR%" (
     echo  [CẢNH BÁO] Máy đang dùng Python %PYTHON_VERSION%.
-    echo           Khuyến nghị dùng Python %TARGET_PYTHON_DISPLAY% để ổn định cao nhất giữa các máy.
+    echo           Khuyến nghị dùng Python %TARGET_PYTHON_DISPLAY% để ổn định nhất.
 )
 echo.
 
-:: ---- BUOC 2: Tao venv ----
-echo [2/5] Tạo Virtual Environment...
-if exist "venv\Scripts\activate.bat" (
-    echo  [OK] venv đã tồn tại - bỏ qua.
-) else (
-    %PYTHON_EXE% -m venv venv >nul 2>&1
+:: ──── BƯỚC 2: Kiểm tra + Tạo venv ────
+echo ────────────────────────────────────────
+echo  [2/6] Kiểm tra Virtual Environment...
+echo ────────────────────────────────────────
+
+set "VENV_NEED_CREATE=0"
+
+:: Kiểm tra venv có tồn tại không
+if not exist "%VENV_DIR%\Scripts\python.exe" (
+    if not exist "venv\Scripts\python.exe" (
+        echo  [i] Chưa có venv — sẽ tạo mới.
+        set "VENV_NEED_CREATE=1"
+    ) else (
+        set "VENV_DIR=venv"
+    )
+)
+
+:: Kiểm tra venv có bị lỗi user khác không (lỗi phổ biến nhất!)
+if "%VENV_NEED_CREATE%"=="0" (
+    %VENV_DIR%\Scripts\python.exe --version >nul 2>&1
+    if errorlevel 1 (
+        echo  [!] Venv bị lỗi (Python path không khớp máy hiện tại^)
+        echo      Đây là lỗi phổ biến khi copy project giữa các máy.
+        echo      Đang xóa venv cũ và tạo lại...
+        set "VENV_NEED_CREATE=1"
+    ) else (
+        echo  [OK] Venv hoạt động bình thường.
+    )
+)
+
+:: Tạo venv mới nếu cần
+if "%VENV_NEED_CREATE%"=="1" (
+    echo.
+    echo  [i] Đang dọn dẹp venv cũ...
+    if exist "%VENV_DIR%" rmdir /s /q "%VENV_DIR%" >nul 2>&1
+    if exist "venv" rmdir /s /q "venv" >nul 2>&1
+    set "VENV_DIR=.venv"
+    echo  [i] Đang tạo venv mới bằng %PYTHON_EXE%...
+    %PYTHON_EXE% -m venv %VENV_DIR% >nul 2>&1
     if errorlevel 1 (
         echo  [THẤT BẠI] Không thể tạo venv!
-        echo             Thử chạy: python -m venv venv
-        echo.
+        echo             Thử chạy thủ công: %PYTHON_EXE% -m venv .venv
+        set /a SETUP_ERRORS+=1
         pause
         goto main_menu
     )
-    echo  [OK] Đã tạo venv mới.
+    echo  [OK] Đã tạo venv mới tại %VENV_DIR%\
 )
 echo.
 
-:: ---- BUOC 3: Kich hoat venv + nang cap pip ----
-echo [3/5] Kích hoạt venv và nâng cấp pip...
+:: ──── BƯỚC 3: Kích hoạt venv + nâng cấp pip ────
+echo ────────────────────────────────────────
+echo  [3/6] Kích hoạt venv + nâng cấp pip...
+echo ────────────────────────────────────────
 call :activate_venv
 if errorlevel 1 (
+    set /a SETUP_ERRORS+=1
     pause
     goto main_menu
 )
 python -m pip install --upgrade pip setuptools wheel --quiet --disable-pip-version-check --no-warn-script-location
 if errorlevel 1 (
-    echo  [THẤT BẠI] Không thể cập nhật pip/setuptools/wheel.
-    pause
-    goto main_menu
+    echo  [CẢNH BÁO] Không thể cập nhật pip — tiếp tục cài thư viện.
+) else (
+    echo  [OK] pip/setuptools/wheel đã cập nhật.
 )
-echo  [OK] pip/setuptools/wheel đã cập nhật.
 echo.
 
-:: ---- BƯỚC 4: Cài thư viện ----
-echo [4/5] Cài đặt thư viện (core + AI nếu có)...
+:: ──── BƯỚC 4: Cài thư viện ────
+echo ────────────────────────────────────────
+echo  [4/6] Cài đặt thư viện...
+echo ────────────────────────────────────────
 echo.
+
+:: 4a: Core requirements
 if not exist "requirements.txt" (
     echo  [THẤT BẠI] Không tìm thấy requirements.txt
+    set /a SETUP_ERRORS+=1
     pause
     goto main_menu
 )
 
+echo  [i] Đang cài core packages (requirements.txt)...
 pip install -r requirements.txt --disable-pip-version-check --no-warn-script-location
 if errorlevel 1 (
     echo.
     echo  [THẤT BẠI] Cài đặt core requirements gặp lỗi!
-    echo.
-    echo  Nguyên nhân có thể:
-    echo    - Không có kết nối Internet
-    echo    - requirements.txt bi loi format
-    echo.
-    echo  Thử kiểm tra kết nối mạng rồi chạy lại [0].
-    echo.
-    pause
-    goto main_menu
+    echo  Kiểm tra kết nối mạng rồi chạy lại [0].
+    set /a SETUP_ERRORS+=1
+) else (
+    echo  [OK] Core packages đã cài xong.
 )
+echo.
 
+:: 4b: Packages thường thiếu (không có trong requirements.txt nhưng cần)
+echo  [i] Đang cài packages bổ sung (Pillow, PyJWT, cryptography)...
+pip install Pillow PyJWT cryptography --disable-pip-version-check --no-warn-script-location --quiet
+if errorlevel 1 (
+    echo  [CẢNH BÁO] Một số package bổ sung cài lỗi — có thể cần cài thủ công.
+) else (
+    echo  [OK] Packages bổ sung đã cài xong.
+)
+echo.
+
+:: 4c: AI requirements (tùy chọn)
 if exist "ai\ai_requirements.txt" (
-    echo.
-    echo  [i] Phát hiện ai\ai_requirements.txt - đang cài thêm thư viện AI...
+    echo  [i] Phát hiện ai\ai_requirements.txt — đang cài thư viện AI...
     pip install -r ai\ai_requirements.txt --disable-pip-version-check --no-warn-script-location
     if errorlevel 1 (
-        echo.
-        echo  [CẢNH BÁO] Cài đặt AI requirements có lỗi.
-        echo           Vẫn tiếp tục với core web app.
+        echo  [CẢNH BÁO] Cài AI packages có lỗi — web app vẫn chạy được.
     ) else (
-        echo  [OK] Đã cài đặt xong thư viện AI.
+        echo  [OK] AI packages đã cài xong.
     )
 ) else (
-    echo  [i] Không có ai\ai_requirements.txt - bỏ qua bước thư viện AI.
+    echo  [i] Không có ai\ai_requirements.txt — bỏ qua AI.
 )
+echo.
+
+:: 4d: Kiểm tra packages quan trọng
+echo  [i] Kiểm tra nhanh packages quan trọng...
+for %%p in (%IMPORTANT_PKGS%) do call :verify_package %%p
 
 echo.
-echo  [i] Kiểm tra nhanh các package quan trọng...
-for %%p in (%IMPORTANT_PKGS%) do call :verify_package %%p
+echo  [i] Packages bổ sung...
+for %%p in (PIL jwt cryptography) do call :verify_package %%p
 
 if exist "ai\ai_requirements.txt" (
     echo.
-    echo  [i] Kiểm tra package AI (nếu thiếu sẽ cảnh báo)...
+    echo  [i] Packages AI...
     for %%p in (%AI_PKGS%) do call :verify_package %%p
 )
 
 echo.
 if "%MISSING_COUNT%"=="0" (
-    echo  [OK] Kiểm tra package hoàn tất - không thiếu thư viện quan trọng.
+    echo  [OK] Tất cả packages đều sẵn sàng!
 ) else (
     echo  [CẢNH BÁO] Còn %MISSING_COUNT% package chưa import được.
-    echo           Nếu lỗi thuộc nhóm AI, app web vẫn có thể chạy bình thường.
+    echo           Nếu lỗi thuộc nhóm AI, app web vẫn chạy bình thường.
 )
 echo.
 
-:: ---- BUOC 5: Chay migrate ----
-echo [5/5] Chạy database migration...
+:: ──── BƯỚC 5: Database migration ────
+echo ────────────────────────────────────────
+echo  [5/6] Chạy database migration...
+echo ────────────────────────────────────────
 echo.
 python manage.py migrate --run-syncdb
 if errorlevel 1 (
     echo.
-    echo  [CẢNH BÁO] Migration gặp vấn đề - có thể cần cấu hình .env trước.
+    echo  [CẢNH BÁO] Migration gặp vấn đề — có thể cần cấu hình .env trước.
+    set /a SETUP_ERRORS+=1
 ) else (
     echo.
     echo  [OK] Database sẵn sàng.
 )
 echo.
 
-:: ---- KIEM TRA FILE .env ----
+:: ──── BƯỚC 6: Kiểm tra .env ────
+echo ────────────────────────────────────────
+echo  [6/6] Kiểm tra file .env...
+echo ────────────────────────────────────────
+echo.
 if not exist ".env" (
-    echo ========================================
-    echo  CẢNH BÁO: Chưa có file .env
-    echo ========================================
+    echo  [CẢNH BÁO] Chưa có file .env!
     echo.
-    echo  Website sẽ KHÔNG chạy được nếu thiếu .env!
-    echo  Tạo file .env trong thư mục gốc với nội dung:
+    echo  Tạo file .env trong thư mục gốc với nội dung tối thiểu:
     echo.
     echo    SECRET_KEY=your-secret-key
     echo    DEBUG=True
     echo    ALLOWED_HOSTS=127.0.0.1,localhost
-    echo    ANTHROPIC_API_KEY=your-api-key
+    echo    ANTHROPIC_API_KEY=your-api-key  (cho chatbot)
     echo.
-    echo  Xem thêm trong README.md
-    echo.
+    echo  Xem đầy đủ trong SETUP.md hoặc README.md
 ) else (
     echo  [OK] File .env đã có sẵn.
-    echo.
 )
-
-echo ========================================
-echo   CÀI ĐẶT HOÀN TẤT!
-echo ========================================
 echo.
-echo   Bước tiếp theo:
-echo     - Chọn [1] để khởi động server
-echo     - Truy cập: http://127.0.0.1:8000/
+
+:: ──── TỔNG KẾT ────
+echo.
+if "%SETUP_ERRORS%"=="0" (
+    echo ╔════════════════════════════════════════╗
+    echo ║   SETUP HOÀN TẤT THÀNH CÔNG!          ║
+    echo ╠════════════════════════════════════════╣
+    echo ║                                        ║
+    echo ║  Bước tiếp theo:                       ║
+    echo ║    Chọn [1] để khởi động server        ║
+    echo ║    Truy cập: http://127.0.0.1:8000/    ║
+    echo ║                                        ║
+    echo ║  Tạo admin (nếu cần):                  ║
+    echo ║    Chọn [4] để tạo tài khoản admin     ║
+    echo ║                                        ║
+    echo ╚════════════════════════════════════════╝
+) else (
+    echo ╔════════════════════════════════════════╗
+    echo ║   SETUP HOÀN TẤT (có %SETUP_ERRORS% cảnh báo)      ║
+    echo ╠════════════════════════════════════════╣
+    echo ║                                        ║
+    echo ║  Có một số lỗi nhỏ, kiểm tra lại:     ║
+    echo ║    - File .env đã tạo chưa?            ║
+    echo ║    - Kết nối Internet ổn không?         ║
+    echo ║    - Thử chạy lại [0] sau khi fix      ║
+    echo ║                                        ║
+    echo ╚════════════════════════════════════════╝
+)
 echo.
 pause
 goto main_menu
