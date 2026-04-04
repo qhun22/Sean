@@ -91,8 +91,8 @@ function _renderSdmControls(data, el) {
     if (_sdm.domain === 'order' && data.is_time_filter) {
         html += '<select id="sdm-status-select" onchange="_sdmStatusFilter()" style="padding:7px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;font-family:\'Signika\',sans-serif;color:#334155;background:#fff;outline:none;">'
             + '<option value="">Tất cả trạng thái</option>'
-            + ['pending', 'processing', 'shipped', 'delivered', 'cancelled'].map(function (s) {
-                var labels = { pending: 'Đã đặt', processing: 'Xử lý', shipped: 'Đang giao', delivered: 'Đã giao', cancelled: 'Đã hủy' };
+            + ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'payment_expired'].map(function (s) {
+                var labels = { pending: 'Đã đặt', processing: 'Xử lý', shipped: 'Đang giao', delivered: 'Đã giao', cancelled: 'Đã hủy', payment_expired: 'Hết hạn TT' };
                 return '<option value="' + s + '"' + (_sdm.statusSub === s ? ' selected' : '') + '>' + labels[s] + '</option>';
             }).join('')
             + '</select>';
@@ -126,6 +126,10 @@ var _sdmStatusColor = {
     'shipped': { bg: '#e0f2fe', color: '#0369a1' },
     'delivered': { bg: '#dcfce7', color: '#166534' },
     'cancelled': { bg: '#fee2e2', color: '#991b1b' },
+    'payment_expired': { bg: '#f1f5f9', color: '#64748b' },
+    'refund': { bg: '#ede9fe', color: '#5b21b6' },
+    'refunded': { bg: '#d1fae5', color: '#065f46' },
+    'refund_pending': { bg: '#ede9fe', color: '#7c3aed' },
 };
 
 function _renderSdmOrderTable(data, el) {
@@ -153,6 +157,9 @@ function _renderSdmOrderTable(data, el) {
             act = '<button onclick="_sdmChangeStatus(' + o.id + ',\'shipped\')" style="padding:3px 8px;border:none;border-radius:4px;background:#e0f2fe;color:#0369a1;cursor:pointer;font-size:11px;font-family:\'Signika\',sans-serif;">Giao hàng</button>';
         } else if (o.status === 'shipped') {
             act = '<button onclick="_sdmChangeStatus(' + o.id + ',\'delivered\')" style="padding:3px 8px;border:none;border-radius:4px;background:#dcfce7;color:#166534;cursor:pointer;font-size:11px;font-family:\'Signika\',sans-serif;">Đã giao</button>';
+        }
+        if (_sdm.filter === 'refund_pending') {
+            act = '<button onclick="closeStatDetailModal();openAdminOrderDetail(' + o.id + ')" style="padding:3px 8px;border:none;border-radius:4px;background:#e0e7ff;color:#3730a3;cursor:pointer;font-size:11px;font-family:\'Signika\',sans-serif;">Xem chi tiết</button>';
         }
         html += '<tr style="border-bottom:1px solid #f1f5f9;">'
             + '<td style="padding:10px 12px;text-align:center;color:#94a3b8;">' + o.stt + '</td>'

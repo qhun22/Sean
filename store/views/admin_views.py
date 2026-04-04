@@ -143,10 +143,11 @@ def dashboard_view(request):
     orders_processing_count = Order.objects.filter(status='processing').count()
     orders_shipped_count = Order.objects.filter(status='shipped').count()
     orders_delivered_count = Order.objects.filter(status='delivered').count()
-    # W1 FIX: "Đã hủy" chỉ đếm đơn bị hủy thật (order.status = 'cancelled')
-    # payment_expired = hết hạn VietQR — không phải hủy đơn
-    orders_cancelled_count = Order.objects.filter(status='cancelled').count()
+    # W1 FIX: "Đã hủy" chỉ đếm đơn bị hủy thật, không có yêu cầu hoàn tiền
+    orders_cancelled_count = Order.objects.filter(status='cancelled', refund_status='').count()
     orders_payment_expired_count = Order.objects.filter(status='payment_expired').count()
+    # Đơn cần hoàn tiền: có refund_status='pending' (bất kể status đơn)
+    orders_refund_pending_count = Order.objects.filter(refund_status='pending').count()
 
     # VietQR fail rate (expired + cancelled payments)
     vietqr_total = Order.objects.filter(payment_method='vietqr').count()
@@ -271,6 +272,7 @@ def dashboard_view(request):
         'orders_delivered': orders_delivered_count,
         'orders_cancelled': orders_cancelled_count,
         'orders_payment_expired': orders_payment_expired_count,
+        'orders_refund_pending': orders_refund_pending_count,
         'vietqr_total': vietqr_total,
         'vietqr_failed': vietqr_failed,
         'vietqr_fail_rate': vietqr_fail_rate,
@@ -317,6 +319,7 @@ def dashboard_order_detail(request):
         'shipped': 'Danh sách đơn đang giao (Shipped)',
         'delivered': 'Danh sách đơn giao thành công (Delivered)',
         'cancelled': 'Danh sách đơn đã hủy (Cancelled)',
+        'refund_pending': 'Danh sách đơn cần hoàn tiền',
     }
 
     STATUS_DISPLAY = {
@@ -326,6 +329,10 @@ def dashboard_order_detail(request):
         'shipped': 'Đang giao',
         'delivered': 'Đã giao',
         'cancelled': 'Đã hủy',
+        'payment_expired': 'Hết hạn TT',
+        'refund': 'Y/c hoàn tiền',
+        'refunded': 'Đã hoàn tiền',
+        'refund_pending': 'Chờ hoàn tiền',
     }
 
     # --- Base queryset theo filter_type ---
@@ -339,6 +346,8 @@ def dashboard_order_detail(request):
         base_qs = base_qs.filter(created_at__year=now.year, created_at__month=now.month)
     elif filter_type == 'year':
         base_qs = base_qs.filter(created_at__year=now.year)
+    elif filter_type == 'refund_pending':
+        base_qs = base_qs.filter(refund_status='pending')
     elif filter_type in ('pending', 'processing', 'shipped', 'delivered', 'cancelled', 'payment_expired'):
         base_qs = base_qs.filter(status=filter_type)
 
