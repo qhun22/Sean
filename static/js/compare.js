@@ -46,13 +46,16 @@ const QHCompare = {
     // Xóa sản phẩm khỏi danh sách
     removeFromCompare: function (id) {
         let items = this.getItems();
+        const removed = items.find(item => item.id === id);
         items = items.filter(item => item.id !== id);
         this.saveItems(items);
+        if (window.QHToast && removed) QHToast.show('Đã xóa "' + removed.name + '" khỏi so sánh', 'success');
     },
 
     // Xóa tất cả sản phẩm
     clearCompare: function () {
         this.saveItems([]);
+        if (window.QHToast) QHToast.show('Đã xóa tất cả sản phẩm khỏi so sánh', 'success');
     },
 
     // Cập nhật giao diện (thanh so sánh, nút, badge)
@@ -133,7 +136,14 @@ const QHCompare = {
     // Toggle hiển/ẩn thanh so sánh (nút So sánh nằm trong thanh contact đỏ)
     toggleBar: function () {
         const bar = document.getElementById('qh-compare-bar');
-        if (bar) bar.classList.toggle('active');
+        const overlay = document.getElementById('qh-compare-overlay');
+        if (!bar) return;
+        const isOpen = bar.classList.toggle('active');
+        if (overlay) {
+            overlay.classList.toggle('active', isOpen);
+            overlay.onclick = isOpen ? () => QHCompare.toggleBar() : null;
+        }
+        document.body.classList.toggle('qh-lock-scroll', isOpen);
     }
 };
 

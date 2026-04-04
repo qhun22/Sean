@@ -349,7 +349,9 @@ IDENTITY_PATTERNS = re.compile(
     r"giới thiệu về bạn|giới thiệu về em|"
     r"tên bạn là gì|tên em là gì|"
     r"bạn là bot gì|em là bot gì|"
-    r"bạn làm được gì|em làm được gì)",
+    r"bạn làm được gì|em làm được gì|"
+    r"bạn có thể làm|em có thể làm|có thể làm gì|làm được những gì|"
+    r"hỗ trợ được gì|chức năng của bạn|bạn giúp được gì|em giúp được gì)",
     re.IGNORECASE,
 )
 
@@ -358,7 +360,9 @@ IDENTITY_PATTERNS_NORM = re.compile(
     r"gioi thieu ve ban|gioi thieu ve em|"
     r"ten ban la gi|ten em la gi|"
     r"ban la bot gi|em la bot gi|"
-    r"ban lam duoc gi|em lam duoc gi)",
+    r"ban lam duoc gi|em lam duoc gi|"
+    r"ban co the lam|em co the lam|co the lam gi|lam duoc nhung gi|"
+    r"ho tro duoc gi|chuc nang cua ban|ban giup duoc gi|em giup duoc gi)",
     re.IGNORECASE,
 )
 

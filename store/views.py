@@ -2493,10 +2493,10 @@ def dashboard_order_detail(request):
         'shipped': 'Đang giao',
         'delivered': 'Đã giao',
         'cancelled': 'Đã hủy',
+        'payment_expired': 'Hết hạn TT',
+        'refund': 'Y/c hoàn tiền',
+        'refunded': 'Đã hoàn tiền',
     }
-
-    # --- Base queryset theo filter_type ---
-    base_qs = Order.objects.select_related('user').prefetch_related('items').order_by('-created_at')
     TIME_FILTERS = ('today', 'month', 'year')
     is_time_filter = filter_type in TIME_FILTERS
 

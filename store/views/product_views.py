@@ -164,7 +164,7 @@ def _spec_json_matches(product, selected):
                         matched = True; break
                     if s == '4000_5500' and 4000 <= bv <= 5500:
                         matched = True; break
-                    if s == 'gt5500' and bv > 5500:
+                    if s == 'gt5500' and bv >= 5500:
                         matched = True; break
             except (ValueError, TypeError):
                 pass
@@ -515,6 +515,14 @@ def product_detail_view(request, slug):
             .select_related('detail')
             .order_by('?')[:5]
         )
+
+    # Danh sách sản phẩm đã yêu thích
+    wishlist_product_ids = []
+    if request.user.is_authenticated:
+        from store.models import Wishlist
+        wishlist = Wishlist.get_or_create_for_user(request.user)
+        if wishlist:
+            wishlist_product_ids = list(wishlist.products.values_list('id', flat=True))
     
     context = {
         'product': product,
@@ -535,6 +543,7 @@ def product_detail_view(request, slug):
         'can_review': can_review,
         'must_login': must_login,
         'related_products': related_products,
+        'wishlist_product_ids': wishlist_product_ids,
     }
     
     return render(request, 'store/pages/product_detail.html', context)
@@ -915,20 +924,179 @@ def home(request):
 
 
 
+def _extract_search_intent(query):
+    """
+    Phân tích ngôn ngữ tự nhiên từ query người dùng.
+    Trả về dict các bộ lọc spec suy ra được và phần query còn lại.
+    """
+    q = query.lower()
+    intent = {
+        'battery': None,      # 'gt5500' | '4000_5500' | '3000_4000' | 'lt3000'
+        'ram': None,           # số nguyên GB
+        'network': None,       # '5g' | '4g'
+        'os': None,            # 'ios' | 'android'
+        'screen_size': None,   # 'gt68'
+        'camera': None,        # 'good'
+    }
+
+    # -------- Pin / Battery --------
+    battery_large = [
+        'pin trâu', 'pin khỏe', 'pin lâu', 'pin bền', 'pin tốt', 'pin lớn',
+        'pin to', 'dùng lâu', 'dùng được lâu', 'lâu pin', 'lâu hao pin',
+        'ít hao pin', 'tiết kiệm pin', 'pin dai', 'battery lớn', 'battery life',
+        'pin mạnh', 'không hao pin', 'sạc lâu', 'dùng cả ngày',
+    ]
+    battery_small = ['pin nhỏ', 'pin yếu', 'pin kém', 'hao pin']
+    battery_mid = ['pin trung bình', 'pin vừa']
+
+    if any(kw in q for kw in battery_large):
+        intent['battery'] = 'gt5500'  # pin trâu = trên 5500 mAh (khớp filter sẵn có)
+    elif any(kw in q for kw in battery_small):
+        intent['battery'] = 'lt3000'
+    elif any(kw in q for kw in battery_mid):
+        intent['battery'] = '3000_4000'
+
+    # Phát hiện số mAh trực tiếp: "pin 6000", "6000mah"
+    mah_match = re.search(r'(\d{3,5})\s*(?:mah|m\.?a\.?h\.?)', q)
+    if not mah_match:
+        mah_match = re.search(r'pin\s+(\d{4,5})', q)
+    if mah_match:
+        mah = int(mah_match.group(1))
+        if mah < 3000:
+            intent['battery'] = 'lt3000'
+        elif mah <= 4000:
+            intent['battery'] = '3000_4000'
+        elif mah <= 5500:
+            intent['battery'] = '4000_5500'
+        else:
+            intent['battery'] = 'gt5500'
+
+    # -------- RAM --------
+    ram_match = re.search(r'(\d{1,2})\s*gb\s*ram|ram\s*(\d{1,2})\s*gb|(\d{1,2})\s*gb', q)
+    if ram_match:
+        raw = ram_match.group(1) or ram_match.group(2) or ram_match.group(3)
+        try:
+            intent['ram'] = int(raw)
+        except (ValueError, TypeError):
+            pass
+
+    # -------- 5G / 4G --------
+    if '5g' in q.split() or re.search(r'\b5g\b', q):
+        intent['network'] = '5g'
+    elif '4g' in q.split() or re.search(r'\b4g\b', q):
+        intent['network'] = '4g'
+
+    # -------- iOS / Android --------
+    if any(kw in q for kw in ['iphone', 'ios', 'apple']):
+        intent['os'] = 'ios'
+    elif any(kw in q for kw in ['android', 'samsung', 'xiaomi', 'oppo', 'vivo', 'realme', 'honor']):
+        intent['os'] = 'android'
+
+    # -------- Màn hình lớn --------
+    if any(kw in q for kw in ['màn hình lớn', 'màn to', 'màn hình to', 'phablet', 'gaming']):
+        intent['screen_size'] = 'gt68'
+
+    return intent
+
+
+def _filter_by_intent(products, intent):
+    """
+    Lọc queryset theo intent (spec tìm kiếm ngôn ngữ tự nhiên).
+    Chỉ áp dụng các intent đã xác định, bỏ qua nếu None.
+    """
+    filtered_ids = []
+    needs_spec_filter = any([
+        intent['battery'],
+        intent['ram'],
+        intent['network'],
+        intent['screen_size'],
+    ])
+    if not needs_spec_filter:
+        return products
+
+    # Lấy danh sách id + spec_json để filter ở Python
+    # (tránh phức tạp hoá DB query với JSONField cross-DB)
+    from store.models import ProductSpecification
+    spec_map = {}
+    for spec in ProductSpecification.objects.filter(
+        detail__product__in=products
+    ).select_related('detail__product'):
+        spec_map[spec.detail.product_id] = spec.spec_json or {}
+
+    for product in products:
+        f = spec_map.get(product.pk, {}).get('filters', {})
+        match = True
+
+        # Battery
+        if intent['battery']:
+            bv_raw = f.get('battery')
+            brange = str(f.get('battery_range', '')).lower()
+            if bv_raw is None:
+                match = False
+            else:
+                try:
+                    bv = int(bv_raw)
+                    if intent['battery'] == 'gt5500':
+                        # NL search "pin trâu": >= 5000 mAh HOẶC battery_range là above_5500
+                        if bv < 5000 and 'above_5500' not in brange:
+                            match = False
+                    elif intent['battery'] == '4000_5500' and not (4000 <= bv <= 5500):
+                        match = False
+                    elif intent['battery'] == '3000_4000' and not (3000 <= bv <= 4000):
+                        match = False
+                    elif intent['battery'] == 'lt3000' and bv >= 3000:
+                        match = False
+                except (ValueError, TypeError):
+                    match = False
+
+        # RAM
+        if match and intent['ram'] is not None:
+            rv = f.get('ram')
+            try:
+                if rv is None or int(rv) != intent['ram']:
+                    match = False
+            except (ValueError, TypeError):
+                match = False
+
+        # Network
+        if match and intent['network']:
+            network_list = [str(n).lower() for n in (f.get('network') or [])]
+            net_text = ' '.join(network_list)
+            if intent['network'] == '5g' and '5g' not in net_text:
+                match = False
+            elif intent['network'] == '4g' and '4g' not in net_text and 'lte' not in net_text:
+                match = False
+
+        # Screen size
+        if match and intent['screen_size'] == 'gt68':
+            sv = f.get('screen_size')
+            sr = str(f.get('screen_size_range', '')).lower()
+            try:
+                if 'above_6.8' not in sr and (sv is None or float(sv) <= 6.8):
+                    match = False
+            except (ValueError, TypeError):
+                match = False
+
+        if match:
+            filtered_ids.append(product.pk)
+
+    return products.filter(pk__in=filtered_ids)
+
+
 def product_search(request):
     """
     Tìm kiếm sản phẩm theo từ khóa hoặc hãng
     """
     from store.models import Product, Brand
-    
+
     query = request.GET.get('q', '')
     brand_slug = request.GET.get('brand', '')
-    
+
     # Khởi tạo query sản phẩm
     products = Product.objects.select_related('brand', 'detail').filter(is_active=True)
-    
+
     current_brand = None
-    
+
     # Lọc theo hãng nếu có
     if brand_slug:
         try:
@@ -936,24 +1104,56 @@ def product_search(request):
             products = products.filter(brand=current_brand)
         except Brand.DoesNotExist:
             pass
-    
+
     # Lọc theo từ khóa tìm kiếm nếu có
     if query:
-        # Tìm kiếm trong tên sản phẩm hoặc mô tả
-        products = products.filter(
-            Q(name__icontains=query) | 
-            Q(description__icontains=query) |
-            Q(brand__name__icontains=query)
-        )
-    
+        # Phân tích intent ngôn ngữ tự nhiên (pin, RAM, 5G, v.v.)
+        intent = _extract_search_intent(query)
+
+        # Tách phần query "thuần" (bỏ các cụm đã nhận diện là spec intent)
+        INTENT_KEYWORDS = [
+            'pin trâu', 'pin khỏe', 'pin lâu', 'pin bền', 'pin tốt', 'pin lớn', 'pin to',
+            'pin dai', 'pin mạnh', 'pin nhỏ', 'pin yếu', 'pin kém', 'pin trung bình', 'pin vừa',
+            'dùng lâu', 'dùng được lâu', 'lâu pin', 'lâu hao pin', 'ít hao pin',
+            'tiết kiệm pin', 'battery life', 'không hao pin', 'sạc lâu', 'dùng cả ngày',
+            'màn hình lớn', 'màn to', 'màn hình to', 'phablet',
+            'hao pin', 'pin yếu',
+        ]
+        clean_query = query
+        for kw in INTENT_KEYWORDS:
+            clean_query = re.sub(re.escape(kw), '', clean_query, flags=re.IGNORECASE)
+        clean_query = clean_query.strip()
+
+        has_intent = any([
+            intent['battery'], intent['ram'],
+            intent['network'], intent['screen_size'],
+        ])
+
+        if clean_query:
+            # Tìm kiếm text bình thường trên phần query còn lại
+            text_matches = products.filter(
+                Q(name__icontains=clean_query) |
+                Q(description__icontains=clean_query) |
+                Q(brand__name__icontains=clean_query)
+            )
+        else:
+            text_matches = products
+
+        # Áp dụng bộ lọc spec từ intent
+        if has_intent:
+            # Nếu có cả text và spec intent: AND (text_matches ∩ spec_filter)
+            products = _filter_by_intent(text_matches, intent)
+        else:
+            products = text_matches
+
     # Sắp xếp theo ngày tạo (mới nhất trước)
     products = products.order_by('-created_at')
-    
+
     # Phân trang
-    paginator = Paginator(products, 20)  # 20 sản phẩm mỗi trang
+    paginator = Paginator(products, 20)
     page_number = request.GET.get('page')
     products_paginated = paginator.get_page(page_number)
-    
+
     # Lấy danh sách sản phẩm trong wishlist của user
     wishlist_product_ids = []
     if request.user.is_authenticated:
