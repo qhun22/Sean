@@ -102,9 +102,39 @@
                 {% endfor %}
             </tbody>
         </table>
-    </div>
+    </div><!-- end qh-ot-table-wrap -->
 
-    <!-- Phân trang -->
+    <!-- Bảng đơn hàng mobile (chỉ hiển thị trên điện thoại) -->
+    <div class="qh-ot-mobile-wrap">
+        <table class="qh-ot-m-table">
+            <thead>
+                <tr>
+                    <th class="stt">#</th>
+                    <th class="name">Tên sản phẩm</th>
+                    <th class="price">Giá</th>
+                    <th class="detail">Chi tiết</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td class="stt">{{ forloop.counter }}</td>
+                    <td class="name">
+                        {% for item in order.items.all %}
+                        <div class="qh-ot-m-item">{{ item.product_name }}</div>
+                        {% empty %}
+                        <div class="qh-ot-m-item">—</div>
+                        {% endfor %}
+                    </td>
+                    <td class="price">{{ order.total_amount|format_price_with_unit }}</td>
+                    <td class="detail">
+                        <button class="qh-ot-detail-btn" onclick="openOtDetail('{{ order.order_code }}')">Xem</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
     {% if orders.has_other_pages %}
     <div class="qh-ot-pagination">
         {% if orders.has_previous %}

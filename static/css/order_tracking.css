@@ -582,24 +582,105 @@
     border-top: none;
 }
 
+/* ========== Mobile-only table (hidden on desktop) ========== */
+.qh-ot-mobile-wrap {
+    display: none;
+}
+
 /* ========== Responsive ========== */
 @media (max-width: 768px) {
-    .qh-ot-empty {
-        margin-bottom: 80px;
+    .qh-ot-table-wrap {
+        display: none;
     }
 
-    .qh-ot-table {
+    .qh-ot-mobile-wrap {
+        display: block;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+    }
+
+    .qh-ot-m-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        font-family: 'Signika', sans-serif;
+    }
+
+    .qh-ot-m-table thead tr {
+        background: #f8fafc;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .qh-ot-m-table th {
+        padding: 11px 10px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #64748b;
+        text-align: left;
+        white-space: nowrap;
+    }
+
+    .qh-ot-m-table th.stt,
+    .qh-ot-m-table th.price,
+    .qh-ot-m-table th.detail {
+        text-align: center;
+    }
+
+    .qh-ot-m-table th.stt { width: 32px; }
+    .qh-ot-m-table th.price { width: 96px; }
+    .qh-ot-m-table th.detail { width: 58px; }
+
+    .qh-ot-m-table tbody tr {
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .qh-ot-m-table td {
+        padding: 11px 10px;
+        color: #1e293b;
+        vertical-align: middle;
+    }
+
+    .qh-ot-m-table td.stt {
+        text-align: center;
+        color: #94a3b8;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .qh-ot-m-table td.name {
         font-size: 13px;
     }
 
-    .qh-ot-table th,
-    .qh-ot-table td {
-        padding: 10px 8px;
+    .qh-ot-m-item {
+        color: #1e293b;
+        font-weight: 500;
+        line-height: 1.4;
+        padding: 1px 0;
     }
 
-    .qh-ot-filter-btn {
+    .qh-ot-m-item + .qh-ot-m-item {
+        border-top: 1px dashed #e2e8f0;
+        margin-top: 4px;
+        padding-top: 4px;
+    }
+
+    .qh-ot-m-table td.price {
+        text-align: center;
+        font-weight: 700;
+        color: #dc2626;
         font-size: 12px;
-        padding: 12px 4px;
+        white-space: nowrap;
+    }
+
+    .qh-ot-m-table td.detail {
+        text-align: center;
+        white-space: nowrap;
+    }
+
+    .qh-ot-empty {
+        margin-bottom: 80px;
     }
 
     .qh-ot-modal {
