@@ -63,7 +63,7 @@
             <div class="qh-hero-stage" id="qhHeroSlider">
                 <div class="qh-hero-slide active" data-slide="0">
                     <video class="qh-hero-video" autoplay muted loop playsinline preload="auto">
-                        <source src="/static/videos/applv1.mp4" type="video/mp4">
+                        <source src="{% static 'videos/applv1.mp4' %}" type="video/mp4">
                     </video>
                     <div class="qh-hero-overlay">
                         <div class="qh-hero-text">
@@ -73,7 +73,7 @@
 
                 <div class="qh-hero-slide" data-slide="1">
                     <video class="qh-hero-video" autoplay muted loop playsinline preload="auto">
-                        <source src="/static/videos/sams.mp4" type="video/mp4">
+                        <source src="{% static 'videos/sams.mp4' %}" type="video/mp4">
                     </video>
                     <div class="qh-hero-overlay">
                         <div class="qh-hero-text">
@@ -83,7 +83,7 @@
 
                 <div class="qh-hero-slide" data-slide="2">
                     <video class="qh-hero-video" autoplay muted loop playsinline preload="auto">
-                        <source src="/static/videos/xiao.mp4" type="video/mp4">
+                        <source src="{% static 'videos/xiao.mp4' %}" type="video/mp4">
                     </video>
                     <div class="qh-hero-overlay">
                         <div class="qh-hero-text">
@@ -93,7 +93,7 @@
 
                 <div class="qh-hero-slide" data-slide="3">
                     <video class="qh-hero-video" autoplay muted loop playsinline preload="auto">
-                        <source src="/static/videos/ooppv1.mp4" type="video/mp4">
+                        <source src="{% static 'videos/ooppv1.mp4' %}" type="video/mp4">
                     </video>
                     <div class="qh-hero-overlay">
                         <div class="qh-hero-text">
@@ -190,7 +190,7 @@
 <!-- HOT SALE HÀNG NGÀY -->
     <div class="qh-hotsale-section">
         <!-- Header "nắp trên" — hẹp hơn body, căn giữa -->
-        <div class="qh-hotsale-header" style="background: url('/media/hotsale/2026_header_bg.png') center / 100% 100% no-repeat">
+        <div class="qh-hotsale-header" style="background: url('{{ MEDIA_URL }}hotsale/2026_header_bg.png') center / 100% 100% no-repeat">
             <div class="qh-hotsale-header-inner">
                 <div class="qh-hotsale-tabs">
                     <span class="qh-hotsale-tab active" data-tab="suggested"><span>GỢI Ý</span></span>
@@ -213,11 +213,11 @@
         </div>
 
         <!-- Body chính — full width, chồng lên nắp -->
-        <div class="qh-hotsale-body" style="background: url('/media/hotsale/2026_body_bg_desk.webp') center / 100% 100% no-repeat">
-            <img src="/media/hotsale/2026_left_icon.webp" alt="" class="qh-hotsale-corner qh-hotsale-corner--tl">
-            <img src="/media/hotsale/2026_left_icon.webp" alt="" class="qh-hotsale-corner qh-hotsale-corner--bl">
-            <img src="/media/hotsale/2026_right_icon.webp" alt="" class="qh-hotsale-corner qh-hotsale-corner--tr">
-            <img src="/media/hotsale/2026_right_icon.webp" alt="" class="qh-hotsale-corner qh-hotsale-corner--br">
+        <div class="qh-hotsale-body" style="background: url('{{ MEDIA_URL }}hotsale/2026_body_bg_desk.webp') center / 100% 100% no-repeat">
+            <img src="{{ MEDIA_URL }}hotsale/2026_left_icon.webp" alt="" class="qh-hotsale-corner qh-hotsale-corner--tl">
+            <img src="{{ MEDIA_URL }}hotsale/2026_left_icon.webp" alt="" class="qh-hotsale-corner qh-hotsale-corner--bl">
+            <img src="{{ MEDIA_URL }}hotsale/2026_right_icon.webp" alt="" class="qh-hotsale-corner qh-hotsale-corner--tr">
+            <img src="{{ MEDIA_URL }}hotsale/2026_right_icon.webp" alt="" class="qh-hotsale-corner qh-hotsale-corner--br">
 
             <!-- Panel: GỢI Ý -->
             <div class="qh-hs-panel" id="qhPanelSuggested">
