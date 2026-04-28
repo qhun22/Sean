@@ -74,7 +74,7 @@ COMPARE_MAX_TOKENS = 1000
 # ════════════════════════════════════════════════════════════════
 
 NOT_FOUND_MSG = "Hiện tại QHUN22 chưa kinh doanh sản phẩm này. Anh/chị có muốn em tư vấn mẫu khác không?"
-CLARIFY_MSG = "Em chưa hiểu vấn đề anh/chị đang trao đổi, anh/chị có thể nói rõ hơn được không ạ?"
+CLARIFY_MSG = "Em chưa hiểu ý anh/chị lắm, anh/chị nói rõ hơn được không ạ?"
 
 MENU_MSG = "Em có thể hỗ trợ anh/chị những gì nè?"
 MENU_SUGGESTIONS = [
@@ -84,15 +84,35 @@ MENU_SUGGESTIONS = [
     "Gặp nhân viên",
 ]
 
-STAFF_MSG = "Anh/chị vui lòng liên hệ Hotline 0327221005 hoặc Telegram @qhun22 để được nhân viên hỗ trợ trực tiếp nhé!"
+# ── Random greeting responses (tự nhiên, phong phú) ─────────────────
+GREETING_RESPONSES = [
+    "Shop đây rồi! Mình có thể giúp gì cho anh/chị nào?",
+    "Dạ chào anh/chị! Em là trợ lý của QHUN22, rất vui được hỗ trợ ạ!",
+    "Chào anh/chị! Shop có iphone, samsung, xiaomi chính hãng đủ cả. Anh/chị cần tư vấn gì không?",
+    "Xin chào anh/chị! Em có thể giúp anh/chị về sản phẩm, giá cả, so sánh máy, hay kiểm tra đơn hàng ạ.",
+    "Hey anh/chị! Mình ở đây rồi, cần em hỗ trợ gì cứ nói nè!",
+    "Chào buổi mới! Em là bot của QHUN22, sẵn sàng giúp anh/chị tìm được chiếc điện thoại ưng ý nhất!",
+    "Shop ơi đây! Em có thể tư vấn điện thoại, so sánh máy, kiểm tra đơn hàng... anh/chị cứ hỏi nhé!",
+    "Dạ xin chào! QHUN22 có các dòng máy chính hãng, bảo hành 12 tháng. Anh/chị quan tâm dòng nào ạ?",
+]
+
+# ── Random thank you responses ──────────────────────────────────────
+THANK_RESPONSES = [
+    "Dạ không có gì ạ! Anh/chị cần em hỗ trợ thêm gì không?",
+    "Em cảm ơn anh/chị đã quan tâm! Cần em giúp gì nữa không?",
+    "Rất vui được giúp anh/chị! Nếu có thắc mắc gì thêm, cứ nhắn em nhé!",
+    "Thank youuu! Anh/chị cần hỏi thêm gì cứ tự nhiên nha!",
+]
+
+STAFF_MSG = "Dạ anh/chị cần nói chuyện với nhân viên, vui lòng liên hệ Hotline 0327221005 hoặc Telegram @qhun22 để được hỗ trợ trực tiếp nhé!"
 
 INSTALLMENT_MSG = (
-    "QHUN22 hỗ trợ trả góp 0% lãi suất qua thẻ tín dụng và các công ty tài chính.\n"
+    "Dạ QHUN22 hỗ trợ trả góp 0% lãi suất qua thẻ tín dụng và các công ty tài chính ạ.\n"
     "Anh/chị liên hệ hotline 0327221005 hoặc đến trực tiếp cửa hàng để được hướng dẫn chi tiết nhé!"
 )
 
 WARRANTY_MSG = (
-    "Tất cả sản phẩm tại QHUN22 đều là hàng chính hãng, bảo hành 12 tháng tại trung tâm bảo hành ủy quyền.\n"
+    "Dạ tất cả sản phẩm tại QHUN22 đều là hàng chính hãng, bảo hành 12 tháng tại trung tâm bảo hành ủy quyền ạ.\n"
     "Ngoài ra, QHUN22 hỗ trợ đổi trả trong 7 ngày nếu sản phẩm lỗi từ nhà sản xuất.\n"
     "Anh/chị cần hỗ trợ thêm về bảo hành sản phẩm nào không?"
 )
@@ -105,7 +125,12 @@ GREETING_PATTERNS = re.compile(
     r"(xin chào|chào bạn|chào shop|chào\b|hello\b|^hi\b|^hey\b|alo\b|"
     r"ê shop|shop ơi|ad ơi|admin ơi|"
     r"có ai không|có ai trực không|tư vấn giúp|giúp mình với|"
-    r"^help\b|^support\b|mình cần hỗ trợ|cho mình hỏi|hỏi chút)",
+    r"^help\b|^support\b|mình cần hỗ trợ|cho mình hỏi|hỏi chút|"
+    r"ơi shop|ơi ơi|shop ơi ơi|ui shop|uii|uy|uyy|uyyy|"
+    r"chào buổi sáng|chào buổi trưa|chào buổi tối|"
+    r"zô shop|zô|zạ|zk|zp|chk|chek|chik|chkò|yo|yo yo|"
+    r"khỏe không|khỏe không|good morning|good afternoon|"
+    r"hi there|greetings)",
     re.IGNORECASE,
 )
 
@@ -117,13 +142,88 @@ GREETING_PATTERNS_NORM = re.compile(
     re.IGNORECASE,
 )
 
+# ── Xác nhận / Đồng ý mua hàng ──────────────────────────────────
+# Nhận diện khi user đồng ý / xác nhận với khuyến nghị của bot.
+# Dùng \b word boundary để bắt từ đứng giữa câu (không chỉ đầu/cuối).
+CONFIRM_PATTERNS = re.compile(
+    r"(\bok\b|\boke\b|\bokela\b|\bokie\b|\bok mình\b|\bok em\b|"
+    r"\bvậy\b|\bvậy đi\b|\bvậy đi em\b|\bvậy thì\b|\bvậy đấy\b|"
+    r"\bđược\b|\bđược rồi\b|\bđược em\b|"
+    r"\blấy\b|\blấy đi\b|\blấy luôn\b|\blấy cái đó\b|\bmình lấy\b|"
+    r"\bđặt\b|\bđặt luôn\b|\bđặt đi\b|\bđặt cái đó\b|\bmình đặt\b|"
+    r"\bmua\b|\bmua luôn\b|\bmua đi\b|\bmua cái đó\b|\bmình mua\b|"
+    r"\bđồng ý\b|\byes\b|\byep\b|\byeah\b|\byup\b|"
+    r"\bừ\b|\bừm\b|\bum\b|"
+    r"\bthế thì lấy\b|\bthế thì mua\b|\bthế thì đặt\b|"
+    r"\bvậy thì lấy\b|\bvậy thì mua\b|\bvậy thì đặt\b|"
+    r"\bngon\b|\bngon em\b|\bok ngon\b|\bxác nhận\b|"
+    r"\bchốt được\b|\bchot được\b|\bchốt\b|\bchot\b|"
+    r"\bhay lắm\b|\bhay quá\b|\btốt lắm\b|\bổn em\b|"
+    r"\bquyết rồi\b|\bquyết đi\b|\bquyết luôn\b|\bxong rồi\b|"
+    r"\bmình đồng ý\b|\btôi đồng ý\b|"
+    r"\bnếu vậy\b|\bnhư vậy\b|\bnếu thế\b|"
+    r"\blấy cái này\b|\bmua cái này\b|\bđặt cái này\b|\bđặt hàng\b|"
+    r"\bship luôn\b|\bship đi\b|\bgiao đi\b|"
+    r"\bcần mua\b|\bcần lấy\b|\bcần đặt\b)",
+    re.IGNORECASE,
+)
+
+CONFIRM_PATTERNS_NORM = re.compile(
+    r"(\bok\b|\boke\b|\bokela\b|\bokie\b|\bok minh\b|\bok em\b|"
+    r"\bvay\b|\bvay di\b|\bvay di em\b|\bvay thi\b|\bvay day\b|"
+    r"\bduoc\b|\bduoc roi\b|\bduoc em\b|"
+    r"\blay\b|\blay di\b|\blay luon\b|\blay cai do\b|\bminh lay\b|"
+    r"\bdat\b|\bdat luon\b|\bdat di\b|\bdat cai do\b|\bminh dat\b|"
+    r"\bmua\b|\bmua luon\b|\bmua di\b|\bmua cai do\b|\bminh mua\b|"
+    r"\bdong y\b|\byes\b|\byep\b|\byeah\b|\byup\b|"
+    r"\bu\b|\bum\b|"
+    r"\bthe thi lay\b|\bthe thi mua\b|\bthe thi dat\b|"
+    r"\bvay thi lay\b|\bvay thi mua\b|\bvay thi dat\b|"
+    r"\bngon\b|\bngon em\b|\bok ngon\b|\bxac nhan\b|"
+    r"\bchot duoc\b|\bchot\b|"
+    r"\bhay lam\b|\bhay qua\b|\btot lam\b|\bon em\b|"
+    r"\bquyet roi\b|\bquyet di\b|\bquyet luon\b|\bxong roi\b|"
+    r"\bminh dong y\b|\btoi dong y\b|"
+    r"\bneu vay\b|\bnhu vay\b|\bneu the\b|"
+    r"\blay cai nay\b|\bmua cai nay\b|\bdat cai nay\b|\bdat hang\b|"
+    r"\bship luon\b|\bship di\b|\bgiao di\b|"
+    r"\bcan mua\b|\bcan lay\b|\bcan dat\b)",
+    re.IGNORECASE,
+)
+
+# ── Comparison follow-up: câu hỏi TIẾP THEO sau khi so sánh ─────
+# Nhận diện: "tại sao", "giải thích", "how to buy", "cách mua", "mua như nào", etc.
+COMPARE_FOLLOWUP_PATTERNS = re.compile(
+    r"(tại sao|vì sao|giải thích|explain|why|how come|"
+    r"cách mua|mua như nào|mua như thế nào|cách đặt|cách order|"
+    r"how to buy|how to order|buy it|đặt hàng cách|"
+    r"vậy là sao|vậy nghĩa là|vậy thì sao|tại|liệu có|"
+    r"nên chọn|mình nên|mình có nên|"
+    r"phù hợp không|tốt không|có tốt không|có nên không|"
+    r"thì sao|có gì khác|khác nhau chỗ nào)",
+    re.IGNORECASE,
+)
+
+COMPARE_FOLLOWUP_PATTERNS_NORM = re.compile(
+    r"(tai sao|vi sao|giai thich|explain|why|how come|"
+    r"cach mua|mua nhu nao|mua nhu the nao|cach dat|cach order|"
+    r"how to buy|how to order|buy it|dat hang cach|"
+    r"vay la sao|vay nghia la|vay thi sao|tai|liệu co|"
+    r"nen chon|minh nen|minh co nen|"
+    r"phu hop khong|tot khong|co tot khong|co nen khong|"
+    r"thi sao|co gi khac|khac nhau cho nao)",
+    re.IGNORECASE,
+)
+
 LIST_PRODUCT_PATTERNS = re.compile(
     r"(mẫu nào|những mẫu|có những gì|bán gì|sản phẩm nào|có gì|"
-    r"xem sản phẩm mới|mẫu mới|hàng mới về|"
-    r"danh sách máy|các máy đang bán|các mẫu iphone|các dòng iphone|"
+    r"xem sản phẩm mới|mẫu mới|hàng mới về|sản phẩm mới|"
+    r"danh sách máy|danh sách sản phẩm|các máy đang bán|các mẫu iphone|các dòng iphone|các dòng samsung|"
     r"shop có bán|hiện có những|hiện đang bán|còn những máy nào|"
     r"có những dòng nào|đang kinh doanh gì|bán những gì|"
-    r"có bán|đang bán gì|shop có gì|có máy nào|liệt kê)",
+    r"có bán|đang bán gì|shop có gì|có máy nào|liệt kê|"
+    r"có những máy nào|danh sách|danh sach|"
+    r"xem sản phẩm|xem san pham|show me phones|list products)",
     re.IGNORECASE,
 )
 
@@ -141,7 +241,10 @@ PRICE_PATTERNS = re.compile(
     r"giá sao|giá nhiêu|giá hiện tại|giá bây giờ|"
     r"bao nhiu|giá cả|mức giá|giá khoảng|"
     r"giá rẻ nhất|giá thấp nhất|giá cao nhất|"
-    r"nhiêu tiền|bao nhiêu v|bao nhiêu ạ)",
+    r"nhiêu tiền|bao nhiêu v|bao nhiêu ạ|"
+    r"tiền\b|đắt không|co gia|giá co|có giá|"
+    r"check giá|check gia|coi giá|xem giá giùm|"
+    r"rẻ nhất|cao nhất|mắc nhất)",
     re.IGNORECASE,
 )
 
@@ -149,7 +252,10 @@ PRICE_PATTERNS_NORM = re.compile(
     r"(gia|bao nhieu tien|bao nhieu|gia bn|bn tien|bao tien|"
     r"gia sao|gia nhieu|gia hien tai|gia bay gio|"
     r"bao nhiu|muc gia|gia khoang|nhiu tien|xin gia|"
-    r"bao nhieu a|bao nhieu vay)",
+    r"bao nhieu a|bao nhieu vay|"
+    r"tien\b|dat khong|co gia|giá có|có giá|"
+    r"check gia|coi gia|xem gia gium|"
+    r"re nhat|cao nhat|mac nhat)",
     re.IGNORECASE,
 )
 
@@ -158,7 +264,11 @@ STOCK_PATTERNS = re.compile(
     r"có hàng không|có sẵn không|còn sẵn không|"
     r"tình trạng|stock|hàng còn không|còn k|"
     r"còn bán không|hết chưa|còn hay hết|"
-    r"mua được không|đặt được không|order được không)",
+    r"mua được không|đặt được không|order được không|"
+    r"lấy được không|bán không|bán chưa|"
+    r"ship được không|ship chưa|"
+    r"còn hem|hết rồi|hết hem|bán rồi|"
+    r"bán được không|chưa bán|đang bán)",
     re.IGNORECASE,
 )
 
@@ -168,7 +278,10 @@ STOCK_PATTERNS_NORM = re.compile(
     r"tinh trang|stock|hang con khong|con k|"
     r"con ko|het chua|con hay het|"
     r"mua duoc khong|dat duoc khong|order duoc khong|"
-    r"available|in stock)",
+    r"lay duoc khong|ban khong|ban chua|"
+    r"ship duoc khong|ship chua|"
+    r"con hem|het roi|het hem|ban roi|"
+    r"ban duoc khong|chua ban|dang ban)",
     re.IGNORECASE,
 )
 
@@ -177,7 +290,14 @@ VARIANT_PATTERNS = re.compile(
     r"phiên bản nào|bản nào|dung lượng nào|có bản nào|"
     r"bao nhiêu gb|bao nhiêu tb|ram bao nhiêu|rom bao nhiêu|"
     r"có bao nhiêu phiên bản|mấy bản|mấy gb|bản gì|"
-    r"màu đẹp nhất|nên chọn màu|màu nào bền)",
+    r"màu đẹp nhất|nên chọn màu|màu nào bền|"
+    r"màu nào đẹp nhất|đẹp nhất|màu nào hot|"
+    r"bản \d+gb|bản \d+gb|phiên bản \d+|"
+    r"storage nào|dung lượng nào|128gb|256gb|512gb|1tb|"
+    r"\d+gb|\d+tb|\d+gb\b|\d+ tb\b|"
+    r"\d+\s*gb\b|\d+\s*tb\b|"
+    r"128 hay 256|256 hay 512|bản nào|bản gì|"
+    r"mấy phiên bản|phiên bản nào)",
     re.IGNORECASE,
 )
 
@@ -216,7 +336,19 @@ COMPARE_PATTERNS = re.compile(
     r"(so sánh|vs|versus|hay hơn|khác gì|"
     r"khác nhau|nên mua cái nào|chọn cái nào|"
     r"so với|đặt cạnh|so giùm|so giúp|"
-    r"hơn gì|thua gì|ưu điểm hơn|nhược điểm)",
+    r"hơn gì|thua gì|ưu điểm hơn|nhược điểm|"
+    r"\bhay\b.*\b(mua|chọn|nên)|"
+    r"\b(mua|chọn|nên).*\bhay\b|"
+    r"con nào|con nào ngon|con nào tốt|con nào rẻ|"
+    r"cái nào ngon|cái nào tốt|cái nào rẻ|"
+    r"cái nào đáng mua hơn|ngon hơn|tốt hơn|rẻ hơn|"
+    r"iphone hay samsung|samsung hay iphone|ip hay ss|ss hay apple|"
+    r"android hay ios|ios hay android|ios vs android|"
+    r"nên mua max hay pro|nên mua pro hay max|"
+    r"max hay pro hay|pro hay max hay|"
+    r"16 pro hay 16 pro max|16 pro max hay|ultra hay pro max|"
+    r"hay\b.*\bmáy\b|máy\b.*\bhay\b|"
+    r"nên lấy|nên chọn)",
     re.IGNORECASE,
 )
 
@@ -235,7 +367,23 @@ CONSULT_PATTERNS = re.compile(
     r"\d+\s*(triệu|tr|m)|"
     r"máy nào phù hợp|phù hợp với|"
     r"máy nào chơi game|máy chụp ảnh đẹp|máy pin trâu|"
-    r"dùng lâu|bền|đáng tiền)",
+    r"dùng lâu|bền|đáng tiền|"
+    r"mình cần|mình muốn|mình thích|mình tìm|"
+    r"cho mình gợi ý|gợi ý cho|recommend cho|"
+    r"ngân sách|budget là|tiền là|tiền|mình có \d+|"
+    r"sinh viên|hs|sVs|dân văn phòng|dân công sở|"
+    r"chụp ảnh|game|pin|btq|mỏng nhẹ|"
+    r"tv dum|tv giup|giúp tôi|giúp mình|"
+    r"chỉ cho|tư vấn cho|check|recommend|đi tour|"
+    r"nghiên cứu|phân vân|lăn tăn|băn khoăn|mắc nghi|"
+    r"cân nhắc|so sánh giá|so sánh máy|"
+    r"có nên mua|nên mua không|có đáng mua không|"
+    r"phù hợp không|hợp lý không|tốt không|có tốt không|"
+    r"mua được không|xứng đáng không|đáng không|"
+    r"review|đánh giá|nhận xét|kinh nghiệm|"
+    r"mua hàng|order|mua online|mua ở đâu|"
+    r"dùng thế nào|sử dụng thế nào|cách dùng|"
+    r"cấu hình|thông số kỹ thuật|đặc điểm)",
     re.IGNORECASE,
 )
 
@@ -247,7 +395,22 @@ CONSULT_PATTERNS_NORM = re.compile(
     r"\d+\s*(trieu|tr|m)|"
     r"may nao phu hop|phu hop voi|"
     r"may nao choi game|may chup anh dep|may pin trau|"
-    r"dung lau|ben|dang tien|tv dum|tv giup)",
+    r"dung lau|ben|dang tien|tv dum|tv giup|"
+    r"minh can|minh muon|minh thich|minh tim|"
+    r"cho minh goi y|goi y cho|recommend cho|"
+    r"ngan sach|budget la|tien la|minh co \d+|"
+    r"sinh vien|hs|svs|dan van phong|dan cong so|"
+    r"chup anh|game|pin|btq|mong nhe|"
+    r"giup toi|giup minh|chi cho|tu van cho|check|di tour|"
+    r"nghien cuuu|phan van|lan tan|bankhoan|mac nghi|"
+    r"can nhac|so sanh gia|so sanh may|"
+    r"co nen mua|nen mua khong|co dang mua khong|"
+    r"phu hop khong|hop ly khong|tot khong|co tot khong|"
+    r"mua duoc khong|xung dang khong|dang khong|"
+    r"review|danh gia|nhan xet|kinh nghiem|"
+    r"mua hang|order|mua online|mua o dau|"
+    r"dung the nao|su dung the nao|cach dung|"
+    r"cau hinh|thong so ky thuat|dac diem)",
     re.IGNORECASE,
 )
 
@@ -255,7 +418,15 @@ ORDER_PATTERNS = re.compile(
     r"(đơn hàng|mã đơn|order|kiểm tra đơn|"
     r"tra cứu đơn|tracking|đơn của tôi|"
     r"đơn của mình|giao tới đâu rồi|"
-    r"đơn tới đâu|bao giờ giao|khi nào nhận)",
+    r"đơn tới đâu|bao giờ giao|khi nào nhận|"
+    r"vận đơn|mã vận đơn|check đơn|xem đơn|"
+    r"đơn đâu|đơn đâu rồi|ship tới đâu|"
+    r"tình trạng đơn|tinhtrangs don|don cua toi|"
+    r"đơn có giao chưa|don giao chua|đơn chưa|"
+    r"đơn có được duyệt chưa|don duoc duyet|"
+    r"QH\d{6,}|QHUN\d+|đơn \d+|don \d+|"
+    r"xem đơn|kiểm tra đơn|tra cuu don|"
+    r"đơn nào|đơn của|đơn mới|đơn cũ)",
     re.IGNORECASE,
 )
 
@@ -264,7 +435,12 @@ ORDER_PATTERNS_NORM = re.compile(
     r"tra cuu don|check don|tracking|don cua toi|"
     r"don cua minh|don cua t|giao toi dau roi|"
     r"don toi dau|ship toi dau|bao gio giao|khi nao nhan|"
-    r"ma van don)",
+    r"ma van don|van don|xem don|don dau|"
+    r"don dau roi|ship toi dau|"
+    r"tinh trang don|tinhtrangs don|"
+    r"don co giao chua|don giao chua|don chua|"
+    r"don co duoc duyet chua|don duoc duyet|"
+    r"QH\d{6,}|QHUN\d+|don \d+)",
     re.IGNORECASE,
 )
 
@@ -290,13 +466,19 @@ PENDING_COMPARE_KEY = "qh_chatbot_pending_compare"
 PENDING_COMPARE_TTL_SEC = 10 * 60
 FOCUSED_PRODUCT_KEY = "qh_chatbot_focused_product"
 FOCUSED_PRODUCT_TTL_SEC = 60 * 60
+LAST_RECOMMENDED_KEY = "qh_chatbot_last_recommended"
+LAST_RECOMMENDED_TTL_SEC = 30 * 60
 
 INSTALLMENT_PATTERNS = re.compile(
     r"(trả góp|trả góp 0%|trả góp không lãi|"
     r"mua trả góp|trả trước bao nhiêu|"
     r"góp mỗi tháng bao nhiêu|"
     r"hỗ trợ trả góp|có trả góp|góp được không|"
-    r"mua góp|chia kỳ|thanh toán góp)",
+    r"mua góp|chia kỳ|thanh toán góp|"
+    r"installment|tra gop|tra truoc|gop thang|"
+    r"góp \d+ tháng|gop \d+ thang|"
+    r"góp bao lâu|gop bao lau|"
+    r"trả góp đi|mua góp đi)",
     re.IGNORECASE,
 )
 
@@ -314,7 +496,9 @@ WARRANTY_PATTERNS = re.compile(
     r"bảo hành chính hãng không|bảo hành ở đâu|"
     r"đổi trả|chính sách bảo hành|"
     r"bảo hành|warranty|đổi máy|trả máy|"
-    r"lỗi thì sao|hư thì sao|bể màn)",
+    r"lỗi thì sao|hư thì sao|bể màn|"
+    r"bh bao lâu|bh mấy tháng|bh ở đâu|"
+    r"bao hanh|bh\b|đổi trả|tra hang)",
     re.IGNORECASE,
 )
 
@@ -331,7 +515,10 @@ STAFF_PATTERNS = re.compile(
     r"(gặp nhân viên|người thật|"
     r"nói chuyện với người|gặp tư vấn viên|"
     r"kết nối nhân viên|chuyển nhân viên|"
-    r"gọi nhân viên|cần người hỗ trợ)",
+    r"gọi nhân viên|cần người hỗ trợ|"
+    r"admin đâu|ad đâu|shop ơi có ai không|"
+    r"nhân viên đâu|cần nhân viên|nv đâu|nv ơi|"
+    r"shop có ai không|ad ơi|admin ơi)",
     re.IGNORECASE,
 )
 
@@ -346,6 +533,7 @@ STAFF_PATTERNS_NORM = re.compile(
 
 IDENTITY_PATTERNS = re.compile(
     r"(bạn là ai|em là ai|bot là ai|ai vậy|"
+    r"cậu là ai|cậu là gì|bạn là gì|"
     r"giới thiệu về bạn|giới thiệu về em|"
     r"tên bạn là gì|tên em là gì|"
     r"bạn là bot gì|em là bot gì|"
@@ -398,7 +586,15 @@ BRAND_QUERY_PATTERNS = re.compile(
     r"(thương hiệu|brand|liên quan tới hãng|liên quan đến hãng|"
     r"sản phẩm hãng|máy hãng|điện thoại hãng|dòng của hãng|"
     r"của hãng nào|theo hãng|"
-    r"hãng\s+(apple|iphone|samsung|xiaomi|oppo|vivo|realme|huawei|nokia|pixel|google))",
+    r"hãng\s+(apple|iphone|samsung|xiaomi|oppo|vivo|realme|huawei|nokia|pixel|google)|"
+    r"apple có không|apple có ko|apple có gì|apple bán gì|"
+    r"samsung có không|samsung có ko|samsung có gì|"
+    r"xiaomi có gì|xiaomi có không|"
+    r"ip có không|ip có ko|ss có không|ss có ko|"
+    r"điện thoại samsung|điện thoại apple|điện thoại iphone|"
+    r"sam có gì|samsung bán gì|"
+    r"google có không|pixel có không|"
+    r"ô tô có bán|huawei có không|oppo có gì)",
     re.IGNORECASE,
 )
 
@@ -637,13 +833,54 @@ class ChatbotService:
     def __init__(self):
         self.claude = ClaudeService()
 
-    # ── Intent detection (thứ tự quan trọng!) ───────────────────
+    # ── Deictic references (this product, this phone, etc.) ──────────────────
+    THIS_PRODUCT_PATTERNS = re.compile(
+        r"(sản phẩm này|máy này|điện thoại này|telefon này|"
+        r"sản phẩm đó|máy đó|điện thoại đó|"
+        r"con này|cái này|cái đó|con đó|"
+        r"máy em vừa|máy ở trên|máy bạn đang|"
+        r"ip đó|iphone đó|samsung đó|"
+        r"mẫu này|mẫu đó|dòng này|dòng đó|"
+        r"vừa nói|bạn vừa|máy vừa|khi nãy|mới nãy)",
+        re.IGNORECASE,
+    )
+
     def detect_intent(self, message: str) -> str:
         msg = message.strip()
         msg_norm = _normalize_text(msg)
 
         def matched(raw_pat, norm_pat) -> bool:
             return bool(raw_pat.search(msg) or norm_pat.search(msg_norm))
+
+        # === ƯU TIÊN CAO NHẤT: So sánh ===
+        if matched(COMPARE_PATTERNS, COMPARE_PATTERNS_NORM):
+            return "compare"
+
+        # === Tiếp theo: Thông số kỹ thuật (check TRƯỚC consult) ===
+        # Nhưng ưu tiên consult nếu có context keywords hoặc consult patterns
+        has_consult_context = bool(
+            re.search(r"(nên|máy|sinh viên|mình|tui|cho (mình|tôi|tui)|"
+                     r"người|dùng|cần|muốn|tìm)", msg_norm)
+        )
+        has_consult_pattern = matched(CONSULT_PATTERNS, CONSULT_PATTERNS_NORM)
+        if matched(SPEC_PATTERNS, SPEC_PATTERNS_NORM) and not (has_consult_context or has_consult_pattern):
+            return "spec"
+
+        # === Tiếp theo: Tư vấn/Recommend ===
+        # Ưu tiên stock/installment nếu câu hỏi ngắn chỉ hỏi về khả năng
+        has_simple_stock_question = bool(
+            re.search(r"^(mua|đặt|lấy|order|ship)\s*(được|được không|ko|không)\s*(\?||$)", msg) or
+            re.search(r"^(mua|dat|lay|order|ship)\s*(duoc|duoc khong|ko|khong)\s*(\?||$)", msg_norm)
+        )
+        if has_simple_stock_question:
+            return "stock"
+
+        # Confirm phải check TRƯỚC consult: "vậy nên mua" vừa có confirm vừa có consult.
+        if matched(CONFIRM_PATTERNS, CONFIRM_PATTERNS_NORM):
+            return "confirm"
+
+        if matched(CONSULT_PATTERNS, CONSULT_PATTERNS_NORM):
+            return "consult"
 
         if matched(ORDER_CAPABILITY_PATTERNS, ORDER_CAPABILITY_PATTERNS_NORM):
             return "order_capability"
@@ -656,15 +893,6 @@ class ChatbotService:
 
         if matched(MODEL_TYPES_PATTERNS, MODEL_TYPES_PATTERNS_NORM):
             return "model_types"
-
-        if matched(COMPARE_PATTERNS, COMPARE_PATTERNS_NORM):
-            return "compare"
-
-        if matched(CONSULT_PATTERNS, CONSULT_PATTERNS_NORM):
-            return "consult"
-
-        if matched(SPEC_PATTERNS, SPEC_PATTERNS_NORM):
-            return "spec"
 
         if matched(PRICE_PATTERNS, PRICE_PATTERNS_NORM):
             return "price"
@@ -694,7 +922,7 @@ class ChatbotService:
         if matched(GREETING_PATTERNS, GREETING_PATTERNS_NORM):
             return "greeting"
 
-        if PRODUCT_NAME_PATTERNS.search(msg) or PRODUCT_NAME_PATTERNS_NORM.search(msg_norm):
+        if matched(PRODUCT_NAME_PATTERNS, PRODUCT_NAME_PATTERNS_NORM):
             return "product_mention"
 
         return "unknown"
@@ -900,10 +1128,15 @@ class ChatbotService:
             text_ratio = SequenceMatcher(None, msg_norm, name_norm).ratio()
 
             score = (token_ratio * 0.8) + (text_ratio * 0.2)
-            if name_norm in msg_norm:
-                score += 1.2
+            # Removed the +1.2 "exact substring" bonus: it inflated the score of exact
+            # substring matches (e.g. "iphone 13" in "iphone 13 pro max vs iphone 16 pro")
+            # to ~2.2, pushing the threshold above 1.9 and filtering out every other
+            # valid candidate (e.g. "iPhone 16 Pro Max") even when overlap=4/4 tokens.
 
-            if overlap > 0 or text_ratio >= 0.55 or name_norm in msg_norm:
+            # Include candidates that share at least 1 token with the message, OR have a moderate
+            # text-similarity ratio (lowered from 0.55 to 0.30 to catch shorthand mentions
+            # like "ip 13" against "iPhone 13 Pro Max" where text_ratio ~0.30 and overlap=1).
+            if overlap >= 1 or text_ratio >= 0.30 or name_norm in msg_norm:
                 scored.append((name, score))
 
         if not scored:
@@ -956,7 +1189,7 @@ class ChatbotService:
         return [c[0] for c in candidates[:3]]
 
     def _get_pending_compare_base(self, session) -> str | None:
-        if not session:
+        if session is None:
             return None
         try:
             data = session.get(PENDING_COMPARE_KEY)
@@ -974,7 +1207,7 @@ class ChatbotService:
             return None
 
     def _set_pending_compare_base(self, session, base_name: str) -> None:
-        if not session:
+        if session is None:
             return
         try:
             session[PENDING_COMPARE_KEY] = {"base": base_name, "ts": time.time()}
@@ -983,7 +1216,7 @@ class ChatbotService:
             pass
 
     def _clear_pending_compare(self, session) -> None:
-        if not session:
+        if session is None:
             return
         try:
             session.pop(PENDING_COMPARE_KEY, None)
@@ -992,7 +1225,7 @@ class ChatbotService:
             pass
 
     def _get_focused_product(self, session) -> str | None:
-        if not session:
+        if session is None:
             return None
         try:
             data = session.get(FOCUSED_PRODUCT_KEY)
@@ -1010,7 +1243,7 @@ class ChatbotService:
             return None
 
     def _set_focused_product(self, session, product_name: str) -> None:
-        if not session:
+        if session is None:
             return
         try:
             session[FOCUSED_PRODUCT_KEY] = {"name": product_name, "ts": time.time()}
@@ -1019,7 +1252,7 @@ class ChatbotService:
             pass
 
     def _clear_focused_product(self, session) -> None:
-        if not session:
+        if session is None:
             return
         try:
             session.pop(FOCUSED_PRODUCT_KEY, None)
@@ -1027,9 +1260,48 @@ class ChatbotService:
         except Exception:
             pass
 
+    def _get_last_recommended(self, session) -> tuple[str, str] | None:
+        """Return (product_name, from_intent) if a recommendation was recently made."""
+        if session is None:
+            return None
+        try:
+            data = session.get(LAST_RECOMMENDED_KEY)
+            if not isinstance(data, dict):
+                return None
+            name = (data.get("name") or "").strip()
+            intent = (data.get("intent") or "").strip()
+            ts = float(data.get("ts") or 0)
+            if not name or not ts:
+                return None
+            if (time.time() - ts) > LAST_RECOMMENDED_TTL_SEC:
+                session.pop(LAST_RECOMMENDED_KEY, None)
+                return None
+            return name, intent
+        except Exception:
+            return None
+
+    def _set_last_recommended(self, session, product_name: str, from_intent: str) -> None:
+        if session is None:
+            return
+        try:
+            session[LAST_RECOMMENDED_KEY] = {"name": product_name, "intent": from_intent, "ts": time.time()}
+            session.modified = True
+        except Exception:
+            pass
+
+    def _clear_last_recommended(self, session) -> None:
+        if session is None:
+            return
+        try:
+            session.pop(LAST_RECOMMENDED_KEY, None)
+            session.modified = True
+        except Exception:
+            pass
+
     def reset_conversation(self, session) -> None:
         self._clear_pending_compare(session)
         self._clear_focused_product(session)
+        self._clear_last_recommended(session)
 
     # ── Build product context for Claude ────────────────────────
     def _build_product_context(self, product: Product) -> str:
@@ -1172,8 +1444,11 @@ class ChatbotService:
     # ════════════════════════════════════════════════════════════
 
     def _handle_greeting(self) -> dict[str, Any]:
+        # Chọn greeting ngẫu nhiên để tự nhiên hơn
+        import random
+        greeting = random.choice(GREETING_RESPONSES)
         return {
-            "message": "Chào anh/chị! Em là trợ lý mua sắm của QHUN22. Em có thể giúp gì cho anh/chị?",
+            "message": greeting,
             "suggestions": MENU_SUGGESTIONS,
         }
 
@@ -1542,7 +1817,7 @@ class ChatbotService:
 
         return {"message": NOT_FOUND_MSG, "suggestions": MENU_SUGGESTIONS, "source": "rule"}
 
-    def _handle_compare_with_ai(self, message: str, products: list[Product]) -> dict[str, Any]:
+    def _handle_compare_with_ai(self, message: str, products: list[Product], session=None) -> dict[str, Any]:
         contexts = [self._build_product_context(p) for p in products]
         combined = "\n\n---\n\n".join(contexts)
 
@@ -1550,6 +1825,8 @@ class ChatbotService:
         user_prompt = COMPARE_USER_TEMPLATE.format(combined_context=combined, message=message)
 
         ai_reply = self.claude.call(compare_system, user_prompt, max_tokens=COMPARE_MAX_TOKENS)
+        result: dict[str, Any] = {}
+
         if ai_reply:
             ai_reply_norm = _normalize_text(ai_reply)
             bad_markers = [
@@ -1563,7 +1840,7 @@ class ChatbotService:
             else:
                 mentioned_products = self._products_mentioned_in_reply(ai_reply, products)
                 if mentioned_products:
-                    return {
+                    result = {
                         "message": ai_reply,
                         "suggestions": [p.name for p in products],
                         "product_cards": self._build_product_cards(mentioned_products, limit=4),
@@ -1571,33 +1848,71 @@ class ChatbotService:
 
                 logger.warning("Claude compare reply không khớp cặp sản phẩm, chuyển fallback so sánh nhanh")
 
-        lines = [f"So sánh nhanh giữa {products[0].name} và {products[1].name}:"]
+        if not result:
+            lines = [f"So sánh nhanh giữa {products[0].name} và {products[1].name}:"]
+            for p in products:
+                min_p, max_p = _get_product_price_range(p)
+                colors = _get_product_colors(p)
+                storages = _get_product_storages(p)
+                stock_state = "Còn hàng" if p.stock > 0 else "Tạm hết hàng"
+
+                if min_p and max_p and min_p != max_p:
+                    price_line = f"Giá: từ {min_p} đến {max_p}"
+                elif min_p:
+                    price_line = f"Giá: {min_p}"
+                else:
+                    price_line = "Giá: chưa có dữ liệu"
+
+                lines.append(f"- {p.name}")
+                lines.append(f"  {price_line}")
+                lines.append(f"  Tình trạng: {stock_state}")
+                lines.append(f"  Dung lượng: {', '.join(storages)}" if storages else "  Dung lượng: chưa có dữ liệu")
+                lines.append(f"  Màu sắc: {', '.join(colors)}" if colors else "  Màu sắc: chưa có dữ liệu")
+
+            lines.append("Anh/chị muốn em đi sâu hơn theo tiêu chí pin, camera hay hiệu năng không ạ?")
+            result = {
+                "message": "\n".join(lines),
+                "suggestions": [f"Giá {p.name}" for p in products] + ["Tư vấn chọn máy"],
+                "product_cards": self._build_product_cards(products, limit=4),
+                "source": "rule_fallback",
+            }
+
+        # Extract recommended product from AI reply for multi-turn flow.
+        # Try to find which product AI recommended based on user context (e.g. "sinh viên").
+        recommended = self._extract_recommended_from_compare(ai_reply, products) if ai_reply else None
+        if not recommended:
+            recommended = products[0] if products else None
+
+        if recommended:
+            self._set_last_recommended(session, recommended.name, "compare")
+            self._set_focused_product(session, recommended.name)
+
+        return result
+
+    def _extract_recommended_from_compare(self, ai_reply: str, products: list[Product]) -> Product | None:
+        """Extract which product was recommended from the AI comparison reply."""
+        if not ai_reply:
+            return None
+        reply_norm = _normalize_text(ai_reply)
+        # If AI says "nên mua" / "recommend" / "tốt hơn" for a specific product
         for p in products:
-            min_p, max_p = _get_product_price_range(p)
-            colors = _get_product_colors(p)
-            storages = _get_product_storages(p)
-            stock_state = "Còn hàng" if p.stock > 0 else "Tạm hết hàng"
-
-            if min_p and max_p and min_p != max_p:
-                price_line = f"Giá: từ {min_p} đến {max_p}"
-            elif min_p:
-                price_line = f"Giá: {min_p}"
-            else:
-                price_line = "Giá: chưa có dữ liệu"
-
-            lines.append(f"- {p.name}")
-            lines.append(f"  {price_line}")
-            lines.append(f"  Tình trạng: {stock_state}")
-            lines.append(f"  Dung lượng: {', '.join(storages)}" if storages else "  Dung lượng: chưa có dữ liệu")
-            lines.append(f"  Màu sắc: {', '.join(colors)}" if colors else "  Màu sắc: chưa có dữ liệu")
-
-        lines.append("Anh/chị muốn em đi sâu hơn theo tiêu chí pin, camera hay hiệu năng không ạ?")
-        return {
-            "message": "\n".join(lines),
-            "suggestions": [f"Giá {p.name}" for p in products] + ["Tư vấn chọn máy"],
-            "product_cards": self._build_product_cards(products, limit=4),
-            "source": "rule_fallback",
-        }
+            name_norm = _normalize_text(p.name)
+            # Check if the product name is mentioned in a positive recommendation context
+            # Simple heuristic: product name appears in reply near positive keywords
+            if name_norm in reply_norm:
+                # Check for positive recommendation indicators near the product name
+                pos_pattern = re.compile(
+                    rf"(nen\s*)?(mua|chon|lay|recommend|suggest|nen|tot hon|xuong|xac nhan|chot)"
+                    rf".{{0,60}}"
+                    rf"{re.escape(name_norm)}"
+                    rf"|{re.escape(name_norm)}"
+                    rf".{{0,60}}"
+                    rf"(nen\s*)?(mua|chon|lay|recommend|suggest|nen|tot hon|xuong|xac nhan|chot)",
+                    re.IGNORECASE,
+                )
+                if pos_pattern.search(reply_norm):
+                    return p
+        return None
 
     def _handle_spec_with_ai(self, message: str, product: Product) -> dict[str, Any]:
         context = self._build_product_context(product)
@@ -1629,6 +1944,112 @@ class ChatbotService:
             }
 
         return self._fallback_product_response(product)
+
+    def _handle_confirm_followup(self, product: Product, message: str = "", session=None) -> dict[str, Any]:
+        """Xử lý khi user đồng ý / xác nhận với khuyến nghị sản phẩm."""
+        msg_norm = _normalize_text(message)
+
+        # Kiểm tra user có hỏi thêm thông tin cụ thể không
+        has_price_q = bool(re.search(r"\bgia\b|\bgia\s", msg_norm))
+        has_stock_q = bool(re.search(r"con hang|hang con|het hang|hetsan|co hang", msg_norm))
+        has_color_q = bool(re.search(r"\bmau\b|\bcolor\b|\bmau\s", msg_norm))
+        has_storage_q = bool(re.search(r"\bcapacity\b|\bdtorage\b|\bgb\b|\btb\b", msg_norm))
+
+        min_p, max_p = _get_product_price_range(product)
+        colors = _get_product_colors(product)
+        storages = _get_product_storages(product)
+        stock_state = "Còn hàng" if product.stock > 0 else "Tạm hết hàng"
+
+        lines = []
+
+        if has_price_q:
+            if min_p and max_p and min_p != max_p:
+                lines.append(f"Dạ {product.name} hiện có giá từ {min_p} đến {max_p} ạ.")
+            elif min_p:
+                lines.append(f"Dạ {product.name} hiện có giá {min_p} ạ.")
+            else:
+                lines.append(f"Dạ {product.name} hiện chưa có giá cố định, anh/chị liên hệ để biết thêm ạ.")
+
+        if has_stock_q:
+            lines.append(f"Dạ {product.name} hiện {stock_state} ạ.")
+
+        if has_color_q:
+            if colors:
+                lines.append(f"Dạ {product.name} có các màu: {', '.join(colors)}.")
+            else:
+                lines.append(f"Dạ {product.name} anh/chị liên hệ để biết màu sắc hiện có ạ.")
+
+        if has_storage_q:
+            if storages:
+                lines.append(f"Dạ {product.name} có các dung lượng: {', '.join(storages)}.")
+            else:
+                lines.append(f"Dạ {product.name} anh/chị liên hệ để biết dung lượng hiện có ạ.")
+
+        if not (has_price_q or has_stock_q or has_color_q or has_storage_q):
+            lines.append(f"Dạ anh/chị chọn {product.name} nhé!")
+            if min_p:
+                lines.append(f"Máy hiện {stock_state}, giá từ {min_p}.")
+            else:
+                lines.append(f"Máy hiện {stock_state}.")
+
+        lines.append("Anh/chị muốn em tư vấn thêm về màu sắc, dung lượng hay hỗ trợ đặt hàng luôn ạ?")
+
+        return {
+            "message": "\n".join(lines),
+            "suggestions": [
+                f"Giá {product.name}",
+                f"Còn hàng {product.name}",
+                f"Màu sắc {product.name}",
+                "Tư vấn trả góp",
+                "Gặp nhân viên",
+            ],
+            "product_cards": self._build_product_cards([product], limit=1),
+            "source": "rule",
+        }
+
+    def _handle_comparison_followup(self, message: str, session=None) -> dict[str, Any]:
+        """Xử lý câu hỏi follow-up sau khi so sánh (VD: 'tại sao đắt hơn', 'giải thích')."""
+        last_rec = self._get_last_recommended(session)
+        if not last_rec:
+            return None  # No comparison context → fall through
+
+        product_name, from_intent = last_rec
+        product = Product.objects.filter(is_active=True, name=product_name).first()
+        if not product:
+            return None
+
+        msg_norm = _normalize_text(message)
+        context = self._build_product_context(product)
+        user_prompt = NORMAL_USER_TEMPLATE.format(context=context, message=message)
+        ai_reply = self.claude.call(SYSTEM_PROMPT, user_prompt, max_tokens=NORMAL_MAX_TOKENS)
+
+        if ai_reply:
+            lines = [ai_reply]
+        else:
+            lines = [
+                f"Dạ {product.name} anh/chị nhé!",
+            ]
+            min_p, _ = _get_product_price_range(product)
+            stock_state = "Còn hàng" if product.stock > 0 else "Tạm hết hàng"
+            if min_p:
+                lines.append(f"Máy hiện {stock_state}, giá từ {min_p}.")
+            else:
+                lines.append(f"Máy hiện {stock_state}.")
+
+        self._set_focused_product(session, product.name)
+
+        return {
+            "message": "\n".join(lines),
+            "suggestions": [
+                f"Giá {product.name}",
+                f"Còn hàng {product.name}",
+                "So sánh sản phẩm",
+                "Tư vấn chọn máy",
+                "Gặp nhân viên",
+            ],
+            "product_cards": self._build_product_cards([product], limit=1),
+            "source": "rule",
+        }
 
     def _handle_product_quick_summary(self, product: Product, message: str = "") -> dict[str, Any]:
         min_p, max_p = _get_product_price_range(product)
@@ -1710,6 +2131,50 @@ class ChatbotService:
 
         focused_product_name = self._get_focused_product(session)
 
+        # ── Xác nhận mua / đồng ý với khuyến nghị ─────────────────
+        # Chỉ active khi intent KHÔNG phải structured intent (compare/spec).
+        # "so sánh...sinh viên nên mua" → intent=compare nhưng is_confirm=True
+        # → phải giữ nguyên compare flow, không override bằng confirm.
+        intent = self.detect_intent(message)
+        msg_norm = _normalize_text(message)
+        is_confirm = bool(
+            CONFIRM_PATTERNS.search(message) or CONFIRM_PATTERNS_NORM.search(msg_norm)
+        )
+
+        # ── Comparison follow-up: câu hỏi tiếp theo sau khi so sánh ─
+        # "tại sao", "giải thích", "cách mua", "how to buy", v.v.
+        # Phải check TRƯỚC confirm vì "vậy" vừa match confirm vừa là comparison follow-up.
+        last_rec = self._get_last_recommended(session)
+        is_compare_followup = bool(
+            (COMPARE_FOLLOWUP_PATTERNS.search(message) or COMPARE_FOLLOWUP_PATTERNS_NORM.search(msg_norm))
+            and last_rec is not None
+        )
+        if is_compare_followup:
+            result = self._handle_comparison_followup(message, session=session)
+            if result:
+                return result
+
+        if is_confirm and intent not in ("compare", "spec"):
+            # Ưu tiên: có tên sản phẩm trong câu → dùng sản phẩm đó
+            product_names = self.detect_product_names(message)
+            if product_names:
+                target = product_names[0]
+                product = Product.objects.filter(is_active=True, name=target).first()
+                if product:
+                    self._set_focused_product(session, product.name)
+                    return self._handle_confirm_followup(product, message)
+            # Thứ 2: có last_recommended → dùng sản phẩm đó
+            if last_rec:
+                product_name, from_intent = last_rec
+                product = Product.objects.filter(is_active=True, name=product_name).first()
+                if product:
+                    return self._handle_confirm_followup(product, message)
+            # Thứ 3: dùng focused_product
+            if focused_product_name:
+                product = Product.objects.filter(is_active=True, name=focused_product_name).first()
+                if product:
+                    return self._handle_confirm_followup(product, message)
+
         # ── Multi-turn compare: if user previously picked base product, and now sends a product name ──
         pending_base = self._get_pending_compare_base(session)
         if pending_base:
@@ -1727,13 +2192,12 @@ class ChatbotService:
                     return self._handle_compare_with_ai(
                         f"So sánh {base_product.name} và {target_product.name}",
                         [base_product, target_product],
+                        session,
                     )
             # If user changes topic (non-compare intent), clear pending compare to avoid sticky state
             intent_now = self.detect_intent(message)
             if intent_now not in ("compare", "unknown"):
                 self._clear_pending_compare(session)
-
-        intent = self.detect_intent(message)
 
         # Heuristic: "có <tên máy> không" là câu hỏi tồn kho.
         # Tuy nhiên nếu người dùng đã hỏi tư vấn rõ ràng thì giữ intent consult để trả lời sâu hơn.
@@ -1807,12 +2271,29 @@ class ChatbotService:
 
         # ── Intents cần sản phẩm ────────────────────────────────
         if intent == "consult":
+            # Kiểm tra deictic references (sản phẩm này, máy này, etc.)
+            has_deictic = self.THIS_PRODUCT_PATTERNS.search(message)
+            
             if product_names:
-                products = Product.objects.filter(name__in=product_names, is_active=True)
-                if products.exists():
-                    product = max(products, key=lambda p: len(p.name))
+                # Preserve the score order from detect_product_names.
+                # "iPhone 14 Pro Max" and "iPhone 17 Pro Max" both have len=17,
+                # so max(..., key=len) was returning the wrong one (the latter in the list).
+                scored_products = [
+                    (name, Product.objects.filter(name=name, is_active=True).first())
+                    for name in product_names[:3]
+                ]
+                valid = [(name, p) for name, p in scored_products if p is not None]
+                if valid:
+                    product = valid[0][1]   # First name wins, matching score order
                     self._set_focused_product(session, product.name)
                     return self._handle_product_quick_summary(product, message=message)
+            
+            # Nếu có deictic reference mà không có product name, dùng focused product
+            if has_deictic and focused_product_name:
+                product = Product.objects.filter(is_active=True, name=focused_product_name).first()
+                if product:
+                    return self._handle_product_quick_summary(product, message=message)
+            
             return self._handle_consult(message)
 
         if intent == "compare":
@@ -1824,7 +2305,7 @@ class ChatbotService:
                     if p:
                         compare_products.append(p)
                 if len(compare_products) >= 2:
-                    return self._handle_compare_with_ai(message, compare_products)
+                    return self._handle_compare_with_ai(message, compare_products, session)
 
             if product_names:
                 # Preserve detection order instead of DB default ordering.
@@ -1835,7 +2316,7 @@ class ChatbotService:
                         ordered_products.append(p)
 
                 if len(ordered_products) >= 2:
-                    return self._handle_compare_with_ai(message, ordered_products[:2])
+                    return self._handle_compare_with_ai(message, ordered_products[:2], session)
                 elif len(ordered_products) == 1:
                     # Remember base product for the next user click/answer
                     base_name = ordered_products[0].name
@@ -1848,7 +2329,18 @@ class ChatbotService:
             return {"message": "Anh/chị muốn so sánh 2 sản phẩm nào? VD: so sánh iPhone 17 vs iPhone Air", "suggestions": []}
 
         if not product_names:
+            # === FALLBACK THÔNG MINH: Thử extract brand/product trước khi báo unknown ===
+            brand_hint = self._extract_brand_name(message)
+            if brand_hint:
+                return self._handle_brand_query(message)
+
             if intent == "unknown":
+                # Thử lại với message gốc (không normalize) để bắt keywords còn sót
+                msg_lower = message.lower()
+                # Bắt thêm một số pattern genz/viết tắt
+                if any(word in msg_lower for word in ["cần", "muốn", "tìm", "thích", "xem", "mua", "lấy", "check", "coi"]):
+                    return self._handle_consult(message)
+
                 logger.info("Chatbot unknown intent message: %s", message)
                 return {"message": CLARIFY_MSG, "suggestions": MENU_SUGGESTIONS}
             return {"message": NOT_FOUND_MSG, "suggestions": MENU_SUGGESTIONS}

@@ -28,11 +28,13 @@ class HybridChatbotOrchestrator:
         "brand_query",
         "model_types",
         "product_mention",
+        "product_search",
         "consult",
         "price",
         "stock",
         "variant",
         "spec",
+        "confirm",
     }
 
     PRODUCT_RELIANT_AI_INTENTS = {
@@ -107,7 +109,34 @@ class HybridChatbotOrchestrator:
         if not message:
             return {}
 
-        product_cards = self._build_ai_product_cards(ai_result.get("products") or [])
+        raw_products = ai_result.get("products") or []
+
+        # === GUARD CHỐNG HALLUCINATION ===
+        # Kiểm tra sản phẩm AI trả về có tồn tại trong DB không
+        valid_products = []
+        hallucinated = []
+        for p in raw_products:
+            if not isinstance(p, dict):
+                continue
+            name = (p.get("name") or "").strip()
+            if not name:
+                continue
+            exists = Product.objects.filter(name__icontains=name, is_active=True).exists()
+            if exists:
+                valid_products.append(p)
+            else:
+                hallucinated.append(name)
+                logger.warning(f"AI hallucinated product: {name}")
+
+        # Nếu AI trả lời mà không có sản phẩm hợp lệ → fallback local
+        if not valid_products and raw_products:
+            logger.warning(
+                f"AI response has no valid products (intent={detected_intent}). "
+                f"Hallucinated: {hallucinated}. Triggering fallback."
+            )
+            return {}
+
+        product_cards = self._build_ai_product_cards(valid_products)
 
         return {
             "message": message,
@@ -115,7 +144,7 @@ class HybridChatbotOrchestrator:
             "source": ai_result.get("source", "ai_pipeline"),
             "intent": detected_intent,
             "engine": "ai_pipeline",
-            "products": ai_result.get("products") or [],
+            "products": valid_products,
             "product_cards": product_cards,
         }
 
@@ -171,6 +200,7 @@ class HybridChatbotOrchestrator:
             return {"message": "Vui lòng nhập nội dung.", "suggestions": []}
 
         detected_local_intent = self.local_service.detect_intent(text)
+
         # Nếu câu đã nhận diện được sản phẩm trong DB thì ưu tiên local để ổn định,
         # tránh vòng AI trả thiếu context rồi mới fallback.
         try:
@@ -178,13 +208,60 @@ class HybridChatbotOrchestrator:
         except Exception:
             detected_products = []
 
+        # === FIX: Nếu intent là consult/price/stock thì KHÔNG dùng detected_products
+        # để override intent. VD: "mình cần máy pin trâu" có thể match "máy" nhưng
+        # intent mới là consult → cần tư vấn theo nhu cầu, không phải hiển thị sản phẩm.
+        priority_intents = {"consult", "price", "stock", "variant", "spec"}
+        if detected_local_intent in priority_intents and detected_products:
+            # Intent có nhu cầu tư vấn → thử xử lý bằng intent trước
+            local_result = self.local_service.process_message(text, user=user, session=session)
+            # Nếu kết quả tốt (có sản phẩm hoặc câu trả lời hữu ích) → trả về
+            if local_result.get("message") and not local_result.get("message", "").startswith("Em chưa"):
+                local_result.setdefault("engine", "django_local")
+                local_result.setdefault("source", "local")
+                return local_result
+            # Nếu không tốt → xóa detected_products để thử cách khác
+            detected_products = []
+
         if detected_products:
+            # Compare intent cần gọi _handle_compare_with_ai để set session state.
+            if detected_local_intent == "compare":
+                local_result = self.local_service.process_message(text, user=user, session=session)
+                local_result.setdefault("engine", "django_local")
+                local_result.setdefault("source", "local")
+                return local_result
             local_result = self.local_service.process_message(text, user=user, session=session)
             local_result.setdefault("engine", "django_local")
             local_result.setdefault("source", "local")
             return local_result
 
         if self._should_route_local(text, detected_local_intent):
+            # === Compare intent: phải gọi local TRƯỚC để set session state
+            # (last_recommended, focused_product) rồi mới thay bằng AI reply.
+            if detected_local_intent == "compare":
+                # Gọi local để lưu compare context vào session
+                local_result = self.local_service.process_message(text, user=user, session=session)
+                # Lấy AI reply từ pipeline
+                session_id = self._ensure_session_id(session, user=user)
+                try:
+                    ai_result = self._get_ai_pipeline().process(
+                        message=text,
+                        session_id=session_id,
+                        user_id=str(getattr(user, "id", "")) if user is not None and getattr(user, "is_authenticated", False) else None,
+                    )
+                    normalized = self._normalize_ai_response(ai_result)
+                    if normalized and normalized.get("message"):
+                        # Thay message bằng AI reply nhưng GIỮ session state từ local
+                        normalized["engine"] = "ai_pipeline"
+                        normalized["source"] = "claude"
+                        return normalized
+                except Exception as exc:
+                    logger.warning("Compare AI fallback to local: %s", exc)
+                # Fallback: trả local result
+                local_result.setdefault("engine", "django_local")
+                local_result.setdefault("source", "local")
+                return local_result
+
             local_result = self.local_service.process_message(text, user=user, session=session)
             local_result.setdefault("engine", "django_local")
             local_result.setdefault("source", "local")
