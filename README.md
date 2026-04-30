@@ -1,7 +1,6 @@
 ﻿# QHUN22 MOBILE SHOP - HỆ THỐNG THƯƠNG MẠI ĐIỆN TỬ BÁN ĐIỆN THOẠI
 
-**Đồ án: Phát triển ứng dụng Python**
-**Sinh viên: Trương Quang Huy**
+**Báo cáo: Phát triển ứng dụng Python**
 
 ---
 
