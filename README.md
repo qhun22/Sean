@@ -1,115 +1,115 @@
-# QHUN22 MOBILE SHOP - HE THONG THUONG MAI DIEN TU BAN DIEN THOAI
+﻿# QHUN22 MOBILE SHOP - HỆ THỐNG THƯƠNG MẠI ĐIỆN TỬ BÁN ĐIỆN THOẠI
 
-**Do an: Phat trien ung dung Python**
-**Sinh vien: Truong Quang Huy**
-
----
-
-## TOM TAT DU AN
-
-Day la he thong thuong mai dien tu ban dien thoai di dong, xay dung bang Django 4.2. He thong ho tro:
-
-- Mua sam, dat hang, tra cuu don hang
-- Thanh toan qua VNPay, MoMo, VietQR
-- Dang nhap bang Google OAuth2
-- Chatbot AI (Claude) ho tro tu van san pham
-- Quan tri he thong (Dashboard Admin)
-- Xuat bao cao doanh thu ra Excel
+**Đồ án: Phát triển ứng dụng Python**
+**Sinh viên: Trương Quang Huy**
 
 ---
 
-## 1. YEU CAU HE THONG
+## TÓM TẮT DỰ ÁN
 
-| Phan mem | Phien ban |
+Đây là hệ thống thương mại điện tử bán điện thoại di động, xây dựng bằng Django 4.2. Hệ thống hỗ trợ:
+
+- Mua sắm, đặt hàng, tra cứu đơn hàng
+- Thanh toán qua VNPay, MoMo, VietQR
+- Đăng nhập bằng Google OAuth2
+- Chatbot AI (Claude) hỗ trợ tư vấn sản phẩm
+- Quản trị hệ thống (Dashboard Admin)
+- Xuất báo cáo doanh thu ra Excel
+
+---
+
+## 1. YÊU CẦU HỆ THỐNG
+
+| Phần mềm | Phiên bản |
 |----------|-----------|
-| Python | 3.10 tro len |
-| Pip | Moi nhat |
-| RAM | 2GB tro len |
-| O dia trong | 5GB tro len |
+| Python | 3.10 trở lên |
+| Pip | Mới nhất |
+| RAM | 2GB trở lên |
+| Ổ đĩa trống | 5GB trở lên |
 
 ---
 
-## 2. CAI DAT MAY TINH (LOCAL)
+## 2. CÀI ĐẶT TRÊN MÁY LOCAL
 
-### Buoc 1: Tai source code ve may
+### Bước 1: Tải source code về máy
 
-Download toan bo source code vao mot thu muc.
+Tải toàn bộ mã nguồn vào một thư mục.
 
-### Buoc 2: Tao moi truong ao (Virtual Environment)
+### Bước 2: Tạo môi trường ảo (Virtual Environment)
 
 ```bash
-# Tao moi truong ao
+# Tạo môi trường ảo
 python -m venv .venv
 
-# Kich hoat (Windows)
+# Kích hoạt (Windows)
 .venv\Scripts\activate
 
-# Kich hoat (Linux/Mac)
+# Kích hoạt (Linux/Mac)
 source .venv/bin/activate
 ```
 
-### Buoc 3: Cai dat thu vien
+### Bước 3: Cài đặt thư viện
 
 ```bash
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### Buoc 4: Tao file cau hinh .env
+### Bước 4: Tạo file cấu hình .env
 
-Tao file ten `.env` trong thu muc goc, noi dung nhu sau:
+Tạo file `.env` trong thư mục gốc, nội dung ví dụ:
 
 ```env
 SECRET_KEY=qhun22-secret-key-local-dev
 DEBUG=True
 ALLOWED_HOSTS=127.0.0.1,localhost
 
-# Email (dung Gmail)
+# Email (dùng Gmail)
 EMAIL_HOST_USER=your-email@gmail.com
 EMAIL_HOST_PASSWORD=your-app-password
 
-# Cac API keys khac (deu trong hoac gia tri mac dinh)
+# Các API keys khác (để trống hoặc giá trị mặc định)
 VNPAY_URL=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
 VNPAY_RETURN_URL=http://localhost:8000/vnpay/return/
 MOMO_ENDPOINT=https://test-payment.momo.vn/v2/gateway/api/create
 MOMO_RETURN_URL=http://localhost:8000/momo/return/
 ```
 
-> **Luu y ve Email:** Neu dung Gmail, can tao App Password thay vi mat khau thuong. Xem huong dan: https://support.google.com/accounts/answer/185833
+> **Lưu ý về Email:** Nếu dùng Gmail, cần tạo App Password thay vì mật khẩu thông thường. Xem hướng dẫn: https://support.google.com/accounts/answer/185833
 
-### Buoc 5: Khoi tao co so du lieu
+### Bước 5: Khởi tạo cơ sở dữ liệu
 
 ```bash
-# Tao cac bang du lieu
+# Tạo các bảng dữ liệu
 python manage.py migrate
 
-# Tao tai khoan quan tri (Admin)
+# Tạo tài khoản quản trị (Admin)
 python manage.py createsuperuser
-# Nhap email va mat khau theo yeu cau
+# Nhập email và mật khẩu theo yêu cầu
 ```
 
-### Buoc 6: Thu muc static va media
+### Bước 6: Thu thập file tĩnh
 
 ```bash
-# Thu thap file CSS, JS vao thu muc staticfiles
+# Thu thập file CSS, JS vào thư mục staticfiles
 python manage.py collectstatic
 ```
 
-### Buoc 7: Khoi dong may chu
+### Bước 7: Khởi động máy chủ
 
 ```bash
 python manage.py runserver
 ```
 
-Truy cap: **http://127.0.0.1:8000/**
+Truy cập: **http://127.0.0.1:8000/**
 
 ---
 
-## 3. HUONG DAN DEPLOY LEN HOSTING (VPS/CPANEL)
+## 3. HƯỚNG DẪN DEPLOY LÊN HOSTING (VPS/CPANEL)
 
-### Buoc 1: Chuan bi file cau hinh production
+### Bước 1: Chuẩn bị file cấu hình production
 
-Tao file `.env` trong thu muc goc tren server voi noi dung:
+Tạo file `.env` trong thư mục gốc trên server với nội dung:
 
 ```env
 SECRET_KEY=tao-chuoi-bao-mat-50-ky-tu-ngau-nhien
@@ -128,35 +128,35 @@ MOMO_RETURN_URL=https://qhun22.com/momo/return/
 MOMO_IPN_URL=https://qhun22.com/momo/ipn/
 ```
 
-> **Quan trong:** Thay `SECRET_KEY` bang chuoi ngau nhien 50+ ky tu. Khong dung key mac dinh!
+> **Quan trọng:** Thay `SECRET_KEY` bằng chuỗi ngẫu nhiên 50+ ký tự. Không dùng key mặc định!
 
-### Buoc 2: Tai file len hosting
+### Bước 2: Tải code lên hosting
 
-Upload toan bo source code (tru `.pyc`, `__pycache__`, `.venv`) len server.
+Upload toàn bộ mã nguồn (trừ `.pyc`, `__pycache__`, `.venv`) lên server.
 
-### Buoc 3: Cai dat Python tren server
+### Bước 3: Cài đặt Python trên server
 
 ```bash
-# Tao moi truong ao
+# Tạo môi trường ảo
 python3 -m venv venv
 
-# Kich hoat
+# Kích hoạt
 source venv/bin/activate
 
-# Cai dat thu vien
+# Cài đặt thư viện
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### Buoc 4: Thu thap file tinh (Static Files)
+### Bước 4: Thu thập file tĩnh
 
 ```bash
 python manage.py collectstatic --noinput
 ```
 
-### Buoc 5: Cau hinh Web Server
+### Bước 5: Cấu hình Web Server
 
-**Neu dung Nginx + Gunicorn:**
+**Nếu dùng Nginx + Gunicorn:**
 
 ```nginx
 location /static/ {
@@ -168,152 +168,93 @@ location /media/ {
 }
 ```
 
-**Neu dung Apache (.htaccess hoac VirtualHost):**
+**Nếu dùng Apache (.htaccess hoặc VirtualHost):**
 
 ```apache
 Alias /static/ /path/to/staticfiles/
 Alias /media/ /path/to/media/
 ```
 
-### Buoc 6: Khoi dong lai service
+### Bước 6: Khởi động lại dịch vụ
 
 ```bash
 # Gunicorn
 gunicorn config.wsgi:application --bind 127.0.0.1:8000
 
-# Hoac systemd service
+# Hoặc systemd service
 sudo systemctl restart qhun22
 ```
 
 ---
 
-## 4. CAC CHUC NANG CHINNH
+## 4. CÁC CHỨC NĂNG CHÍNH
 
-### 4.1. Danh sach san pham
-- Hien thi san pham theo danh muc, thuong hieu
-- Loc theo gia, dung luong, mau sac
-- Tim kiem voi goi y (Autocomplete)
-- So sanh san pham
+### 4.1. Danh sách sản phẩm
+- Hiển thị sản phẩm theo danh mục, thương hiệu
+- Lọc theo giá, dung lượng, màu sắc
+- Tìm kiếm với gợi ý (Autocomplete)
+- So sánh sản phẩm
 
-### 4.2. Gio hang va dat hang
-- Them/bot san pham khoi gio hang
-- Nhap ma giam gia (Coupon)
-- Chon phuong thuc thanh toan: VietQR, VNPay, MoMo, Tien mat
+### 4.2. Giỏ hàng và đặt hàng
+- Thêm/bớt sản phẩm khỏi giỏ hàng
+- Nhập mã giảm giá (Coupon)
+- Chọn phương thức thanh toán: VietQR, VNPay, MoMo, Tiền mặt
 
-### 4.3. Quan ly don hang
-- Tra cuu trang thai don hang
-- Xem chi tiet don hang
-- Yeu cau huy don / Hoan tien
+### 4.3. Quản lý đơn hàng
+- Tra cứu trạng thái đơn hàng
+- Xem chi tiết đơn hàng
+- Yêu cầu hủy đơn / Hoàn tiền
 
-### 4.4. Tai khoan nguoi dung
-- Dang ky / Dang nhap
-- Dang nhap bang Google
-- Quen mat khau (gui OTP qua email)
-- Cap nhat thong tin ca nhan
+### 4.4. Tài khoản người dùng
+- Đăng ký / Đăng nhập
+- Đăng nhập bằng Google
+- Quên mật khẩu (gửi OTP qua email)
+- Cập nhật thông tin cá nhân
 
 ### 4.5. Chatbot AI
-- Tu van san pham bang tieng Viet
-- Tra loi cau hoi ve san pham, gia ca
-- Tim kiem san pham theo yeu cau
+- Tư vấn sản phẩm bằng tiếng Việt
+- Trả lời câu hỏi về sản phẩm, giá cả
+- Tìm kiếm sản phẩm theo yêu cầu
 
-### 4.6. Bang dieu khien Quan tri (Admin)
-- Quan ly san pham, thuong hieu, mau sac, dung luong
-- Quan ly don hang, cap nhat trang thai
-- Quan ly nguoi dung
-- Xem bao cao doanh thu (Theo thang, nam)
-- Xuat bao cao ra file Excel
+### 4.6. Bảng điều khiển Quản trị (Admin)
+- Quản lý sản phẩm, thương hiệu, màu sắc, dung lượng
+- Quản lý đơn hàng, cập nhật trạng thái
+- Quản lý người dùng
+- Xem báo cáo doanh thu (theo tháng, năm)
+- Xuất báo cáo ra file Excel
 
 ---
 
-## 5. CAU TRUC THU MUC
+## 5. CẤU TRÚC THƯ MỤC
 
 ```
 qhun22/
-├── config/                  # Cau hinh Django (settings.py, urls.py)
-├── store/                   # Ung dung chinh
-│   ├── models.py           # Cac bang du lieu
-│   ├── views.py            # Cac ham xu ly request
-│   ├── urls.py             # Duong dan (routes)
+├── config/                  # Cấu hình Django (settings.py, urls.py)
+├── store/                   # Ứng dụng chính
+│   ├── models.py           # Các bảng dữ liệu
+│   ├── views.py            # Các hàm xử lý request
+│   ├── urls.py             # Đường dẫn (routes)
 │   └── chatbot_service.py  # Chatbot AI (Claude)
-├── templates/               # Cac file HTML
-├── static/                  # File CSS, JS, hinh anh
-├── media/                   # Hinh anh san pham, banner
-├── staticfiles/             # File tinh da thu thap
-├── docs/                    # Tai lieu do an
-├── db.sqlite3               # Co so du lieu
-├── manage.py                # Lenh quan ly Django
-├── requirements.txt         # Danh sach thu vien
-├── .env                     # Cau hinh moi truong (khong push len git!)
-└── README.md                # File nay
+├── templates/               # Các file HTML
+├── static/                  # File CSS, JS, hình ảnh
+├── media/                   # Hình ảnh sản phẩm, banner
+├── staticfiles/             # File tĩnh đã thu thập
+├── docs/                    # Tài liệu đồ án
+├── db.sqlite3               # Cơ sở dữ liệu
+├── manage.py                # Lệnh quản lý Django
+├── requirements.txt         # Danh sách thư viện
+├── .env                     # Cấu hình môi trường (không push lên git!)
+└── README.md                # File này
 ```
 
 ---
 
-## 6. CAC LENH QUAN LY THUONG DUNG
+## 6. CÁC LỆNH QUẢN LÝ THƯỜNG DÙNG
 
 ```bash
-# Khoi dong may chu
+# Khởi động máy chủ
 python manage.py runserver
 
-# Tao bang du lieu
+# Tạo bảng dữ liệu
 python manage.py migrate
-
-# Tao tai khoan admin
-python manage.py createsuperuser
-
-# Thu thap file tinh
-python manage.py collectstatic
-
-# Xem duong dan
-python manage.py show_urls
-
-# Kiem tra loi cau hinh
-python manage.py check
-
-# Shell Python
-python manage.py shell
 ```
-
----
-
-## 7. GIAI QUYET SU CO THUONG GAP
-
-### Loi: "Module not found"
-```bash
-pip install ten-module
-```
-
-### Loi: "Database locked"
-Thoat tat ca trinh duyet, tat server, chay lai.
-
-### Loi: "Email not sent"
-1. Kiem tra `EMAIL_HOST_USER` va `EMAIL_HOST_PASSWORD`
-2. Dam bao da tao App Password tren Gmail
-3. Kiem tra dia chi email nhan co dung khong
-
-### Loi: "Static files not loading"
-```bash
-python manage.py collectstatic
-```
-Kiem tra cau hinh `STATIC_ROOT` trong `settings.py`.
-
-### Loi: "DEBUG=False nhung website loi"
-Kiem tra `ALLOWED_HOSTS` trong `.env` da chua domain chua.
-
----
-
-## 8. THONG TIN LIEN HE
-
-- **Sinh vien:** Truong Quang Huy
-- **Email:** qhun22@gmail.com
-- **Website:** https://qhun22.com
-
----
-
-## 9. CAM ON
-
-Cam on da su dung san pham!
-
----
-
-**Cap nhat lan cuoi:** 30/04/2026
