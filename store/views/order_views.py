@@ -177,7 +177,7 @@ def refund_pending(request):
             'payment_method': order.payment_method,
             'refund_account': order.refund_account,
             'refund_bank': order.refund_bank,
-            'created_at': order.created_at.strftime('%d/%m/%Y %H:%M'),
+            'created_at': timezone.localtime(order.created_at).strftime('%d/%m/%Y %H:%M'),
             'items': items_data
         })
     
@@ -216,7 +216,7 @@ def refund_history(request):
             'total_amount': str(order.total_amount),
             'refund_account': order.refund_account,
             'refund_bank': order.refund_bank,
-            'created_at': order.created_at.strftime('%d/%m/%Y %H:%M'),
+            'created_at': timezone.localtime(order.created_at).strftime('%d/%m/%Y %H:%M'),
             'items': items_data
         })
     
@@ -259,7 +259,7 @@ def refund_detail(request, order_code):
             'refund_account': order.refund_account,
             'refund_bank': order.refund_bank,
             'refund_status': order.refund_status,
-            'created_at': order.created_at.strftime('%d/%m/%Y %H:%M'),
+            'created_at': timezone.localtime(order.created_at).strftime('%d/%m/%Y %H:%M'),
             'items': items_data
         }
     })
@@ -628,13 +628,22 @@ def place_order(request):
                 _target_email = coupon.target_email.lower() if coupon.target_email else ''
                 _verified_student = (getattr(request.user, 'verified_student_email', None) or '').lower()
                 _verified_teacher = (getattr(request.user, 'verified_teacher_email', None) or '').lower()
-                _target_ok = (
-                    _user_email == _target_email or
-                    _user_email == _verified_student or
-                    _user_email == _verified_teacher or
-                    _target_email == _verified_student or
-                    _target_email == _verified_teacher
-                )
+                _is_edu_voucher = _target_email.endswith('.edu.vn')
+                if _is_edu_voucher:
+                    _target_ok = (
+                        _user_email == _verified_student or
+                        _user_email == _verified_teacher or
+                        _target_email == _verified_student or
+                        _target_email == _verified_teacher
+                    )
+                else:
+                    _target_ok = (
+                        _user_email == _target_email or
+                        _user_email == _verified_student or
+                        _user_email == _verified_teacher or
+                        _target_email == _verified_student or
+                        _target_email == _verified_teacher
+                    )
             if (coupon.is_valid()
                 and total_amount >= coupon.min_order_amount
                 and (coupon.max_products == 0 or item_count <= coupon.max_products)

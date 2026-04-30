@@ -115,7 +115,7 @@
     border-radius: 14px;
     padding: 0 44px;
     font-family: 'Signika', sans-serif;
-    font-size: 15px;
+    font-size: 16px;
     color: var(--qh-text);
     background: #fff;
     outline: none;
@@ -143,6 +143,14 @@
 
 .auth-input-wrap input::placeholder {
     color: #ccc;
+}
+
+.auth-input-wrap input::-ms-reveal,
+.auth-input-wrap input::-ms-clear,
+.auth-input-wrap input::-webkit-credentials-auto-fill-button,
+.auth-input-wrap input::-webkit-textfield-decoration-button,
+.auth-input-wrap input::-webkit-textfield-decoration-container {
+    display: none !important;
 }
 
 .auth-pw-toggle {
@@ -591,6 +599,13 @@
    must release that lock so the page scrolls naturally.
    =================================================== */
 @media (max-width: 900px) {
+
+    /* ===== Prevent auto-zoom on iOS Safari when focus input ===== */
+    .auth-form-section input,
+    .auth-form-section select,
+    .auth-form-section textarea {
+        font-size: 16px !important;
+    }
 
     /* 1. Release the fixed-height viewport lock */
     .auth-page {

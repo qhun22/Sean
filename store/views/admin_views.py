@@ -465,7 +465,7 @@ def dashboard_order_detail(request):
             'status': o.status,
             'status_display': STATUS_DISPLAY.get(o.status, o.status),
             'payment_method': o.get_payment_method_display(),
-            'created_at': o.created_at.strftime('%d/%m/%Y %H:%M'),
+            'created_at': timezone.localtime(o.created_at).strftime('%d/%m/%Y %H:%M'),
         })
 
     return JsonResponse({
@@ -781,7 +781,7 @@ def _build_export_workbook(orders_qs, period_label, period_type):
                 (subtotal,      'right', money_fmt),
                 (PAYMENT_VN.get(order.payment_method, order.payment_method), 'center', None),
                 (STATUS_VN.get(order.status, order.status), 'center', None),
-                (order.created_at.strftime('%d/%m/%Y %H:%M'), 'center', None),
+                (timezone.localtime(order.created_at).strftime('%d/%m/%Y %H:%M'), 'center', None),
                 (order.created_at.month, 'center', None),
                 (order.created_at.year,  'center', None),
             ]
@@ -1696,8 +1696,8 @@ def product_image_upload(request):
     
     # Create upload path
     product_slug = slugify(detail.product.name) if detail else slugify(variant.detail.product.name)
-    year = datetime.now().year
-    month = datetime.now().strftime('%m')
+    year = timezone.now().year
+    month = timezone.now().strftime('%m')
     
     uploaded_count = 0
     for img in images:
@@ -2515,7 +2515,7 @@ def banner_list(request):
                 'id': banner.id,
                 'banner_id': banner.banner_id,
                 'image_url': banner.image.url,
-                'created_at': banner.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                'created_at': timezone.localtime(banner.created_at).strftime('%Y-%m-%d %H:%M:%S')
             })
         return JsonResponse({'success': True, 'banners': banner_data})
     except Exception as e:
@@ -2671,7 +2671,7 @@ def product_content_list(request):
             'product_name': content.product.name,
             'content_text': content.content_text,
             'image_url': content.image.url if content.image else None,
-            'created_at': content.created_at.strftime('%Y-%m-%d %H:%M:%S')
+            'created_at': timezone.localtime(content.created_at).strftime('%Y-%m-%d %H:%M:%S')
         })
     
     return JsonResponse({'success': True, 'contents': content_data})
@@ -2926,7 +2926,7 @@ def admin_order_list(request):
             'refund_account': order.refund_account or '',
             'refund_bank': order.refund_bank or '',
             'refund_status': order.refund_status or '',
-            'created_at': order.created_at.strftime('%d/%m/%Y %H:%M'),
+            'created_at': timezone.localtime(order.created_at).strftime('%d/%m/%Y %H:%M'),
             'items': items_data,
         })
     
@@ -3104,7 +3104,7 @@ def admin_order_detail(request):
         'status_display': order.get_status_display(),
         'payment_method': order.get_payment_method_display(),
         'payment_method_key': order.payment_method,
-        'created_at': order.created_at.strftime('%d/%m/%Y %H:%M'),
+        'created_at': timezone.localtime(order.created_at).strftime('%d/%m/%Y %H:%M'),
         'total_amount': str(order.total_amount),
         'user_email': order.user.email if order.user else '—',
         'address': address_data,
@@ -3258,7 +3258,7 @@ def review_list(request):
             'rating': r.rating,
             'comment': r.comment or '',
             'images': images,
-            'created_at': r.created_at.strftime('%d/%m/%Y %H:%M'),
+            'created_at': timezone.localtime(r.created_at).strftime('%d/%m/%Y %H:%M'),
         })
 
     return JsonResponse({

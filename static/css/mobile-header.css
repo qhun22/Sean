@@ -12,6 +12,13 @@
 /* ==================== MOBILE ONLY ==================== */
 @media (max-width: 1024px) {
 
+    /* ===== Prevent auto-zoom on iOS Safari when focus input ===== */
+    .qh-mobile-search-panel input,
+    .qh-mobile-search-panel select,
+    .qh-mobile-search-panel textarea {
+        font-size: 16px !important;
+    }
+
     /* Ẩn PC header, điều chỉnh body padding */
     .qh-header-container {
         display: none;
@@ -263,7 +270,7 @@
         padding: 0 14px;
         border: none;
         font-family: 'Signika', sans-serif;
-        font-size: 14px;
+        font-size: 16px;
         background: transparent;
         min-width: 0;
     }

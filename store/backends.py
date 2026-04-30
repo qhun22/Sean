@@ -23,8 +23,9 @@ class EmailBackend(ModelBackend):
         if username is None or password is None:
             return
         
+        username = (username or '').strip().lower()
         try:
-            # Tìm user theo email
+            # Tìm user theo email (đã chuẩn hóa)
             user = User.objects.get(email=username)
         except User.DoesNotExist:
             # Chạy hash password để tránh timing attack

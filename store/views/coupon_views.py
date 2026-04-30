@@ -73,7 +73,7 @@ def coupon_list(request):
             'used_count': c.used_count,
             'is_active': c.is_active,
             'is_valid': c.is_valid(),
-            'expire_at': c.expire_at.strftime('%d/%m/%Y'),
+            'expire_at': timezone.localtime(c.expire_at).strftime('%d/%m/%Y'),
         })
     return JsonResponse({'success': True, 'coupons': result})
 
@@ -248,17 +248,20 @@ def coupon_apply(request):
         verified_student = (request.user.verified_student_email or '').lower()
         verified_teacher = (request.user.verified_teacher_email or '').lower()
         
-        # So sánh trực tiếp hoặc qua email đã xác thực edu
-        is_valid = (
-            user_email == target_email or
-            user_email == verified_student or
-            user_email == verified_teacher or
-            target_email == verified_student or
-            target_email == verified_teacher
-        )
-        
-        if not is_valid:
-            return JsonResponse({'success': False, 'message': 'Mã giảm giá không áp dụng cho tài khoản của bạn'})
+        is_edu_voucher = target_email.endswith('.edu.vn')
+        if is_edu_voucher:
+            if not (user_email == verified_student or user_email == verified_teacher or target_email == verified_student or target_email == verified_teacher):
+                return JsonResponse({'success': False, 'message': 'Mã giảm giá Edu chỉ áp dụng khi tài khoản đã xác thực Edu.'})
+        else:
+            is_valid = (
+                user_email == target_email or
+                user_email == verified_student or
+                user_email == verified_teacher or
+                target_email == verified_student or
+                target_email == verified_teacher
+            )
+            if not is_valid:
+                return JsonResponse({'success': False, 'message': 'Mã giảm giá không áp dụng cho tài khoản của bạn'})
     
     # 5. Đơn có đạt tối thiểu không?
     if order_total < coupon.min_order_amount:

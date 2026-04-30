@@ -47,7 +47,7 @@ def send_otp_view(request):
     Gửi OTP qua email (AJAX)
     """
     if request.method == 'POST':
-        email = request.POST.get('email')
+        email = (request.POST.get('email') or '').strip().lower()
         
         if not email:
             return JsonResponse({'status': 'error', 'message': 'Thiếu email'})
@@ -111,8 +111,6 @@ def send_otp_view(request):
                 
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
-    
-            return JsonResponse({'status': 'error', 'message': 'Yêu cầu không hợp lệ'})
 
 
 def product_detail_view(request, product_id):
@@ -809,8 +807,8 @@ def order_tracking(request):
                     pending_qr.status = 'cancelled'
                     pending_qr.save()
             
-            # Hủy các đơn hàng
-            expired_orders.update(status='cancelled')
+            # Đánh dấu đơn VietQR hết hạn thanh toán
+            expired_orders.update(status='payment_expired', payment_status='expired')
         
         # Lấy tất cả đơn hàng (bao gồm cả đã tất toán)
         orders = Order.objects.filter(
@@ -910,7 +908,7 @@ def refund_pending(request):
             'payment_method': order.payment_method,
             'refund_account': order.refund_account,
             'refund_bank': order.refund_bank,
-            'created_at': order.created_at.strftime('%d/%m/%Y %H:%M'),
+            'created_at': timezone.localtime(order.created_at).strftime('%d/%m/%Y %H:%M'),
             'items': items_data
         })
     
@@ -945,7 +943,7 @@ def refund_history(request):
             'total_amount': str(order.total_amount),
             'refund_account': order.refund_account,
             'refund_bank': order.refund_bank,
-            'created_at': order.created_at.strftime('%d/%m/%Y %H:%M'),
+            'created_at': timezone.localtime(order.created_at).strftime('%d/%m/%Y %H:%M'),
             'items': items_data
         })
     
@@ -987,7 +985,7 @@ def refund_detail(request, order_code):
             'refund_account': order.refund_account,
             'refund_bank': order.refund_bank,
             'refund_status': order.refund_status,
-            'created_at': order.created_at.strftime('%d/%m/%Y %H:%M'),
+            'created_at': timezone.localtime(order.created_at).strftime('%d/%m/%Y %H:%M'),
             'items': items_data
         }
     })
@@ -1696,7 +1694,7 @@ def login_view(request):
     
     if request.method == 'POST':
         # Lấy email để đăng nhập
-        email = request.POST.get('username')  # Vẫn dùng field username trong form nhưng là email
+        email = (request.POST.get('username') or '').strip().lower()  # Vẫn dùng field username trong form nhưng là email
         password = request.POST.get('password')
         remember_me = request.POST.get('remember_me')
         
@@ -1812,15 +1810,22 @@ def profile(request):
                 target_email = cp.target_email.lower() if cp.target_email else ''
                 verified_student = (getattr(request.user, 'verified_student_email', None) or '').lower()
                 verified_teacher = (getattr(request.user, 'verified_teacher_email', None) or '').lower()
-                is_match = (
-                    user_email == target_email or
-                    user_email == verified_student or
-                    user_email == verified_teacher or
-                    target_email == verified_student or
-                    target_email == verified_teacher
-                )
-                if not is_match:
-                    continue
+                is_edu_voucher = target_email.endswith('.edu.vn') and 'edu' in (cp.name or '').lower()
+
+                if is_edu_voucher:
+                    # Chỉ cho phép voucher Edu khi user thực sự đã xác thực tài khoản Edu
+                    if not (user_email == verified_student or user_email == verified_teacher or target_email == verified_student or target_email == verified_teacher):
+                        continue
+                else:
+                    is_match = (
+                        user_email == target_email or
+                        user_email == verified_student or
+                        user_email == verified_teacher or
+                        target_email == verified_student or
+                        target_email == verified_teacher
+                    )
+                    if not is_match:
+                        continue
             available_coupons.append(cp)
         
         context.update({
@@ -2067,7 +2072,7 @@ def register_view(request):
     
     if request.method == 'POST':
         fullname = request.POST.get('fullname')
-        email = request.POST.get('email')
+        email = (request.POST.get('email') or '').strip().lower()
         phone = request.POST.get('phone')
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
@@ -2085,7 +2090,7 @@ def register_view(request):
         
         # Kiểm tra OTP
         session_otp = request.session.get('otp')
-        session_email = request.session.get('otp_email')
+        session_email = (request.session.get('otp_email') or '').strip().lower()
         session_created_at = request.session.get('otp_created_at', 0)
         session_expire = request.session.get('otp_expire', 300)
         
@@ -2138,7 +2143,7 @@ def send_otp_forgot_password_view(request):
     Gửi OTP cho quên mật khẩu (AJAX)
     """
     if request.method == 'POST':
-        email = request.POST.get('email')
+        email = (request.POST.get('email') or '').strip().lower()
         
         if not email:
             return JsonResponse({'status': 'error', 'message': 'Thiếu email'})
@@ -2211,7 +2216,7 @@ def verify_otp_forgot_password_view(request):
     Xác minh OTP cho quên mật khẩu (AJAX)
     """
     if request.method == 'POST':
-        email = request.POST.get('email')
+        email = (request.POST.get('email') or '').strip().lower()
         otp_input = request.POST.get('otp')
         
         if not email or not otp_input:
@@ -2219,7 +2224,7 @@ def verify_otp_forgot_password_view(request):
         
         # Kiểm tra OTP
         session_otp = request.session.get('fp_otp')
-        session_email = request.session.get('fp_otp_email')
+        session_email = (request.session.get('fp_otp_email') or '').strip().lower()
         session_created_at = request.session.get('fp_otp_created_at', 0)
         session_expire = request.session.get('fp_otp_expire', 300)
         
@@ -2238,14 +2243,14 @@ def reset_password_view(request):
     Đặt lại mật khẩu (AJAX)
     """
     if request.method == 'POST':
-        email = request.POST.get('email')
+        email = (request.POST.get('email') or '').strip().lower()
         new_password = request.POST.get('new_password')
         
         if not email or not new_password:
             return JsonResponse({'status': 'error', 'message': 'Thiếu tham số'})
         
         # Kiểm tra đã xác minh OTP chưa
-        if not request.session.get('fp_verified') or request.session.get('fp_otp_email') != email:
+        if not request.session.get('fp_verified') or (request.session.get('fp_otp_email') or '').strip().lower() != email:
             return JsonResponse({'status': 'error', 'message': 'Vui lòng xác minh OTP trước!'})
         
         # Cập nhật mật khẩu
@@ -2265,8 +2270,6 @@ def reset_password_view(request):
             return JsonResponse({'status': 'success', 'message': 'Đặt lại mật khẩu thành công'})
         except CustomUser.DoesNotExist:
             return JsonResponse({'status': 'error', 'message': 'Không tìm thấy người dùng'})
-    
-            return JsonResponse({'status': 'error', 'message': 'Yêu cầu không hợp lệ'})
 
 
 @login_required
@@ -2622,7 +2625,7 @@ def dashboard_order_detail(request):
             'status': o.status,
             'status_display': STATUS_DISPLAY.get(o.status, o.status),
             'payment_method': o.get_payment_method_display(),
-            'created_at': o.created_at.strftime('%d/%m/%Y %H:%M'),
+            'created_at': timezone.localtime(o.created_at).strftime('%d/%m/%Y %H:%M'),
         })
 
     return JsonResponse({
@@ -2777,18 +2780,6 @@ def dashboard_product_detail(request):
     })
 
 
-def generate_slug(text):
-    """Tạo slug từ text tiếng Việt"""
-    # Remove accents
-    import unicodedata
-    text = unicodedata.normalize('NFD', text)
-    text = text.encode('ascii', 'ignore').decode('ascii')
-    # Convert to lowercase and replace spaces with hyphens
-    text = re.sub(r'[^\w\s-]', '', text)
-    text = re.sub(r'[-\s]+', '-', text)
-    return text.lower().strip('-')
-
-
 @login_required
 @require_http_methods(["GET"])
 def export_revenue_month(request):
@@ -2842,7 +2833,7 @@ def export_revenue_month(request):
             int(order.total_amount),
             order.payment_method.upper(),
             STATUS_VN.get(order.status, order.status),
-            order.created_at.strftime('%d/%m/%Y %H:%M'),
+            timezone.localtime(order.created_at).strftime('%d/%m/%Y %H:%M'),
         ]
         if order.status == 'delivered':
             total_revenue += int(order.total_amount)
@@ -2934,7 +2925,7 @@ def export_revenue_year(request):
             order.payment_method.upper(),
             STATUS_VN.get(order.status, order.status),
             f'Tháng {order.created_at.month}',
-            order.created_at.strftime('%d/%m/%Y %H:%M'),
+            timezone.localtime(order.created_at).strftime('%d/%m/%Y %H:%M'),
         ]
         if order.status == 'delivered':
             total_revenue += int(order.total_amount)
@@ -3651,8 +3642,8 @@ def product_image_upload(request):
     
     # Create upload path
     product_slug = slugify(detail.product.name) if detail else slugify(variant.detail.product.name)
-    year = datetime.now().year
-    month = datetime.now().strftime('%m')
+    year = timezone.now().year
+    month = timezone.now().strftime('%m')
     
     uploaded_count = 0
     for img in images:
@@ -4428,7 +4419,7 @@ def banner_list(request):
                 'id': banner.id,
                 'banner_id': banner.banner_id,
                 'image_url': banner.image.url,
-                'created_at': banner.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                'created_at': timezone.localtime(banner.created_at).strftime('%Y-%m-%d %H:%M:%S')
             })
         return JsonResponse({'success': True, 'banners': banner_data})
     except Exception as e:
@@ -4582,8 +4573,8 @@ def blog_list(request):
                 'content': blog.content,
                 'image_url': blog.image.url if blog.image else None,
                 'is_active': blog.is_active,
-                'created_at': blog.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                'updated_at': blog.updated_at.strftime('%Y-%m-%d %H:%M:%S') if blog.updated_at else None
+                'created_at': timezone.localtime(blog.created_at).strftime('%Y-%m-%d %H:%M:%S'),
+                'updated_at': timezone.localtime(blog.updated_at).strftime('%Y-%m-%d %H:%M:%S') if blog.updated_at else None
             })
         return JsonResponse({'success': True, 'blogs': blog_data})
     except Exception as e:
@@ -4626,7 +4617,7 @@ def blog_add(request):
                 'summary': blog.summary,
                 'image_url': blog.image.url if blog.image else None,
                 'is_active': blog.is_active,
-                'created_at': blog.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                'created_at': timezone.localtime(blog.created_at).strftime('%Y-%m-%d %H:%M:%S')
             }
         })
     except Exception as e:
@@ -4683,7 +4674,7 @@ def blog_update(request):
                 'summary': blog.summary,
                 'image_url': blog.image.url if blog.image else None,
                 'is_active': blog.is_active,
-                'updated_at': blog.updated_at.strftime('%Y-%m-%d %H:%M:%S')
+                'updated_at': timezone.localtime(blog.updated_at).strftime('%Y-%m-%d %H:%M:%S')
             }
         })
     except BlogPost.DoesNotExist:
@@ -4746,7 +4737,7 @@ def product_content_list(request):
             'product_name': content.product.name,
             'content_text': content.content_text,
             'image_url': content.image.url if content.image else None,
-            'created_at': content.created_at.strftime('%Y-%m-%d %H:%M:%S')
+            'created_at': timezone.localtime(content.created_at).strftime('%Y-%m-%d %H:%M:%S')
         })
     
     return JsonResponse({'success': True, 'contents': content_data})
@@ -5001,6 +4992,7 @@ def place_order(request):
     from store.models import Cart, Order, OrderItem, ProductDetail, FolderColorImage, PendingQRPayment
     import json
     import random as _rand
+    from django.db import transaction
     
     try:
         data = json.loads(request.body)
@@ -5047,60 +5039,66 @@ def place_order(request):
     coupon_code = data.get('coupon_code', '').strip().upper()
     discount_amount = Decimal('0')
     item_count = sum(ci.quantity for ci in cart_items)
-    if coupon_code:
-        from store.models import Coupon
-        try:
-            coupon = Coupon.objects.get(code=coupon_code)
-            # Kiểm tra target giống coupon_apply: hỗ trợ cả email edu đã xác thực
-            _target_ok = False
-            if coupon.target_type == 'all':
-                _target_ok = True
-            elif coupon.target_type == 'single':
-                _user_email = request.user.email.lower() if request.user.email else ''
-                _target_email = coupon.target_email.lower() if coupon.target_email else ''
-                _verified_student = (getattr(request.user, 'verified_student_email', None) or '').lower()
-                _verified_teacher = (getattr(request.user, 'verified_teacher_email', None) or '').lower()
-                _target_ok = (
-                    _user_email == _target_email or
-                    _user_email == _verified_student or
-                    _user_email == _verified_teacher or
-                    _target_email == _verified_student or
-                    _target_email == _verified_teacher
-                )
-            if (coupon.is_valid()
-                and total_amount >= coupon.min_order_amount
-                and (coupon.max_products == 0 or item_count <= coupon.max_products)
-                and _target_ok):
-                # Kiểm tra per-user usage
-                from store.models import CouponUsage
-                _user_usage = CouponUsage.objects.filter(coupon=coupon, user=request.user).count()
-                if coupon.usage_limit > 0 and _user_usage >= coupon.usage_limit:
-                    coupon_code = ''  # Người dùng này hết lượt
+    coupon_obj = None
+    with transaction.atomic():
+        if coupon_code:
+            from store.models import Coupon
+            try:
+                coupon = Coupon.objects.select_for_update().get(code=coupon_code)
+                # Kiểm tra target giống coupon_apply: hỗ trợ cả email edu đã xác thực
+                _target_ok = False
+                if coupon.target_type == 'all':
+                    _target_ok = True
+                elif coupon.target_type == 'single':
+                    _user_email = request.user.email.lower() if request.user.email else ''
+                    _target_email = coupon.target_email.lower() if coupon.target_email else ''
+                    _verified_student = (getattr(request.user, 'verified_student_email', None) or '').lower()
+                    _verified_teacher = (getattr(request.user, 'verified_teacher_email', None) or '').lower()
+                    _target_ok = (
+                        _user_email == _target_email or
+                        _user_email == _verified_student or
+                        _user_email == _verified_teacher or
+                        _target_email == _verified_student or
+                        _target_email == _verified_teacher
+                    )
+                if (coupon.is_valid()
+                    and total_amount >= coupon.min_order_amount
+                    and (coupon.max_products == 0 or item_count <= coupon.max_products)
+                    and _target_ok):
+                    # Kiểm tra per-user usage
+                    from store.models import CouponUsage
+                    _user_usage = CouponUsage.objects.filter(coupon=coupon, user=request.user).count()
+                    if coupon.usage_limit > 0 and _user_usage >= coupon.usage_limit:
+                        coupon_code = ''  # Người dùng này hết lượt
+                    else:
+                        discount_amount = coupon.calculate_discount(total_amount)
+                        coupon_obj = coupon  # Lưu lại để tạo CouponUsage sau
                 else:
-                    discount_amount = coupon.calculate_discount(total_amount)
-                    CouponUsage.objects.create(coupon=coupon, user=request.user)
-                    coupon.used_count += 1
-                    coupon.save(update_fields=['used_count'])
-            else:
+                    coupon_code = ''
+            except Coupon.DoesNotExist:
                 coupon_code = ''
-        except Coupon.DoesNotExist:
-            coupon_code = ''
-    
-    final_amount = total_amount - discount_amount
-    
-    # Tạo mã đơn hàng
-    tracking_code = 'QHUN' + str(_rand.randint(10000, 99999))
-    
-    # Tạo Order
-    order = Order.objects.create(
-        user=request.user,
-        order_code=tracking_code,
-        total_amount=final_amount,
-        coupon_code=coupon_code,
-        discount_amount=discount_amount,
-        payment_method=payment_method,
-        status='pending' if payment_method == 'cod' else 'processing'
-    )
+        
+        final_amount = total_amount - discount_amount
+        
+        # Tạo mã đơn hàng
+        tracking_code = 'QHUN' + str(_rand.randint(10000, 99999))
+        
+        # Tạo Order
+        order = Order.objects.create(
+            user=request.user,
+            order_code=tracking_code,
+            total_amount=final_amount,
+            coupon_code=coupon_code,
+            discount_amount=discount_amount,
+            payment_method=payment_method,
+            status='pending' if payment_method == 'cod' else 'processing'
+        )
+        
+        # Nếu có coupon hợp lệ, tạo CouponUsage sau khi order tạo thành công
+        if coupon_obj:
+            CouponUsage.objects.create(coupon=coupon_obj, user=request.user)
+            coupon_obj.used_count += 1
+            coupon_obj.save(update_fields=['used_count'])
     
     # Tạo OrderItem (stock sẽ giảm khi admin set status = delivered)
     for ci in cart_items:
@@ -5380,8 +5378,9 @@ def vietqr_expire(request):
         try:
             order = Order.objects.get(order_code=order_code, user=request.user)
             if order.status == 'awaiting_payment':
-                order.status = 'cancelled'
-                order.save()
+                order.status = 'payment_expired'
+                order.payment_status = 'expired'
+                order.save(update_fields=['status', 'payment_status'])
         except Order.DoesNotExist:
             pass
     
@@ -5442,7 +5441,7 @@ def admin_order_list(request):
             'refund_account': order.refund_account or '',
             'refund_bank': order.refund_bank or '',
             'refund_status': order.refund_status or '',
-            'created_at': order.created_at.strftime('%d/%m/%Y %H:%M'),
+            'created_at': timezone.localtime(order.created_at).strftime('%d/%m/%Y %H:%M'),
             'items': items_data,
         })
     
@@ -5617,7 +5616,7 @@ def admin_order_detail(request):
         'status_display': order.get_status_display(),
         'payment_method': order.get_payment_method_display(),
         'payment_method_key': order.payment_method,
-        'created_at': order.created_at.strftime('%d/%m/%Y %H:%M'),
+        'created_at': timezone.localtime(order.created_at).strftime('%d/%m/%Y %H:%M'),
         'total_amount': str(order.total_amount),
         'user_email': order.user.email if order.user else '—',
         'address': address_data,
@@ -5741,7 +5740,7 @@ def qr_payment_list(request):
             'stt': idx,
             'amount': int(qr.amount),
             'transfer_code': qr.transfer_code,
-            'created_at': qr.created_at.strftime('%d/%m/%Y %H:%M:%S'),
+            'created_at': timezone.localtime(qr.created_at).strftime('%d/%m/%Y %H:%M:%S'),
             'user_email': qr.user.email,
             'qr_url': qr.qr_url(),
             'status': qr.status,
@@ -5771,7 +5770,7 @@ def qr_payment_detail(request):
             'id': qr.id,
             'amount': int(qr.amount),
             'transfer_code': qr.transfer_code,
-            'created_at': qr.created_at.strftime('%d/%m/%Y %H:%M:%S'),
+            'created_at': timezone.localtime(qr.created_at).strftime('%d/%m/%Y %H:%M:%S'),
             'user_email': qr.user.email,
             'user_name': qr.user.get_full_name(),
             'qr_url': qr.qr_url(),
@@ -6251,7 +6250,7 @@ def coupon_list(request):
             'used_count': c.used_count,
             'is_active': c.is_active,
             'is_valid': c.is_valid(),
-            'expire_at': c.expire_at.strftime('%d/%m/%Y'),
+            'expire_at': timezone.localtime(c.expire_at).strftime('%d/%m/%Y'),
         })
     return JsonResponse({'success': True, 'coupons': result})
 
@@ -6411,29 +6410,31 @@ def coupon_apply(request):
     
     # 4. Có đúng đối tượng không?
     if coupon.target_type == 'single':
-        if not request.user.is_authenticated:
-            return JsonResponse({'success': False, 'message': 'Vui lòng đăng nhập để sử dụng mã này'})
-        
-        # Kiểm tra email đăng nhập HOẶC email edu đã xác thực
-        user_email = request.user.email.lower() if request.user.email else ''
-        target_email = coupon.target_email.lower() if coupon.target_email else ''
-        
-        # Lấy email edu đã xác thực (xử lý None)
-        verified_student = (request.user.verified_student_email or '').lower()
-        verified_teacher = (request.user.verified_teacher_email or '').lower()
-        
-        # So sánh trực tiếp hoặc qua email đã xác thực edu
-        is_valid = (
-            user_email == target_email or
-            user_email == verified_student or
-            user_email == verified_teacher or
-            target_email == verified_student or
-            target_email == verified_teacher
-        )
-        
-        if not is_valid:
-            return JsonResponse({'success': False, 'message': 'Mã giảm giá không áp dụng cho tài khoản của bạn'})
-    
+            if not request.user.is_authenticated:
+                return JsonResponse({'success': False, 'message': 'Vui lòng đăng nhập để sử dụng mã này'})
+            
+            # Kiểm tra email đăng nhập HOẶC email edu đã xác thực
+            user_email = request.user.email.lower() if request.user.email else ''
+            target_email = coupon.target_email.lower() if coupon.target_email else ''
+            
+            # Lấy email edu đã xác thực (xử lý None)
+            verified_student = (request.user.verified_student_email or '').lower()
+            verified_teacher = (request.user.verified_teacher_email or '').lower()
+            
+            is_edu_voucher = target_email.endswith('.edu.vn') and 'edu' in (coupon.name or '').lower()
+            if is_edu_voucher:
+                if not (user_email == verified_student or user_email == verified_teacher or target_email == verified_student or target_email == verified_teacher):
+                    return JsonResponse({'success': False, 'message': 'Mã giảm giá Edu chỉ áp dụng khi tài khoản đã xác thực Edu.'})
+            else:
+                is_valid = (
+                    user_email == target_email or
+                    user_email == verified_student or
+                    user_email == verified_teacher or
+                    target_email == verified_student or
+                    target_email == verified_teacher
+                )
+                if not is_valid:
+                    return JsonResponse({'success': False, 'message': 'Mã giảm giá không áp dụng cho tài khoản của bạn'})
     # 5. Đơn có đạt tối thiểu không?
     if order_total < coupon.min_order_amount:
         min_fmt = f'{int(coupon.min_order_amount):,}'.replace(',', '.')
@@ -6645,48 +6646,3 @@ def verify_code(request):
         })
     else:
         return JsonResponse({'success': True, 'message': f'Xác thực {role} thành công! Tài khoản của bạn đã được xác thực.'})
-
-
-def chatbot_api(request):
-    import json as _json
-    import traceback as _tb
-
-    try:
-        body = _json.loads(request.body)
-        action = (body.get("action") or "").strip().lower()
-        message = body.get("message", "").strip()
-    except Exception:
-        return JsonResponse({"message": "Tin nhắn không hợp lệ.", "suggestions": []}, status=400)
-
-    if action == "reset":
-        try:
-            from .chatbot_service import ChatbotService
-            ChatbotService().reset_conversation(getattr(request, "session", None))
-            return JsonResponse({"ok": True})
-        except Exception:
-            return JsonResponse({"ok": False}, status=200)
-
-    if not message:
-        return JsonResponse({"message": "Vui lòng nhập nội dung.", "suggestions": []}, status=400)
-
-    if len(message) > 500:
-        return JsonResponse({"message": "Tin nhắn quá dài, vui lòng rút gọn lại nhé!", "suggestions": []}, status=400)
-
-    try:
-        from .chatbot_service import ChatbotService
-        user = request.user if hasattr(request, 'user') and request.user.is_authenticated else None
-        service = ChatbotService()
-        result = service.process_message(message, user=user, session=getattr(request, "session", None))
-        return JsonResponse(result)
-    except Exception as e:
-        import logging
-        logging.getLogger(__name__).exception("Chatbot API error")
-        if settings.DEBUG:
-            return JsonResponse({
-                "message": f"[DEBUG] Lỗi: {type(e).__name__}: {e}",
-                "suggestions": [],
-            }, status=200)
-        return JsonResponse({
-            "message": "Xin lỗi, hệ thống đang gặp sự cố. Vui lòng thử lại sau!",
-            "suggestions": ["Tư vấn chọn máy", "Gặp nhân viên"],
-        }, status=200)

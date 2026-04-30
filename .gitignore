@@ -1,15 +1,89 @@
-venv/
-.venv/
-db.sqlite3
+# ==================== Python ====================
 __pycache__/
+*.py[cod]
 *.pyc
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ==================== Virtual Environment ====================
+.venv/
+venv/
+ENV/
+env/
 .env
-.env.example
-data/embeddings_cache/
+
+# ==================== IDE ====================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ==================== Django ====================
+db.sqlite3
+db.sqlite3-journal
+*.log
+local_settings.py
+media/
+staticfiles/
+
+# ==================== Secrets ====================
+.env
+.env.local
+.env.production
+.env.*.local
+*.pem
+*.key
+
+# ==================== AI / ML ====================
 *.safetensors
 *.pt
 *.bin
-logs/chatbot.log
-logs/*.log
-SETUP.md
+*.ckpt
+data/embeddings_cache/
+data/*.pkl
+*.pkl
 
+# ==================== Logs ====================
+logs/
+*.log
+
+# ==================== Docs & Temp ====================
+*.md
+!README.md
+SETUP.md
+DEPLOY_CHECKLIST.md
+migrate.py
+collectstatic.py
+passenger_wsgi.py
+test_static.py
+stderr.log
+
+# ==================== Backup ====================
+backup/
+backup_unused/
+*.bak
+*.backup
+
+# ==================== Config ====================
+config/__pycache__/
+config/*.pyc
+store/__pycache__/
+store/**/*.pyc

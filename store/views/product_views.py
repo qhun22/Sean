@@ -608,7 +608,7 @@ def submit_review(request):
         if len(images) > max_images:
             return JsonResponse({'success': False, 'message': f'Tối đa {max_images} ảnh'})
 
-        now = datetime.now()
+        now = timezone.now()
         year = now.strftime('%Y')
         month = now.strftime('%m')  # 01, 02, ...
         # Tên thư mục = email hoặc SĐT người dùng (sanitize cho filesystem)
@@ -735,8 +735,7 @@ def home(request):
         # Dùng 30 phút làm seed để random consistent mỗi 30 phút
         # Sau mỗi 30 phút random khác lần
         import random
-        import datetime
-        now = datetime.datetime.now()
+        now = timezone.now()
         # Tính slot 30 phút: (hour * 60 + minute) // 30
         time_slot = (now.hour * 60 + now.minute) // 30
         seed_str = f"{now.date()}_{time_slot}"
@@ -1255,10 +1254,9 @@ def product_filter_json(request):
     else:
         # Default: Random display giống hàm home
         import random
-        import datetime
         
         # Dùng 30 phút làm seed để random consistent mỗi 30 phút
-        now = datetime.datetime.now()
+        now = timezone.now()
         time_slot = (now.hour * 60 + now.minute) // 30
         seed_str = f"{now.date()}_{time_slot}"
         random.seed(seed_str)

@@ -53,7 +53,7 @@ def send_otp_view(request):
     Gửi OTP qua email (AJAX)
     """
     if request.method == 'POST':
-        email = request.POST.get('email')
+        email = (request.POST.get('email') or '').strip().lower()
 
         if not email:
             return JsonResponse({'status': 'error', 'message': 'Thiếu email'})
@@ -116,17 +116,9 @@ def login_view(request):
     
     if request.method == 'POST':
         # Lấy email để đăng nhập
-        email = request.POST.get('username')  # Vẫn dùng field username trong form nhưng là email
+        email = (request.POST.get('username') or '').strip().lower()  # Vẫn dùng field username trong form nhưng là email
         password = request.POST.get('password')
         remember_me = request.POST.get('remember_me')
-        
-        # Tìm user theo email - CustomUser dùng email làm USERNAME_FIELD
-        from store.models import CustomUser
-        try:
-            user_obj = CustomUser.objects.get(email=email)
-            username = user_obj.username  # Sẽ là None nhưng authenticate cần
-        except CustomUser.DoesNotExist:
-            username = email
         
         # turnstile_token = request.POST.get('cf-turnstile-response')
         
@@ -233,15 +225,21 @@ def profile(request):
                 target_email = cp.target_email.lower() if cp.target_email else ''
                 verified_student = (getattr(request.user, 'verified_student_email', None) or '').lower()
                 verified_teacher = (getattr(request.user, 'verified_teacher_email', None) or '').lower()
-                is_match = (
-                    user_email == target_email or
-                    user_email == verified_student or
-                    user_email == verified_teacher or
-                    target_email == verified_student or
-                    target_email == verified_teacher
-                )
-                if not is_match:
-                    continue
+                is_edu_voucher = target_email.endswith('.edu.vn')
+
+                if is_edu_voucher:
+                    if not (user_email == verified_student or user_email == verified_teacher or target_email == verified_student or target_email == verified_teacher):
+                        continue
+                else:
+                    is_match = (
+                        user_email == target_email or
+                        user_email == verified_student or
+                        user_email == verified_teacher or
+                        target_email == verified_student or
+                        target_email == verified_teacher
+                    )
+                    if not is_match:
+                        continue
             available_coupons.append(cp)
         
         context.update({
@@ -260,8 +258,7 @@ def profile(request):
             edu_email = request.user.verified_student_email or request.user.verified_teacher_email
             edu_voucher = Coupon.objects.filter(
                 target_type='single',
-                target_email__iexact=edu_email,
-                is_active=True
+                target_email__iexact=edu_email
             ).first()
             
             if edu_voucher:
@@ -295,7 +292,7 @@ def register_view(request):
     
     if request.method == 'POST':
         fullname = request.POST.get('fullname')
-        email = request.POST.get('email')
+        email = (request.POST.get('email') or '').strip().lower()
         phone = request.POST.get('phone')
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
@@ -337,6 +334,61 @@ def register_view(request):
         )
         # Đảm bảo user thường không có OAuth flag
         user.is_oauth_user = False
+        
+        # Tự động xác thực nếu email là .edu.vn
+        if email.endswith('.edu.vn'):
+            # Kiểm tra email đã được xác thực bởi người khác chưa
+            from django.db.models import Q
+            existing_user = CustomUser.objects.filter(
+                Q(verified_student_email__iexact=email) | Q(verified_teacher_email__iexact=email)
+            ).exclude(id=user.id).first()
+            
+            if not existing_user:
+                # Xác định student hay teacher dựa trên keyword trong email
+                teacher_keywords = ['gv.', 'gv@', 'giangvien', 'giang.vien', 'lecturer', 'teacher', 'faculty']
+                is_teacher = any(kw in email for kw in teacher_keywords)
+                
+                if is_teacher:
+                    user.is_teacher_verified = True
+                    user.verified_teacher_email = email
+                else:
+                    user.is_student_verified = True
+                    user.verified_student_email = email
+                
+                # Tạo voucher giảm 50% cho người dùng Edu (chỉ tạo 1 lần)
+                from store.models import Coupon
+                from datetime import timedelta
+                from django.utils import timezone
+                
+                # Kiểm tra xem đã có voucher edu chưa
+                existing_edu_coupon = Coupon.objects.filter(
+                    target_type='single',
+                    target_email=email,
+                    is_active=True
+                ).first()
+                
+                if not existing_edu_coupon:
+                    # Tạo mã voucher duy nhất: QHUN + 5 số
+                    import random
+                    voucher_code = 'QHUN' + ''.join(random.choices('0123456789', k=5))
+                    
+                    # Tạo coupon/voucher
+                    Coupon.objects.create(
+                        name='Ưu đãi Edu - Giảm 50%',
+                        code=voucher_code,
+                        discount_type='percentage',
+                        discount_value=50,
+                        target_type='single',
+                        target_email=email,
+                        max_products=1,
+                        min_order_amount=100000,
+                        usage_limit=1,
+                        used_count=0,
+                        expire_days=90,  # 90 ngày
+                        is_active=True,
+                        expire_at=timezone.now() + timedelta(days=90)
+                    )
+        
         user.save()
         
         # Xóa OTP khỏi session
@@ -368,7 +420,7 @@ def send_otp_forgot_password_view(request):
     Gửi OTP cho quên mật khẩu (AJAX)
     """
     if request.method == 'POST':
-        email = request.POST.get('email')
+        email = (request.POST.get('email') or '').strip().lower()
         
         if not email:
             return JsonResponse({'status': 'error', 'message': 'Thiếu email'})
@@ -388,8 +440,23 @@ def send_otp_forgot_password_view(request):
         request.session['fp_otp_expire'] = 300  # 5 phút
         
         # Gửi email qua SendGrid
-        api_key = os.getenv('SENDGRID_API_KEY', '')
-        from_email = os.getenv('SENDGRID_FROM_EMAIL', 'noreply@qhun22.com')
+        api_key = os.getenv('SENDGRID_API_KEY', '').strip()
+        from_email = os.getenv('SENDGRID_FROM_EMAIL', settings.DEFAULT_FROM_EMAIL or 'noreply@qhun22.com').strip()
+
+        def send_email_fallback():
+            from django.core.mail import send_mail
+            try:
+                send_mail(
+                    subject='OTP Quên Mật Khẩu - QHUN22',
+                    message=f'Mã OTP đặt lại mật khẩu của bạn là: {otp}\nMã có hiệu lực trong 5 phút.',
+                    from_email=from_email,
+                    recipient_list=[email],
+                    html_message=html_body,
+                    fail_silently=False,
+                )
+                return True, f'Đã gửi mã OTP tới {email}. Vui lòng kiểm tra hộp thư.'
+            except Exception as exc:
+                return False, str(exc)
 
         html_body = f"""
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f5f5f5;">
@@ -402,39 +469,43 @@ def send_otp_forgot_password_view(request):
         </div>
         """
 
-        data = {
-            "personalizations": [{
-                "to": [{"email": email}],
-                "subject": "OTP Quên Mật Khẩu - QHUN22"
-            }],
+        # Debug: in OTP ra console để test (nếu không có SendGrid)
+        print(f"=== OTP for {email}: {otp} ===")
+
+        if not api_key:
+            success, message = send_email_fallback()
+            if success:
+                return JsonResponse({'status': 'success', 'message': message})
+            return JsonResponse({'status': 'error', 'message': f'Gửi email thất bại: {message}'})
+
+        payload = {
+            "personalizations": [{"to": [{"email": email}], "subject": "OTP Quên Mật Khẩu - QHUN22"}],
             "from": {"email": from_email},
-            "content": [{
-                "type": "text/html",
-                "value": html_body
-            }]
+            "content": [{"type": "text/html", "value": html_body}]
         }
-        
+
         try:
-            response = requests.post(
+            resp = requests.post(
                 "https://api.sendgrid.com/v3/mail/send",
-                json=data,
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
+                json=payload,
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 timeout=10
             )
-            
-            if response.status_code in [200, 201, 202]:
-                return JsonResponse({'status': 'success', 'message': 'OTP_SENT'})
-            else:
-                return JsonResponse({'status': 'error', 'message': f'Gửi email thất bại: {response.status_code}'})
-                
+            if resp.status_code in [200, 201, 202]:
+                return JsonResponse({'status': 'success', 'message': f'Đã gửi mã OTP tới {email}. Vui lòng kiểm tra hộp thư.'})
+            if resp.status_code == 401:
+                import logging
+                logging.getLogger(__name__).warning('SendGrid unauthorized for forgot password, fallback to Django email backend.')
+                success, message = send_email_fallback()
+                if success:
+                    return JsonResponse({'status': 'success', 'message': message})
+            import logging
+            logging.getLogger(__name__).error(f'SendGrid forgot password error: {resp.status_code} - {resp.text}')
+            return JsonResponse({'status': 'error', 'message': f'Không thể gửi email. Mã lỗi: {resp.status_code}'})
         except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)})
-    
-            return JsonResponse({'status': 'error', 'message': 'Yêu cầu không hợp lệ'})
-
+            import logging
+            logging.getLogger(__name__).exception(f'SendGrid forgot password connection error: {str(e)}')
+            return JsonResponse({'status': 'error', 'message': f'Lỗi kết nối: {str(e)}'})
 
 
 def verify_otp_forgot_password_view(request):
@@ -442,7 +513,7 @@ def verify_otp_forgot_password_view(request):
     Xác minh OTP cho quên mật khẩu (AJAX)
     """
     if request.method == 'POST':
-        email = request.POST.get('email')
+        email = (request.POST.get('email') or '').strip().lower()
         otp_input = request.POST.get('otp')
         
         if not email or not otp_input:
@@ -470,7 +541,7 @@ def reset_password_view(request):
     Đặt lại mật khẩu (AJAX)
     """
     if request.method == 'POST':
-        email = request.POST.get('email')
+        email = (request.POST.get('email') or '').strip().lower()
         new_password = request.POST.get('new_password')
         
         if not email or not new_password:
@@ -497,8 +568,7 @@ def reset_password_view(request):
             return JsonResponse({'status': 'success', 'message': 'Đặt lại mật khẩu thành công'})
         except CustomUser.DoesNotExist:
             return JsonResponse({'status': 'error', 'message': 'Không tìm thấy người dùng'})
-    
-            return JsonResponse({'status': 'error', 'message': 'Yêu cầu không hợp lệ'})
+
 
 @csrf_exempt
 @require_POST
@@ -535,13 +605,23 @@ def send_verification_code(request):
     print(f"=== OTP for {email}: {otp} ===")
 
     # Gửi email qua SendGrid
-    api_key = os.getenv('SENDGRID_API_KEY', '')
-    from_email = os.getenv('SENDGRID_FROM_EMAIL', 'noreply@qhun22.com')
+    api_key = os.getenv('SENDGRID_API_KEY', '').strip()
+    from_email = os.getenv('SENDGRID_FROM_EMAIL', settings.DEFAULT_FROM_EMAIL or 'noreply@qhun22.com').strip()
 
-    # Debug: kiểm tra API key
-    if not api_key:
-        import logging
-        logging.getLogger(__name__).warning('SENDGRID_API_KEY not configured')
+    def send_email_fallback():
+        from django.core.mail import send_mail
+        try:
+            send_mail(
+                subject='Mã xác thực Student/Teacher - QHUN22',
+                message=f'Mã xác thực của bạn là: {otp}\nMã có hiệu lực trong 5 phút.',
+                from_email=from_email,
+                recipient_list=[email],
+                html_message=html_body,
+                fail_silently=False,
+            )
+            return True, f'Đã gửi mã xác thực tới {email}. Vui lòng kiểm tra hộp thư.'
+        except Exception as exc:
+            return False, str(exc)
 
     html_body = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f5f5f5;">
@@ -553,6 +633,12 @@ def send_verification_code(request):
         </div>
     </div>
     """
+
+    if not api_key:
+        success, message = send_email_fallback()
+        if success:
+            return JsonResponse({'success': True, 'message': message})
+        return JsonResponse({'success': False, 'message': f'Gửi email thất bại: {message}'})
 
     payload = {
         "personalizations": [{"to": [{"email": email}], "subject": "Mã xác thực Student/Teacher - QHUN22"}],
@@ -569,11 +655,15 @@ def send_verification_code(request):
         )
         if resp.status_code in [200, 201, 202]:
             return JsonResponse({'success': True, 'message': f'Đã gửi mã xác thực tới {email}. Vui lòng kiểm tra hộp thư.'})
-        else:
-            # Debug: trả về thông tin lỗi
+        if resp.status_code == 401:
             import logging
-            logging.getLogger(__name__).error(f'SendGrid error: {resp.status_code} - {resp.text}')
-            return JsonResponse({'success': False, 'message': f'Không thể gửi email. Mã lỗi: {resp.status_code}'})
+            logging.getLogger(__name__).warning('SendGrid unauthorized, fallback to Django email backend.')
+            success, message = send_email_fallback()
+            if success:
+                return JsonResponse({'success': True, 'message': message})
+        import logging
+        logging.getLogger(__name__).error(f'SendGrid error: {resp.status_code} - {resp.text}')
+        return JsonResponse({'success': False, 'message': f'Không thể gửi email. Mã lỗi: {resp.status_code}'} )
     except Exception as e:
         import logging
         logging.getLogger(__name__).exception(f'SendGrid connection error: {str(e)}')

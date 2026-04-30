@@ -6,6 +6,7 @@ from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
+from django.utils import timezone
 
 
 def blog_page_list(request):
@@ -39,8 +40,8 @@ def blog_list(request):
                 'content': blog.content,
                 'image_url': blog.image.url if blog.image else None,
                 'is_active': blog.is_active,
-                'created_at': blog.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                'updated_at': blog.updated_at.strftime('%Y-%m-%d %H:%M:%S') if blog.updated_at else None
+                'created_at': timezone.localtime(blog.created_at).strftime('%Y-%m-%d %H:%M:%S'),
+                'updated_at': timezone.localtime(blog.updated_at).strftime('%Y-%m-%d %H:%M:%S') if blog.updated_at else None
             })
         return JsonResponse({'success': True, 'blogs': blog_data})
     except Exception as e:
@@ -83,7 +84,7 @@ def blog_add(request):
                 'summary': blog.summary,
                 'image_url': blog.image.url if blog.image else None,
                 'is_active': blog.is_active,
-                'created_at': blog.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                'created_at': timezone.localtime(blog.created_at).strftime('%Y-%m-%d %H:%M:%S')
             }
         })
     except Exception as e:
@@ -139,7 +140,7 @@ def blog_update(request):
                 'summary': blog.summary,
                 'image_url': blog.image.url if blog.image else None,
                 'is_active': blog.is_active,
-                'updated_at': blog.updated_at.strftime('%Y-%m-%d %H:%M:%S')
+                'updated_at': timezone.localtime(blog.updated_at).strftime('%Y-%m-%d %H:%M:%S')
             }
         })
     except BlogPost.DoesNotExist:

@@ -336,7 +336,7 @@
 
                         <div class="qh-form-group">
                             <label class="qh-label">Tài khoản Edu</label>
-                            <input type="text" class="qh-input" value="{{ user.verified_student_email|default:'' }}" readonly>
+                            <input type="text" class="qh-input" value="{% if user.verified_student_email %}{{ user.verified_student_email }}{% else %}{{ user.verified_teacher_email }}{% endif %}" readonly>
                         </div>
                     </div>
                     
@@ -403,7 +403,7 @@
                         <label class="qh-label">Trạng thái</label>
                         <div class="qh-pf-student-status-badge">
                             <i class="ri-checkbox-circle-line"></i>
-                            <span>Voucher đã được sử dụng</span>
+                            <span>Bạn đã sử dụng voucher</span>
                         </div>
                     </div>
                     {% elif edu_voucher_status == 'expired' %}

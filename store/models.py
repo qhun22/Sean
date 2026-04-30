@@ -2,6 +2,7 @@ from decimal import Decimal
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.db import models
 from django.utils.text import slugify
+from django.utils import timezone
 
 
 class CustomUserManager(UserManager):
@@ -10,6 +11,7 @@ class CustomUserManager(UserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
             raise ValueError('Email là bắt buộc')
+        email = (email or '').strip().lower()
         email = self.normalize_email(email)
         
         # Loại bỏ username khỏi extra_fields nếu có
@@ -313,10 +315,10 @@ def image_folder_upload_path(instance, filename):
     Đường dẫn lưu ảnh thư mục riêng:
     media/products/YYYY/MM/<folder_slug>/filename
     """
-    from datetime import datetime
+    from django.utils import timezone
     import os
 
-    now = datetime.now()
+    now = timezone.now()
     year = now.year
     month = now.strftime('%m')
     folder_slug = instance.folder.slug
@@ -531,7 +533,7 @@ class SiteVisit(models.Model):
         ordering = ['-visit_time']
     
     def __str__(self):
-        return f"Visit at {self.visit_time.strftime('%Y-%m-%d %H:%M')}"
+        return f"Visit at {timezone.localtime(self.visit_time).strftime('%Y-%m-%d %H:%M')}"
 
 
 class HotSaleProduct(models.Model):
@@ -777,7 +779,7 @@ class PasswordHistory(models.Model):
         ordering = ['-changed_at']
 
     def __str__(self):
-        return f"{self.user.email} - {self.changed_at.strftime('%d/%m/%Y %H:%M')}"
+        return f"{self.user.email} - {timezone.localtime(self.changed_at).strftime('%d/%m/%Y %H:%M')}"
 
 
 class PendingQRPayment(models.Model):

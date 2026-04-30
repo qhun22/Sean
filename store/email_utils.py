@@ -5,6 +5,7 @@ import html
 import logging
 import requests
 from urllib.parse import urlparse
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +119,7 @@ def send_order_invoice_email(order, base_url=None):
     status = order.get_status_display() if hasattr(order, "get_status_display") else order.status
     discount_amount = int(getattr(order, "discount_amount", 0) or 0)
     coupon_code = (getattr(order, "coupon_code", "") or "").strip()
-    created_label = order.created_at.strftime("%d/%m/%Y %H:%M") if getattr(order, "created_at", None) else "-"
+    created_label = timezone.localtime(order.created_at).strftime("%d/%m/%Y %H:%M") if getattr(order, "created_at", None) else "-"
 
     coupon_note = f" ({html.escape(coupon_code)})" if coupon_code else ""
     discount_row = ""

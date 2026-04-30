@@ -17,6 +17,12 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-qhun22-mobile-shop-2024')
 DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes')
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'qhun22.com,www.qhun22.com,127.0.0.1,localhost').split(',')
+CSRF_TRUSTED_ORIGINS = [
+    'https://qhun22.com',
+    'https://www.qhun22.com',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+]
 
 # Ứng dụng đã cài đặt
 INSTALLED_APPS = [
@@ -44,6 +50,7 @@ SITE_ID = 1
 # Middleware
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',

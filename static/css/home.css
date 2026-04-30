@@ -1746,7 +1746,7 @@
 .qh-filter-select {
     width: 100%;
     padding: 10px 36px 10px 14px;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 500;
     color: #333;
     background: #f8f9fa;
@@ -2066,7 +2066,7 @@
     .qh-filter-select {
         height: 42px;
         padding: 0 36px 0 12px;
-        font-size: 14px;
+        font-size: 16px;
         border-radius: 8px;
     }
 
@@ -2290,7 +2290,7 @@
     color: var(--qh-text);
     height: 46px;
     padding: 0 16px;
-    font-size: 14px;
+    font-size: 16px;
     font-family: 'Signika', sans-serif;
     outline: none;
     min-width: 260px;
@@ -2471,7 +2471,7 @@
 
     .qh-newsletter-input {
         height: 42px;
-        font-size: 13px;
+        font-size: 16px;
         padding: 0 14px;
     }
 
@@ -2531,7 +2531,7 @@
 
     .qh-newsletter-input {
         height: 40px;
-        font-size: 12px;
+        font-size: 16px;
         padding: 0 12px;
     }
 

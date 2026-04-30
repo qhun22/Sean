@@ -96,6 +96,8 @@ function openOtDetail(code) {
 
     if (o.coupon_code) {
         html += otInfoRow('Voucher đã dùng', '<span class="qh-ot-badge voucher-used">' + escOtHtml(o.coupon_code) + '</span>');
+    } else if (discountAmount > 0) {
+        html += otInfoRow('Voucher đã dùng', '<span class="qh-ot-badge voucher-used">Đã sử dụng voucher</span>');
     } else {
         html += otInfoRow('Voucher đã dùng', '<span class="qh-ot-badge voucher-none">Không có</span>');
     }
